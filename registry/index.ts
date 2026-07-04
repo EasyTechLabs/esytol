@@ -184,6 +184,60 @@ export const toolRegistry: Tool[] = [
     isNew: true,
   },
 
+  // ─── Calculators ─────────────────────────────────────────────────────────
+  {
+    id: "emi-calculator",
+    name: "EMI Calculator",
+    slug: "emi-calculator",
+    description:
+      "Calculate your monthly EMI, total interest, and full amortization schedule for any loan.",
+    category: "calculator",
+    tags: ["emi", "loan", "calculator", "finance", "interest", "amortization"],
+    keywords: [
+      "emi calculator",
+      "loan emi calculator",
+      "home loan emi calculator",
+      "car loan emi",
+      "personal loan calculator",
+      "amortization schedule",
+      "monthly installment calculator",
+    ],
+    icon: "🧮",
+    url: "/tools/emi-calculator",
+    version: "1.0.0",
+    lastUpdated: "Jul 2025",
+    relatedTools: [],
+    faq: [
+      {
+        question: "What is EMI?",
+        answer:
+          "EMI (Equated Monthly Instalment) is the fixed amount you pay to the lender every month until the loan is fully repaid. Each payment covers part of the principal and the interest accrued.",
+      },
+      {
+        question: "How is EMI calculated?",
+        answer:
+          "EMI = P × r × (1+r)^n / ((1+r)^n − 1), where P is the principal, r is the monthly interest rate (annual rate ÷ 12 ÷ 100), and n is the tenure in months.",
+      },
+      {
+        question: "What is an amortization schedule?",
+        answer:
+          "An amortization schedule is a table showing the breakdown of each monthly payment into principal and interest, and the remaining loan balance after each payment.",
+      },
+      {
+        question: "Does a higher tenure reduce my EMI?",
+        answer:
+          "Yes. A longer tenure reduces the monthly EMI but increases the total interest paid over the life of the loan. A shorter tenure means higher EMI but lower total interest.",
+      },
+      {
+        question: "Is my data sent to any server?",
+        answer:
+          "No. All calculations happen entirely in your browser. No data is sent to any server.",
+      },
+    ],
+    featured: true,
+    popular: true,
+  },
+
   // ─── Security ─────────────────────────────────────────────────────────────
   {
     id: "password-generator",

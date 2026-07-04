@@ -56,6 +56,12 @@ export const categories: Category[] = [
     icon: "🖼️",
   },
   {
+    slug: "calculator",
+    name: "Calculators",
+    description: "EMI, percentage, tax, and financial calculators.",
+    icon: "🧮",
+  },
+  {
     slug: "misc",
     name: "Miscellaneous",
     description: "All the other useful tools that don't fit a category.",

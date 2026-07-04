@@ -8,6 +8,7 @@ export type CategorySlug =
   | "color"
   | "security"
   | "image"
+  | "calculator"
   | "misc";
 
 export interface Category {
