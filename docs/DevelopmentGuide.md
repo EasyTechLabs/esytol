@@ -118,13 +118,37 @@ npm run test        # watch mode (dev)
 npm run test:run    # single run (CI)
 ```
 
-### Writing Tests
+### Test Organisation
 
-- Utility tests → `tests/lib/*.test.ts`
-- Component tests → `tests/components/*.test.tsx`
-- Registry tests → `tests/registry/*.test.ts`
+| Directory           | Purpose                                          |
+| ------------------- | ------------------------------------------------ |
+| `tests/lib/`        | Pure utility function tests (cn, utils)          |
+| `tests/registry/`   | Registry query and integrity tests               |
+| `tests/routes/`     | Route data consistency (slugs, URLs, nav links)  |
+| `tests/seo/`        | Metadata and sitemap output tests                |
+| `tests/components/` | Component rendering and accessibility (axe-core) |
 
-Example component test:
+### Accessibility Tests
+
+Accessibility tests use `axe-core` directly with React Testing Library.
+The `color-contrast` rule is disabled in the jsdom environment because jsdom does not
+implement `HTMLCanvasElement.getContext`. Verify colour contrast in a real browser using
+axe DevTools or Playwright + `@axe-core/playwright`.
+
+```typescript
+import axe from "axe-core";
+import { render } from "@testing-library/react";
+
+it("has no violations", async () => {
+  const { container } = render(<MyComponent />);
+  const results = await axe.run(container, {
+    rules: { "color-contrast": { enabled: false } },
+  });
+  expect(results.violations).toHaveLength(0);
+});
+```
+
+### Example Component Test
 
 ```typescript
 import { render, screen } from "@testing-library/react";

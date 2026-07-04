@@ -109,6 +109,10 @@ export const toolRegistry: Tool[] = [
   },
 ];
 
+// ─── Slug index (O(1) lookup) ────────────────────────────────────────────────
+
+const _slugIndex = new Map<string, Tool>(toolRegistry.map((t) => [t.slug, t]));
+
 // ─── Query helpers ──────────────────────────────────────────────────────────
 
 export function getTools(filter?: ToolFilter): Tool[] {
@@ -152,7 +156,7 @@ export function getNewTools(): Tool[] {
 }
 
 export function getToolBySlug(slug: string): Tool | undefined {
-  return toolRegistry.find((t) => t.slug === slug);
+  return _slugIndex.get(slug);
 }
 
 export function getToolCount(): number {

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { buildMetadata } from "@/seo/metadata";
+import { getToolCount } from "@/registry";
 import { HeroSection } from "@/features/home/HeroSection";
 import { CategoryGrid } from "@/features/home/CategoryGrid";
 import { FeaturedTools } from "@/features/home/FeaturedTools";
@@ -14,9 +15,10 @@ export const metadata: Metadata = buildMetadata({
 });
 
 export default function HomePage() {
+  const toolCount = getToolCount();
   return (
     <>
-      <HeroSection />
+      <HeroSection toolCount={toolCount} />
 
       <div className="container-page">
         <section className="section-gap">

@@ -4,12 +4,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { SearchBar } from "@/components/ui/SearchBar";
 import { siteConfig } from "@/config/site";
-import { getToolCount } from "@/registry";
 
-export function HeroSection() {
+interface HeroSectionProps {
+  toolCount: number;
+}
+
+export function HeroSection({ toolCount }: HeroSectionProps) {
   const [query, setQuery] = useState("");
   const router = useRouter();
-  const toolCount = getToolCount();
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -47,7 +49,7 @@ export function HeroSection() {
             <a
               key={cat}
               href={`/categories/${cat.toLowerCase()}`}
-              className="hover:border-brand-300 rounded-full border border-gray-200 bg-white px-4 py-1.5 text-sm text-gray-700 shadow-sm transition hover:text-brand-700"
+              className="rounded-full border border-gray-200 bg-white px-4 py-1.5 text-sm text-gray-700 shadow-sm transition hover:border-brand-300 hover:text-brand-700"
             >
               {cat}
             </a>

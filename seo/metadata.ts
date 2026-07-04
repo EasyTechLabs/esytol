@@ -24,7 +24,7 @@ export function buildMetadata({
   return {
     title: resolvedTitle,
     description: resolvedDescription,
-    keywords: siteConfig.keywords,
+    keywords: [...siteConfig.keywords],
     metadataBase: new URL(siteConfig.url),
     alternates: { canonical: resolvedUrl },
     robots: noIndex ? { index: false, follow: false } : { index: true, follow: true },
