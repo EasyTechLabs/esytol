@@ -4,3 +4,4 @@ coverage/
 dist/
 public/
 *.lock
+next-env.d.ts

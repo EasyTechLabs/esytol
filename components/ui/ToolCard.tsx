@@ -13,7 +13,7 @@ export function ToolCard({ tool, className }: ToolCardProps) {
       href={tool.url}
       className={cn(
         "group flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-5",
-        "hover:border-brand-200 transition-all duration-150 hover:shadow-md",
+        "transition-all duration-150 hover:border-brand-200 hover:shadow-md",
         className
       )}
     >

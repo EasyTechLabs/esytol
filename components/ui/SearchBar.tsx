@@ -53,7 +53,7 @@ export function SearchBar({
         placeholder={placeholder}
         className={cn(
           "w-full rounded-xl border border-gray-200 bg-white text-gray-900 shadow-sm",
-          "focus:border-brand-400 focus:ring-brand-200 placeholder:text-gray-400 focus:outline-none focus:ring-2",
+          "focus:border-brand-400 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-200",
           size === "lg"
             ? "py-3.5 pl-12 pr-12 text-base"
             : size === "sm"
