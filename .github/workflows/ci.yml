@@ -6,13 +6,32 @@ on:
   pull_request:
 
 jobs:
-  build:
+  quality:
+    name: Type Check · Lint · Test · Build
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Verify repository
-        run: |
-          test -f README.md || (echo "Missing README.md" && exit 1)
-          echo "Repository OK"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run type-check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Test
+        run: npm run test:run
+
+      - name: Build
+        run: npm run build
