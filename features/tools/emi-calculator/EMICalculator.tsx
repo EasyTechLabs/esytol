@@ -60,12 +60,9 @@ export function EMICalculator() {
   }, [isValid, numAmount, numRate, months]);
 
   const schedule = useMemo(() => {
-    if (!result) return [];
-    return generateAmortizationSchedule(
-      { principal: numAmount, annualRate: numRate, months },
-      result.emi
-    );
-  }, [result, numAmount, numRate, months]);
+    if (!isValid) return [];
+    return generateAmortizationSchedule({ principal: numAmount, annualRate: numRate, months });
+  }, [isValid, numAmount, numRate, months]);
 
   const handleReset = useCallback(() => {
     setAmount("500000");
