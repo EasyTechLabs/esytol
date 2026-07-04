@@ -1,8 +1,9 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { buildMetadata } from "@/seo/metadata";
 import { getToolBySlug, toolRegistry } from "@/registry";
-import { toolSchema } from "@/seo/jsonld";
+import { buildToolMetadata } from "@/seo/metadata";
+import { ToolLayout } from "@/features/tool/ToolLayout";
+import { ToolMetadata } from "@/features/tool/ToolMetadata";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -16,11 +17,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const tool = getToolBySlug(slug);
   if (!tool) return { title: "Tool Not Found" };
-  return buildMetadata({
-    title: tool.name,
-    description: tool.description,
-    path: `/tools/${tool.slug}`,
-  });
+  return buildToolMetadata(tool);
 }
 
 export default async function ToolPage({ params }: Props) {
@@ -30,25 +27,12 @@ export default async function ToolPage({ params }: Props) {
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(toolSchema(tool)) }}
-      />
-      <div className="container-page section-gap">
-        <div className="mb-8">
-          <p className="mb-2 text-sm font-medium uppercase tracking-widest text-brand-600">
-            {tool.category}
-          </p>
-          <h1 className="text-3xl font-bold text-gray-900">
-            {tool.icon} {tool.name}
-          </h1>
-          <p className="mt-3 max-w-2xl text-lg text-gray-500">{tool.description}</p>
-        </div>
-
-        <div className="rounded-xl border border-dashed border-gray-200 px-12 py-20 text-center">
+      <ToolMetadata tool={tool} />
+      <ToolLayout tool={tool}>
+        <div className="py-16 text-center">
           <p className="text-gray-400">Tool interface coming soon.</p>
         </div>
-      </div>
+      </ToolLayout>
     </>
   );
 }

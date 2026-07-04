@@ -66,4 +66,93 @@ describe("buildMetadata", () => {
     const meta = buildMetadata();
     expect(meta.metadataBase?.toString()).toContain("esytol");
   });
+
+  it("merges additional keywords with site keywords", () => {
+    const meta = buildMetadata({ keywords: ["extra-keyword"] });
+    const kw = meta.keywords as string[];
+    expect(kw).toContain("extra-keyword");
+    expect(kw.length).toBeGreaterThan(siteConfig.keywords.length);
+  });
+
+  it("uses only site keywords when no extra keywords provided", () => {
+    const meta = buildMetadata();
+    const kw = meta.keywords as string[];
+    expect(kw).toEqual([...siteConfig.keywords]);
+  });
+});
+
+describe("buildToolMetadata", () => {
+  it("is accessible from seo/metadata", async () => {
+    const { buildToolMetadata } = await import("@/seo/metadata");
+    expect(typeof buildToolMetadata).toBe("function");
+  });
+
+  it("formats title as [Tool Name] — Esytol", async () => {
+    const { buildToolMetadata } = await import("@/seo/metadata");
+    const tool = {
+      id: "test",
+      name: "JSON Formatter",
+      slug: "json-formatter",
+      description: "Format JSON",
+      category: "developer" as const,
+      tags: [],
+      icon: "📋",
+      url: "/tools/json-formatter",
+    };
+    const meta = buildToolMetadata(tool);
+    expect(meta.title).toBe(`JSON Formatter — ${siteConfig.name}`);
+  });
+
+  it("sets canonical to /tools/[slug]", async () => {
+    const { buildToolMetadata } = await import("@/seo/metadata");
+    const tool = {
+      id: "test",
+      name: "JSON Formatter",
+      slug: "json-formatter",
+      description: "Format JSON",
+      category: "developer" as const,
+      tags: [],
+      icon: "📋",
+      url: "/tools/json-formatter",
+    };
+    const meta = buildToolMetadata(tool);
+    expect(meta.alternates?.canonical).toBe(`${siteConfig.url}/tools/json-formatter`);
+  });
+
+  it("merges tool keywords into the keywords list", async () => {
+    const { buildToolMetadata } = await import("@/seo/metadata");
+    const tool = {
+      id: "test",
+      name: "JSON Formatter",
+      slug: "json-formatter",
+      description: "Format JSON",
+      category: "developer" as const,
+      tags: [],
+      keywords: ["json formatter online"],
+      icon: "📋",
+      url: "/tools/json-formatter",
+    };
+    const meta = buildToolMetadata(tool);
+    const kw = meta.keywords as string[];
+    expect(kw).toContain("json formatter online");
+    expect(kw).toContain("online tools");
+  });
+
+  it("sets OpenGraph title and url for the tool", async () => {
+    const { buildToolMetadata } = await import("@/seo/metadata");
+    const tool = {
+      id: "test",
+      name: "JSON Formatter",
+      slug: "json-formatter",
+      description: "Format JSON",
+      category: "developer" as const,
+      tags: [],
+      icon: "📋",
+      url: "/tools/json-formatter",
+    };
+    const meta = buildToolMetadata(tool);
+    const og = meta.openGraph;
+    expect((og as { title: string }).title).toBe(`JSON Formatter — ${siteConfig.name}`);
+    expect((og as { url: string }).url).toContain("/tools/json-formatter");
+  });
 });

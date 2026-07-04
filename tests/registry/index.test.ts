@@ -85,3 +85,46 @@ describe("getToolCount()", () => {
     expect(getToolCount()).toBe(toolRegistry.length);
   });
 });
+
+describe("tool framework fields", () => {
+  it("every tool has a version string", () => {
+    for (const tool of toolRegistry) {
+      expect(typeof tool.version).toBe("string");
+      expect(tool.version!.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("every tool has a lastUpdated string", () => {
+    for (const tool of toolRegistry) {
+      expect(typeof tool.lastUpdated).toBe("string");
+      expect(tool.lastUpdated!.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("every tool has keywords array with at least one entry", () => {
+    for (const tool of toolRegistry) {
+      expect(Array.isArray(tool.keywords)).toBe(true);
+      expect(tool.keywords!.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("every tool has at least one FAQ item with non-empty question and answer", () => {
+    for (const tool of toolRegistry) {
+      expect(Array.isArray(tool.faq)).toBe(true);
+      expect(tool.faq!.length).toBeGreaterThan(0);
+      for (const item of tool.faq!) {
+        expect(item.question.trim().length).toBeGreaterThan(0);
+        expect(item.answer.trim().length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("every relatedTools entry references a valid registry slug", () => {
+    const slugs = new Set(toolRegistry.map((t) => t.slug));
+    for (const tool of toolRegistry) {
+      for (const rel of tool.relatedTools ?? []) {
+        expect(slugs.has(rel), `${tool.slug} references unknown relatedTool: ${rel}`).toBe(true);
+      }
+    }
+  });
+});

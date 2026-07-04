@@ -18,11 +18,23 @@ All tools run client-side — no server processing, no database, no user data st
 ## Data Flow
 
 ```
-registry/index.ts  (tool definitions)
+registry/index.ts  (tool definitions — extended with faq, keywords, relatedTools, version)
        │
        ├─► app/page.tsx              (home — server component)
        │       └─► features/home/*  (section components)
        │               └─► components/ui/ToolCard
+       │
+       ├─► app/tools/[slug]/page.tsx (tool page — server component)
+       │       ├─► seo/metadata.ts  buildToolMetadata(tool)  → Next.js Metadata
+       │       ├─► features/tool/ToolMetadata  → JSON-LD scripts
+       │       └─► features/tool/ToolLayout
+       │               ├─► ToolHeader (Breadcrumb, icon, title, version)
+       │               ├─► ToolContainer (children slot for tool UI)
+       │               ├─► FAQSection [Client] (accordion)
+       │               └─► ToolSidebar
+       │                       ├─► ShareButtons [Client] (copy link, Twitter)
+       │                       ├─► RelatedTools → registry (slug lookup)
+       │                       └─► ReportIssue (anchor to GitHub Issues)
        │
        ├─► app/sitemap.ts            (generated sitemap)
        ├─► app/robots.ts             (generated robots.txt)
@@ -48,9 +60,28 @@ computed in the server component and passed down as a prop.
 
 ### `seo/`
 
-- `metadata.ts` — generates Next.js `Metadata` objects from options
-- `jsonld.ts` — Schema.org JSON-LD generators (WebSite, Organization, SoftwareApplication)
+- `metadata.ts` — generates Next.js `Metadata` objects from options; `buildToolMetadata(tool)` produces full tool-page metadata (title, description, canonical, OG, Twitter, keywords) without duplication
+- `jsonld.ts` — Schema.org JSON-LD generators: `webSiteSchema`, `organizationSchema`, `toolSchema`, `breadcrumbSchema`, `faqSchema`
 - `og.ts` — OpenGraph metadata helpers
+- `tool-seo.ts` — `buildToolSchemas(tool)` assembles the ordered JSON-LD script array for a tool page (SoftwareApplication + BreadcrumbList + FAQPage when FAQ data is present)
+
+### `features/tool/` — Tool Framework
+
+Every production tool page is composed from these reusable Server/Client Components:
+
+| Component       | Type       | Responsibility                                                    |
+| --------------- | ---------- | ----------------------------------------------------------------- |
+| `ToolLayout`    | Server     | Root layout: header + two-column grid (main + sidebar)            |
+| `ToolHeader`    | Server     | Breadcrumb, icon, name, description, version, lastUpdated         |
+| `ToolContainer` | Server     | White card wrapper for the interactive tool content area          |
+| `ToolSidebar`   | Server     | Composes ShareButtons + RelatedTools + ReportIssue                |
+| `ToolMetadata`  | Server     | Renders all JSON-LD `<script>` tags (tool, breadcrumb, FAQ)       |
+| `Breadcrumb`    | Server     | Accessible breadcrumb nav with `aria-current="page"` on last item |
+| `FAQSection`    | **Client** | Accordion FAQ; requires interactivity (toggle state)              |
+| `ShareButtons`  | **Client** | Copy link + Twitter/X share; requires Clipboard API               |
+| `RelatedTools`  | Server     | Reads registry directly; renders link list of related tools       |
+
+**Rendering boundary rule:** `FAQSection` and `ShareButtons` are the only Client Components in the tool framework. All props they receive must be serializable (strings, plain objects). The server parent (`ToolLayout` / `ToolSidebar`) computes all data before passing it down.
 
 ### `features/home/`
 
