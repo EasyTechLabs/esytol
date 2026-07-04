@@ -22,10 +22,16 @@ export function ToolCard({ tool, className }: ToolCardProps) {
           <span className="text-2xl leading-none">{tool.icon}</span>
           <h3 className="font-semibold text-gray-900 group-hover:text-brand-600">{tool.name}</h3>
         </div>
-        {tool.isNew && (
-          <span className="shrink-0 rounded-full bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-700">
-            New
+        {tool.status === "coming-soon" ? (
+          <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
+            Soon
           </span>
+        ) : (
+          tool.isNew && (
+            <span className="shrink-0 rounded-full bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-700">
+              New
+            </span>
+          )
         )}
       </div>
 

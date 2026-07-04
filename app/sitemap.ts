@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { siteConfig } from "@/config/site";
-import { toolRegistry } from "@/registry";
+import { getLiveTools } from "@/registry";
 import { categories } from "@/registry/categories";
 
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -18,7 +18,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/terms`, lastModified: now, changeFrequency: "monthly", priority: 0.3 },
   ];
 
-  const toolRoutes: MetadataRoute.Sitemap = toolRegistry.map((tool) => ({
+  // Only live tools are indexable — "coming-soon" placeholders are excluded to
+  // avoid thin/placeholder content in search results.
+  const toolRoutes: MetadataRoute.Sitemap = getLiveTools().map((tool) => ({
     url: `${base}${tool.url}`,
     lastModified: now,
     changeFrequency: "monthly",

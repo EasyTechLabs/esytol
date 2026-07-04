@@ -24,7 +24,7 @@ export function HeroSection({ toolCount }: HeroSectionProps) {
     <section className="border-b border-gray-200 bg-gradient-to-b from-brand-50 to-white">
       <div className="container-page py-20 text-center sm:py-28">
         <p className="mb-4 text-sm font-medium uppercase tracking-widest text-brand-600">
-          {toolCount}+ free tools
+          {toolCount} free tools
         </p>
         <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl lg:text-6xl">
           {siteConfig.tagline}
@@ -35,7 +35,7 @@ export function HeroSection({ toolCount }: HeroSectionProps) {
           <SearchBar
             value={query}
             onChange={setQuery}
-            placeholder="Search 5000+ tools — JSON formatter, word counter, Base64…"
+            placeholder="Search tools — EMI, SIP, GST, FD, home loan…"
             size="lg"
           />
           <p className="mt-3 text-xs text-gray-400">

@@ -5,6 +5,14 @@ export interface FAQ {
   answer: string;
 }
 
+/**
+ * Lifecycle status of a tool.
+ * - "live" (default when omitted): fully implemented and interactive.
+ * - "coming-soon": registered/listed but not yet implemented. Such tools are
+ *   excluded from the sitemap and marked noindex, and are badged in listings.
+ */
+export type ToolStatus = "live" | "coming-soon";
+
 export interface Tool {
   id: string;
   name: string;
@@ -22,6 +30,8 @@ export interface Tool {
   featured?: boolean;
   popular?: boolean;
   isNew?: boolean;
+  /** Defaults to "live" when omitted. */
+  status?: ToolStatus;
 }
 
 export type ToolFilter = {

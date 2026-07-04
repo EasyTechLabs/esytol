@@ -21,7 +21,7 @@ vi.mock("next/navigation", () => ({
 // ProjectionTable is a real import but its Download CSV triggers browser API.
 // We mock downloadCSV to avoid JSDOM blob errors.
 vi.mock("@/lib/sip", async (importOriginal) => {
-  const actual = await importOriginal<typeof SipModule>();
+  const actual = (await importOriginal()) as Record<string, unknown>;
   return {
     ...actual,
     downloadCSV: vi.fn(),

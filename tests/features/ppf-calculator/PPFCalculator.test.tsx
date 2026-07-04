@@ -20,7 +20,7 @@ vi.mock("next/navigation", () => ({
 
 // Mock downloadCSV to avoid JSDOM blob/URL errors.
 vi.mock("@/lib/ppf", async (importOriginal) => {
-  const actual = await importOriginal<typeof PpfModule>();
+  const actual = (await importOriginal()) as Record<string, unknown>;
   return {
     ...actual,
     downloadCSV: vi.fn(),

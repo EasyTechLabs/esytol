@@ -20,7 +20,7 @@ vi.mock("next/navigation", () => ({
 
 // Mock downloadCSV to avoid JSDOM blob/URL errors.
 vi.mock("@/lib/rd", async (importOriginal) => {
-  const actual = await importOriginal<typeof RdModule>();
+  const actual = (await importOriginal()) as Record<string, unknown>;
   return {
     ...actual,
     downloadCSV: vi.fn(),

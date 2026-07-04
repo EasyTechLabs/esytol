@@ -1,6 +1,6 @@
 # Esytol
 
-**5000+ free online tools — one platform.**
+**Free online tools — one platform.**
 
 Built with Next.js 15, React 19, TypeScript, and Tailwind CSS.
 

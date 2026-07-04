@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import sitemap from "@/app/sitemap";
 import { siteConfig } from "@/config/site";
-import { toolRegistry } from "@/registry";
+import { toolRegistry, getLiveTools } from "@/registry";
 import { categories } from "@/registry/categories";
 
 describe("sitemap", () => {
@@ -46,10 +46,19 @@ describe("sitemap", () => {
     expect(entries.some((e) => e.url === `${siteConfig.url}/terms`)).toBe(true);
   });
 
-  it("includes every tool from the registry", () => {
-    for (const tool of toolRegistry) {
+  it("includes every live tool from the registry", () => {
+    for (const tool of getLiveTools()) {
       const found = entries.some((e) => e.url === `${siteConfig.url}${tool.url}`);
       expect(found, `Missing tool route: ${tool.url}`).toBe(true);
+    }
+  });
+
+  it("excludes coming-soon tools", () => {
+    const comingSoon = toolRegistry.filter((t) => t.status === "coming-soon");
+    expect(comingSoon.length).toBeGreaterThan(0);
+    for (const tool of comingSoon) {
+      const found = entries.some((e) => e.url === `${siteConfig.url}${tool.url}`);
+      expect(found, `Coming-soon tool must not be in sitemap: ${tool.url}`).toBe(false);
     }
   });
 

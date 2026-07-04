@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { buildMetadata } from "@/seo/metadata";
-import { getToolCount } from "@/registry";
+import { getLiveToolCount } from "@/registry";
 import { HeroSection } from "@/features/home/HeroSection";
 import { CategoryGrid } from "@/features/home/CategoryGrid";
 import { FeaturedTools } from "@/features/home/FeaturedTools";
@@ -9,13 +9,12 @@ import { RecentTools } from "@/features/home/RecentTools";
 
 export const metadata: Metadata = buildMetadata({
   title: "Free Online Tools",
-  description:
-    "5000+ free online tools for developers, writers, and everyday tasks. No signup required.",
+  description: "Free online tools for developers, writers, and everyday tasks. No signup required.",
   path: "/",
 });
 
 export default function HomePage() {
-  const toolCount = getToolCount();
+  const toolCount = getLiveToolCount();
   return (
     <>
       <HeroSection toolCount={toolCount} />

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { getToolBySlug, toolRegistry } from "@/registry";
+import { getToolBySlug, toolRegistry, isToolLive } from "@/registry";
 import { buildToolMetadata } from "@/seo/metadata";
 import { ToolLayout } from "@/features/tool/ToolLayout";
 import { ToolMetadata } from "@/features/tool/ToolMetadata";
@@ -17,7 +17,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const tool = getToolBySlug(slug);
   if (!tool) return { title: "Tool Not Found" };
-  return buildToolMetadata(tool);
+  const metadata = buildToolMetadata(tool);
+  // Coming-soon placeholders must not be indexed (thin/placeholder content).
+  if (!isToolLive(tool)) {
+    metadata.robots = { index: false, follow: true };
+  }
+  return metadata;
 }
 
 export default async function ToolPage({ params }: Props) {

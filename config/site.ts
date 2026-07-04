@@ -1,8 +1,8 @@
 export const siteConfig = {
   name: "Esytol",
-  tagline: "5000+ free online tools — one platform.",
+  tagline: "Free online tools — one platform.",
   description:
-    "Esytol is a free platform with 5000+ online tools for developers, designers, writers, and everyday users. Fast, private, and always available.",
+    "Esytol is a free platform of online tools for developers, designers, writers, and everyday users. Fast, private, and always available.",
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://esytol.com",
   ogImage: "/og-default.png",
   links: {

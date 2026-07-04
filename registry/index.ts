@@ -6,6 +6,7 @@ export const toolRegistry: Tool[] = [
     id: "json-formatter",
     name: "JSON Formatter",
     slug: "json-formatter",
+    status: "coming-soon",
     description: "Format, validate, and beautify JSON data with syntax highlighting.",
     category: "developer",
     tags: ["json", "formatter", "validator", "developer"],
@@ -39,6 +40,7 @@ export const toolRegistry: Tool[] = [
     id: "base64-encoder",
     name: "Base64 Encoder / Decoder",
     slug: "base64-encoder",
+    status: "coming-soon",
     description: "Encode plain text or files to Base64 and decode Base64 strings instantly.",
     category: "encoder",
     tags: ["base64", "encoder", "decoder", "developer"],
@@ -71,6 +73,7 @@ export const toolRegistry: Tool[] = [
     id: "url-encoder",
     name: "URL Encoder / Decoder",
     slug: "url-encoder",
+    status: "coming-soon",
     description: "Percent-encode URLs for safe transmission and decode them back.",
     category: "encoder",
     tags: ["url", "encoder", "decoder", "percent-encoding"],
@@ -100,6 +103,7 @@ export const toolRegistry: Tool[] = [
     id: "word-counter",
     name: "Word Counter",
     slug: "word-counter",
+    status: "coming-soon",
     description: "Count words, characters, sentences, and paragraphs in any text.",
     category: "text",
     tags: ["word", "counter", "character", "text"],
@@ -128,6 +132,7 @@ export const toolRegistry: Tool[] = [
     id: "case-converter",
     name: "Case Converter",
     slug: "case-converter",
+    status: "coming-soon",
     description: "Convert text between UPPER, lower, Title, camelCase, snake_case, and kebab-case.",
     category: "text",
     tags: ["case", "converter", "text", "camelCase", "snake_case"],
@@ -160,6 +165,7 @@ export const toolRegistry: Tool[] = [
     id: "lorem-ipsum",
     name: "Lorem Ipsum Generator",
     slug: "lorem-ipsum",
+    status: "coming-soon",
     description: "Generate configurable placeholder text for wireframes and mockups.",
     category: "generator",
     tags: ["lorem", "ipsum", "placeholder", "generator", "text"],
@@ -887,6 +893,7 @@ export const toolRegistry: Tool[] = [
     id: "password-generator",
     name: "Password Generator",
     slug: "password-generator",
+    status: "coming-soon",
     description: "Generate strong, cryptographically secure passwords with custom rules.",
     category: "security",
     tags: ["password", "generator", "security", "random"],
@@ -924,6 +931,7 @@ export const toolRegistry: Tool[] = [
     id: "hash-generator",
     name: "Hash Generator",
     slug: "hash-generator",
+    status: "coming-soon",
     description: "Compute MD5, SHA-1, SHA-256, and SHA-512 hashes for any string.",
     category: "security",
     tags: ["hash", "md5", "sha256", "sha512", "security"],
@@ -951,6 +959,7 @@ export const toolRegistry: Tool[] = [
     id: "uuid-generator",
     name: "UUID Generator",
     slug: "uuid-generator",
+    status: "coming-soon",
     description: "Generate RFC-4122 compliant UUIDs (v4) in bulk with one click.",
     category: "generator",
     tags: ["uuid", "guid", "generator", "random"],
@@ -1028,4 +1037,19 @@ export function getToolBySlug(slug: string): Tool | undefined {
 
 export function getToolCount(): number {
   return toolRegistry.length;
+}
+
+/** A tool is live unless explicitly marked "coming-soon". */
+export function isToolLive(tool: Tool): boolean {
+  return tool.status !== "coming-soon";
+}
+
+/** Fully implemented, interactive tools only. */
+export function getLiveTools(): Tool[] {
+  return toolRegistry.filter(isToolLive);
+}
+
+/** Count of live (interactive) tools — used for honest, dynamic UI copy. */
+export function getLiveToolCount(): number {
+  return getLiveTools().length;
 }
