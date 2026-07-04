@@ -3,12 +3,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
-import {
-  calculateEMI,
-  generateAmortizationSchedule,
-  validateEMIInputs,
-  formatINR,
-} from "@/lib/emi";
+import { generateEMISchedule, validateEMIInputs, formatINR } from "@/lib/emi";
 import { AmortizationTable } from "./AmortizationTable";
 import { cn } from "@/lib/cn";
 
@@ -54,15 +49,14 @@ export function EMICalculator() {
     [numTenure, tenureUnit]
   );
 
-  const result = useMemo(() => {
+  // Single pass: generates both display schedule and summary derived from it.
+  // summary is the single source of truth for result cards — not formula outputs.
+  const scheduleResult = useMemo(() => {
     if (!isValid) return null;
-    return calculateEMI({ principal: numAmount, annualRate: numRate, months });
+    return generateEMISchedule({ principal: numAmount, annualRate: numRate, months });
   }, [isValid, numAmount, numRate, months]);
 
-  const schedule = useMemo(() => {
-    if (!isValid) return [];
-    return generateAmortizationSchedule({ principal: numAmount, annualRate: numRate, months });
-  }, [isValid, numAmount, numRate, months]);
+  const schedule = scheduleResult?.displaySchedule ?? [];
 
   const handleReset = useCallback(() => {
     setAmount("500000");
@@ -72,11 +66,12 @@ export function EMICalculator() {
   }, []);
 
   const handleCopyResult = useCallback(async () => {
-    if (!result) return;
+    if (!scheduleResult) return;
+    const { summary } = scheduleResult;
     const text = [
-      `Monthly EMI: ${formatINR(result.emi)}`,
-      `Total Interest: ${formatINR(result.totalInterest)}`,
-      `Total Payment: ${formatINR(result.totalPayment)}`,
+      `Monthly EMI: ${formatINR(summary.monthlyEMI)}`,
+      `Total Interest: ${formatINR(summary.totalInterest)}`,
+      `Total Payment: ${formatINR(summary.totalPayment)}`,
     ].join("\n");
     try {
       await navigator.clipboard.writeText(text);
@@ -85,7 +80,7 @@ export function EMICalculator() {
     } catch {
       // clipboard API unavailable
     }
-  }, [result]);
+  }, [scheduleResult]);
 
   const handleShareUrl = useCallback(async () => {
     const params = new URLSearchParams({ amount, rate, tenure, unit: tenureUnit });
@@ -233,15 +228,25 @@ export function EMICalculator() {
       </section>
 
       {/* ── Results ────────────────────────────────────────────────────────── */}
-      {result && (
+      {scheduleResult && (
         <section aria-labelledby="emi-results-heading">
           <h2 id="emi-results-heading" className="mb-4 text-lg font-semibold text-gray-900">
             Results
           </h2>
           <div className="grid gap-4 sm:grid-cols-3">
-            <ResultCard label="Monthly EMI" value={formatINR(result.emi)} accent />
-            <ResultCard label="Total Interest" value={formatINR(result.totalInterest)} />
-            <ResultCard label="Total Payment" value={formatINR(result.totalPayment)} />
+            <ResultCard
+              label="Monthly EMI"
+              value={formatINR(scheduleResult.summary.monthlyEMI)}
+              accent
+            />
+            <ResultCard
+              label="Total Interest"
+              value={formatINR(scheduleResult.summary.totalInterest)}
+            />
+            <ResultCard
+              label="Total Payment"
+              value={formatINR(scheduleResult.summary.totalPayment)}
+            />
           </div>
           <div className="mt-4 flex flex-wrap gap-3">
             <button
@@ -263,8 +268,12 @@ export function EMICalculator() {
       )}
 
       {/* ── Charts ─────────────────────────────────────────────────────────── */}
-      {result && (
-        <EMICharts principal={numAmount} totalInterest={result.totalInterest} schedule={schedule} />
+      {scheduleResult && (
+        <EMICharts
+          principal={numAmount}
+          totalInterest={scheduleResult.summary.totalInterest}
+          schedule={schedule}
+        />
       )}
 
       {/* ── Amortization Table ─────────────────────────────────────────────── */}

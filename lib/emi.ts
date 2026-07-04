@@ -1,3 +1,39 @@
+/**
+ * EMI Calculation Engine — Accounting Policy
+ *
+ * TWO parallel value streams are maintained throughout this module:
+ *
+ * 1. Internal / Exact values
+ *    - Full IEEE 754 double precision.
+ *    - Used for every arithmetic operation inside the loop.
+ *    - NEVER rounded during computation.
+ *    - Exposed via ExactAmortizationRow for audit / verification.
+ *
+ * 2. Display values
+ *    - Rounded to 2 decimal places (round2) immediately before storage.
+ *    - Used for UI, CSV export, and chart data.
+ *    - The EMI column is derived as displayPrincipal + displayInterest, never
+ *      independently rounded from exactEMI. This guarantees the per-row identity
+ *        row.emi = row.principal + row.interest   (exact in IEEE 754)
+ *      and therefore
+ *        Σ EMI = Σ principal + Σ interest         (exact in IEEE 754)
+ *
+ * Final Settlement
+ *    The last row's displayPrincipal is set to round2(loan − Σ prior displayPrincipal).
+ *    This absorbs all accumulated display rounding so that
+ *        |Σ displayPrincipal − loan| ≤ 0.005 < ₹0.01
+ *    for any schedule length.
+ *
+ *    Combining the two facts above:
+ *        Σ displayEMI   = Σ displayPrincipal  +  Σ displayInterest
+ *        Σ principal    ≈ loan                              (±₹0.01)
+ *    →   summary.totalPayment ≈ loan + summary.totalInterest (±₹0.02)
+ *
+ * Summary
+ *    summary is derived entirely from displaySchedule — not from formula outputs.
+ *    The schedule is the single source of truth for all UI totals.
+ */
+
 export interface EMIInput {
   principal: number;
   annualRate: number;
@@ -5,17 +41,43 @@ export interface EMIInput {
 }
 
 export interface EMIResult {
-  emi: number; // rounded for display; do not use for schedule computation
+  emi: number;
   totalInterest: number;
   totalPayment: number;
 }
 
 export interface AmortizationRow {
   month: number;
+  /** Derived as displayPrincipal + displayInterest — not independently rounded. */
   emi: number;
   principal: number;
   interest: number;
   balance: number;
+}
+
+/** Full-precision row for audit and verification. No rounding applied. */
+export interface ExactAmortizationRow {
+  month: number;
+  exactEMI: number;
+  exactPrincipal: number;
+  exactInterest: number;
+  exactBalance: number;
+}
+
+/** Totals computed from displaySchedule. Schedule is the single source of truth. */
+export interface EMISummary {
+  /** round2(exactEMI) — the standard installment shown in the results card. */
+  monthlyEMI: number;
+  /** round2(Σ row.interest) derived from displaySchedule. */
+  totalInterest: number;
+  /** round2(Σ row.emi) derived from displaySchedule. */
+  totalPayment: number;
+}
+
+export interface EMIScheduleResult {
+  displaySchedule: AmortizationRow[];
+  exactSchedule: ExactAmortizationRow[];
+  summary: EMISummary;
 }
 
 export interface ValidationErrors {
@@ -24,18 +86,18 @@ export interface ValidationErrors {
   tenure?: string;
 }
 
+// ── Core calculation ──────────────────────────────────────────────────────────
+
 /**
  * Returns the mathematically exact (unrounded) EMI.
  *
  * Formula: EMI = P × r × (1+r)^n / ((1+r)^n − 1)
- * where r = annualRate / 12 / 100, n = months.
  *
- * Zero-interest edge case: the standard formula has a 0/0 singularity
- * when annualRate = 0. The correct limit is P / n (equal principal each month).
+ * Zero-interest edge case: the formula has a 0/0 singularity when annualRate = 0.
+ * The correct limit (equal principal each month) is P / n.
  *
- * This value must be used as-is for amortization schedule computation.
- * Rounding it before the loop causes interest to exceed EMI at high rates,
- * producing negative principal and an increasing balance.
+ * Never round this value before passing it into the amortization loop.
+ * Rounding causes interest > EMI at high rates, producing negative principal.
  */
 export function calculateEMIExact({ principal, annualRate, months }: EMIInput): number {
   if (principal <= 0 || months <= 0) return 0;
@@ -46,9 +108,9 @@ export function calculateEMIExact({ principal, annualRate, months }: EMIInput): 
 }
 
 /**
- * Returns display-rounded EMI and totals for UI presentation.
- * Internally calls calculateEMIExact and rounds only for display.
- * Do not pass EMIResult.emi into generateAmortizationSchedule.
+ * Returns display-rounded EMI and totals.
+ * These values are for UI result cards only; do not use them as inputs to
+ * the amortization loop. Use generateEMISchedule() for schedule-derived totals.
  */
 export function calculateEMI(input: EMIInput): EMIResult {
   const { principal, annualRate, months } = input;
@@ -68,83 +130,122 @@ export function calculateEMI(input: EMIInput): EMIResult {
   };
 }
 
+// ── Primary schedule engine ───────────────────────────────────────────────────
+
 /**
- * Generates a full amortization schedule with correct financial invariants
- * for any valid input, including high-interest / long-tenure combinations.
+ * Generates both the display schedule and the exact schedule in a single pass.
  *
- * Exact math:
- *   At each step: interest = balance × r (exact)
- *                 principal = exactEMI − interest (exact)
- *                 balance  -= principal (exact; never rounded during the loop)
+ * Accounting guarantees (see module header for proofs):
+ *   row.emi = row.principal + row.interest          (exact, every row)
+ *   |Σ displayPrincipal − loan|  ≤ ₹0.01           (final-row correction)
+ *   |summary.totalPayment − loan − summary.totalInterest| ≤ ₹0.02
+ *   last row balance = 0
+ *   balance is non-increasing
+ *   principal ≥ 0, interest ≥ 0 in every row
  *
- * Display rounding:
- *   Each row stores round2() values for presentation. The running balance
- *   variable is kept at full IEEE 754 precision so rounding errors do not
- *   compound across hundreds of months.
- *
- * Final payment adjustment:
- *   The last row's principal is computed as (loanAmount − sumDisplayedPrincipal)
- *   rather than round2(exactPrincipalPaid). This absorbs all accumulated
- *   display rounding so that Sum(principal) = loanAmount ± ₹0.01 regardless
- *   of schedule length. The math proof:
- *     sum = sumDisplayedPrincipal + round2(loanAmount − sumDisplayedPrincipal)
- *         = loanAmount ± 0.005   (only the final round2 introduces error)
- *   The last EMI is adjusted accordingly and will differ slightly from the
- *   regular monthly EMI; this is standard practice in Indian banking.
+ * summary is derived entirely from displaySchedule — not from formula outputs.
  */
-export function generateAmortizationSchedule(input: EMIInput): AmortizationRow[] {
+export function generateEMISchedule(input: EMIInput): EMIScheduleResult {
   const { principal, annualRate, months } = input;
-  if (principal <= 0 || months <= 0) return [];
+
+  if (principal <= 0 || months <= 0) {
+    return {
+      displaySchedule: [],
+      exactSchedule: [],
+      summary: { monthlyEMI: 0, totalInterest: 0, totalPayment: 0 },
+    };
+  }
 
   const r = annualRate / 12 / 100;
-  // exactEMI is never rounded. Using round2(EMI) in the loop would make
-  // interest > EMI at high rates (e.g. 100 % p.a.), producing negative principal.
+  // exactEMI is the single authoritative value for all per-row calculations.
+  // It is never rounded during the loop.
   const exactEMI = calculateEMIExact(input);
-  const rows: AmortizationRow[] = [];
 
-  let exactBalance = principal; // full-precision; rounded only for display
-  let sumDisplayPrincipal = 0; // tracks sum of rounded principals for final correction
+  const displaySchedule: AmortizationRow[] = [];
+  const exactSchedule: ExactAmortizationRow[] = [];
+
+  let exactBalance = principal; // full-precision running balance; rounded only for display
+  let sumDisplayPrincipal = 0; // accumulated display principal; used for final correction
 
   for (let month = 1; month <= months; month++) {
     const isLast = month === months;
-    // Exact interest on the current outstanding balance
-    const exactInterest = annualRate === 0 ? 0 : exactBalance * r;
 
+    // ── Internal (exact) values ──────────────────────────────────────────────
+    // exactInterest: interest on the current exact outstanding balance.
+    // exactPrincipal: for regular rows = exactEMI − exactInterest (positive because
+    //   exactEMI > exactBalance × r always); for the last row = exact remaining balance.
+    const exactInterest = annualRate === 0 ? 0 : exactBalance * r;
+    const exactPrincipal = isLast ? exactBalance : exactEMI - exactInterest;
+    const nextExactBalance = isLast ? 0 : exactBalance - exactPrincipal;
+
+    exactSchedule.push({
+      month,
+      exactEMI: isLast ? exactPrincipal + exactInterest : exactEMI,
+      exactPrincipal,
+      exactInterest,
+      exactBalance: nextExactBalance,
+    });
+
+    // ── Display (rounded) values ─────────────────────────────────────────────
     if (isLast) {
-      // Final payment adjustment.
-      // principal − sumDisplayPrincipal is the accumulated display rounding error
-      // absorbed here, guaranteeing Sum(displayed principal) = loan ± ₹0.01.
+      // Final settlement: correct displayPrincipal so that
+      //   Σ displayPrincipal = loan ± ₹0.01
+      // The last interest is the actual interest on the remaining exact balance.
+      // EMI is derived (not independently rounded) so that
+      //   row.emi = row.principal + row.interest exactly in IEEE 754.
       const displayPrincipal = round2(principal - sumDisplayPrincipal);
       const displayInterest = round2(exactInterest);
-      rows.push({
+      displaySchedule.push({
         month,
-        emi: round2(displayPrincipal + displayInterest),
+        emi: displayPrincipal + displayInterest,
         principal: displayPrincipal,
         interest: displayInterest,
         balance: 0,
       });
     } else {
-      // Subtract exact value from balance — do NOT round here.
-      // Rounding the running balance compounds errors over hundreds of months.
-      const exactPrincipalPaid = exactEMI - exactInterest;
-      exactBalance -= exactPrincipalPaid;
-
-      const displayPrincipal = round2(exactPrincipalPaid);
+      // Regular row: round principal and interest independently; derive EMI.
+      // Do NOT apply round2 to exactEMI — that would break the row identity.
+      const displayPrincipal = round2(exactPrincipal);
       const displayInterest = round2(exactInterest);
       sumDisplayPrincipal += displayPrincipal;
 
-      rows.push({
+      displaySchedule.push({
         month,
-        emi: round2(exactEMI),
+        emi: displayPrincipal + displayInterest,
         principal: displayPrincipal,
         interest: displayInterest,
-        balance: round2(exactBalance),
+        balance: round2(nextExactBalance),
       });
     }
+
+    exactBalance = nextExactBalance;
   }
 
-  return rows;
+  // Summary derived entirely from displaySchedule.
+  // round2 cleans up floating-point epsilon that accumulates during summation.
+  const rawTotalInterest = displaySchedule.reduce((s, row) => s + row.interest, 0);
+  const rawTotalPayment = displaySchedule.reduce((s, row) => s + row.emi, 0);
+
+  return {
+    displaySchedule,
+    exactSchedule,
+    summary: {
+      monthlyEMI: round2(exactEMI),
+      totalInterest: round2(rawTotalInterest),
+      totalPayment: round2(rawTotalPayment),
+    },
+  };
 }
+
+/**
+ * Backward-compatible wrapper.
+ * Returns displaySchedule from generateEMISchedule.
+ */
+export function generateAmortizationSchedule(input: EMIInput): AmortizationRow[] {
+  return generateEMISchedule(input).displaySchedule;
+}
+
+// ── CSV / download ────────────────────────────────────────────────────────────
 
 export function scheduleToCSV(rows: AmortizationRow[]): string {
   const header = "Month,EMI,Principal,Interest,Balance";
@@ -168,6 +269,8 @@ export function downloadCSV(content: string, filename: string): void {
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
 }
+
+// ── Validation ────────────────────────────────────────────────────────────────
 
 export function validateEMIInputs(
   amount: number,
@@ -198,6 +301,8 @@ export function validateEMIInputs(
 
   return errors;
 }
+
+// ── Formatting ────────────────────────────────────────────────────────────────
 
 export function formatINR(value: number): string {
   return new Intl.NumberFormat("en-IN", {

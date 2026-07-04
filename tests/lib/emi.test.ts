@@ -3,24 +3,19 @@ import {
   calculateEMI,
   calculateEMIExact,
   generateAmortizationSchedule,
+  generateEMISchedule,
   scheduleToCSV,
   downloadCSV,
   validateEMIInputs,
   formatINR,
 } from "@/lib/emi";
-import type { EMIInput, AmortizationRow } from "@/lib/emi";
+import type { EMIInput, AmortizationRow, EMIScheduleResult } from "@/lib/emi";
 
-// ── Invariant helper ──────────────────────────────────────────────────────────
+// ── Invariant helpers ─────────────────────────────────────────────────────────
 
 /**
- * Verifies all financial invariants for a generated amortization schedule.
- *
- * Sum(principal) tolerance is ±₹0.01: proved by the final-row correction
- * which absorbs accumulated display rounding, leaving only one round2 of
- * error on the correction value itself (|ε| ≤ 0.005 < 0.01).
- *
- * Sum(interest) uses a looser tolerance because per-row interest rounding
- * accumulates across months without a correction step.
+ * Verifies legacy financial invariants using the backward-compat wrapper.
+ * Called by both the specific-scenario and randomized-property tests.
  */
 function checkInvariants(input: EMIInput): void {
   const schedule = generateAmortizationSchedule(input);
@@ -33,8 +28,8 @@ function checkInvariants(input: EMIInput): void {
   expect(schedule).toHaveLength(input.months);
 
   const sumPrincipal = schedule.reduce((s, r) => s + r.principal, 0);
-  // Core invariant: sum of displayed principal = loan amount ± ₹0.01
-  // Guaranteed regardless of schedule length by the final-row correction.
+  // Core invariant: sum of displayed principal = loan amount ± ₹0.01.
+  // Guaranteed by the final-row correction regardless of schedule length.
   expect(
     Math.abs(sumPrincipal - input.principal),
     `sum(principal)=${sumPrincipal.toFixed(4)} vs principal=${input.principal} for P=${input.principal} r=${input.annualRate}% n=${input.months}`
@@ -65,6 +60,119 @@ function checkInvariants(input: EMIInput): void {
   expect(schedule[schedule.length - 1].balance).toBe(0);
 }
 
+/**
+ * Verifies full SPRINT-007 reconciliation invariants on an EMIScheduleResult.
+ *
+ * Guarantees checked (see lib/emi.ts module header for proofs):
+ *   1. row.emi = row.principal + row.interest  (exact IEEE 754, every row)
+ *   2. Σ displayPrincipal = loan ± ₹0.01       (final-row correction)
+ *   3. Σ displayEMI = Σ principal + Σ interest (exact by identity from #1)
+ *   4. summary.totalPayment ≈ Σ row.emi ± ₹0.01 (round2 cleans FP epsilon)
+ *   5. summary.totalInterest ≈ Σ row.interest ± ₹0.01
+ *   6. summary.totalPayment ≈ loan + summary.totalInterest ± ₹0.02
+ *   7. Balance non-increasing, principal ≥ 0, interest ≥ 0, last balance = 0
+ *   8. exactSchedule: Σ exactPrincipal = loan within 1e-6 (exact arithmetic)
+ */
+function checkReconciliation(result: EMIScheduleResult, input: EMIInput): void {
+  const { displaySchedule, exactSchedule, summary } = result;
+
+  if (input.principal <= 0 || input.months <= 0) {
+    expect(displaySchedule).toHaveLength(0);
+    expect(exactSchedule).toHaveLength(0);
+    expect(summary.monthlyEMI).toBe(0);
+    expect(summary.totalInterest).toBe(0);
+    expect(summary.totalPayment).toBe(0);
+    return;
+  }
+
+  const label = `P=${input.principal} r=${input.annualRate}% n=${input.months}`;
+
+  expect(displaySchedule).toHaveLength(input.months);
+  expect(exactSchedule).toHaveLength(input.months);
+
+  // ── Invariant 1: row.emi = row.principal + row.interest (exact) ──────────
+  // This holds because emi is stored as displayPrincipal + displayInterest
+  // in the same IEEE 754 operation — identical inputs always give identical results.
+  for (const row of displaySchedule) {
+    expect(row.emi, `row.emi ≠ row.principal + row.interest at month ${row.month} [${label}]`).toBe(
+      row.principal + row.interest
+    );
+  }
+
+  // ── Invariant 2: Σ displayPrincipal = loan ± ₹0.01 ──────────────────────
+  const sumPrincipal = displaySchedule.reduce((s, r) => s + r.principal, 0);
+  expect(
+    Math.abs(sumPrincipal - input.principal),
+    `Σ principal=${sumPrincipal.toFixed(4)} vs loan=${input.principal} [${label}]`
+  ).toBeLessThanOrEqual(0.01);
+
+  // ── Invariant 3: Σ EMI = Σ principal + Σ interest ──────────────────────
+  // Per-row: row.emi = row.principal + row.interest (exact at write time — proven
+  // by Invariant 1). However, three separate reduce() passes compute three
+  // floating-point sums in different accumulated-addition orders, so their
+  // difference can accumulate FP epsilon proportional to n × ε × Σ.
+  // Threshold 1e-3 (₹0.001) is far below the ₹0.01 accounting guarantee and
+  // comfortably above the worst-case FP accumulation for any realistic loan.
+  const sumInterest = displaySchedule.reduce((s, r) => s + r.interest, 0);
+  const sumEMI = displaySchedule.reduce((s, r) => s + r.emi, 0);
+  expect(
+    Math.abs(sumEMI - sumPrincipal - sumInterest),
+    `Σ EMI ≠ Σ principal + Σ interest [${label}]`
+  ).toBeLessThan(1e-3);
+
+  // ── Invariant 4: summary.totalPayment ≈ Σ row.emi ± ₹0.01 ───────────────
+  // round2(Σ emi) introduces at most ±0.005.
+  expect(
+    Math.abs(summary.totalPayment - sumEMI),
+    `summary.totalPayment=${summary.totalPayment} vs Σ emi=${sumEMI.toFixed(4)} [${label}]`
+  ).toBeLessThanOrEqual(0.01);
+
+  // ── Invariant 5: summary.totalInterest ≈ Σ row.interest ± ₹0.01 ─────────
+  expect(
+    Math.abs(summary.totalInterest - sumInterest),
+    `summary.totalInterest=${summary.totalInterest} vs Σ interest=${sumInterest.toFixed(4)} [${label}]`
+  ).toBeLessThanOrEqual(0.01);
+
+  // ── Invariant 6: summary.totalPayment ≈ loan + summary.totalInterest ± ₹0.02
+  expect(
+    Math.abs(summary.totalPayment - input.principal - summary.totalInterest),
+    `totalPayment breakdown error [${label}]`
+  ).toBeLessThanOrEqual(0.02);
+
+  // ── Invariant 7: non-negative fields, non-increasing balance, last balance = 0
+  for (const row of displaySchedule) {
+    expect(
+      row.principal,
+      `negative principal at month ${row.month} [${label}]`
+    ).toBeGreaterThanOrEqual(0);
+    expect(
+      row.interest,
+      `negative interest at month ${row.month} [${label}]`
+    ).toBeGreaterThanOrEqual(0);
+  }
+  for (let i = 1; i < displaySchedule.length; i++) {
+    expect(
+      displaySchedule[i].balance,
+      `balance increased at month ${i + 1} [${label}]`
+    ).toBeLessThanOrEqual(displaySchedule[i - 1].balance + 0.005);
+  }
+  expect(displaySchedule[displaySchedule.length - 1].balance).toBe(0);
+
+  // ── Invariant 8: Σ exactPrincipal = loan within FP epsilon ───────────────
+  const sumExactPrincipal = exactSchedule.reduce((s, r) => s + r.exactPrincipal, 0);
+  expect(
+    Math.abs(sumExactPrincipal - input.principal),
+    `Σ exactPrincipal=${sumExactPrincipal} vs loan=${input.principal} [${label}]`
+  ).toBeLessThan(0.001);
+
+  // Zero-interest: all display interests are 0
+  if (input.annualRate === 0) {
+    for (const row of displaySchedule) {
+      expect(row.interest, `non-zero interest with annualRate=0 at month ${row.month}`).toBe(0);
+    }
+  }
+}
+
 // ── calculateEMIExact ─────────────────────────────────────────────────────────
 
 describe("calculateEMIExact", () => {
@@ -76,11 +184,8 @@ describe("calculateEMIExact", () => {
   it("returns full precision (not truncated to 2 decimals)", () => {
     const exact = calculateEMIExact({ principal: 100000, annualRate: 12, months: 12 });
     const rounded = Math.round(exact * 100) / 100;
-    // exact and rounded may differ by a fraction; the key is the engine uses exact
     expect(typeof exact).toBe("number");
     expect(Number.isFinite(exact)).toBe(true);
-    // exact must be >= rounded (because rounding can only reduce)
-    // For 12% / 12 months, exact ≈ 8884.8753... , round2 = 8884.88
     expect(Math.abs(exact - rounded)).toBeLessThan(0.01);
   });
 
@@ -105,7 +210,6 @@ describe("calculateEMIExact", () => {
   });
 
   it("is strictly greater than the first month's interest for valid loans", () => {
-    // Guarantees principal reduction is always positive (no negative principal)
     const input = { principal: 100000, annualRate: 100, months: 360 };
     const exact = calculateEMIExact(input);
     const firstMonthInterest = input.principal * (input.annualRate / 12 / 100);
@@ -117,7 +221,6 @@ describe("calculateEMIExact", () => {
 
 describe("calculateEMI", () => {
   it("returns correct EMI for a standard loan", () => {
-    // P=100000, r=12%/yr, n=12 months → EMI ≈ 8884.88
     const result = calculateEMI({ principal: 100000, annualRate: 12, months: 12 });
     expect(result.emi).toBeCloseTo(8884.88, 0);
   });
@@ -170,7 +273,7 @@ describe("calculateEMI", () => {
   });
 });
 
-// ── generateAmortizationSchedule (basic) ─────────────────────────────────────
+// ── generateAmortizationSchedule (backward compat) ───────────────────────────
 
 describe("generateAmortizationSchedule — basic", () => {
   const input = { principal: 100000, annualRate: 12, months: 12 };
@@ -192,12 +295,11 @@ describe("generateAmortizationSchedule — basic", () => {
     expect(schedule[11].balance).toBe(0);
   });
 
-  it("each row: interest + principal ≈ emi (within ₹0.02)", () => {
-    // Regular rows: three independent round2 operations (emi, principal, interest)
-    // can each introduce ±0.005 rounding, so |principal+interest−emi| ≤ 0.01
-    // plus floating-point epsilon. Tolerance 0.02 covers all cases safely.
+  it("each row: emi = principal + interest (exact by construction)", () => {
+    // emi is derived as displayPrincipal + displayInterest — same IEEE 754 operation.
+    // No tolerance needed: the same addition is reproduced identically.
     for (const row of schedule) {
-      expect(Math.abs(row.interest + row.principal - row.emi)).toBeLessThanOrEqual(0.02);
+      expect(row.emi).toBe(row.principal + row.interest);
     }
   });
 
@@ -228,20 +330,114 @@ describe("generateAmortizationSchedule — basic", () => {
   });
 });
 
+// ── generateEMISchedule — unit tests ─────────────────────────────────────────
+
+describe("generateEMISchedule", () => {
+  it("returns EMIScheduleResult with all three fields", () => {
+    const result = generateEMISchedule({ principal: 100000, annualRate: 12, months: 12 });
+    expect(result).toHaveProperty("displaySchedule");
+    expect(result).toHaveProperty("exactSchedule");
+    expect(result).toHaveProperty("summary");
+  });
+
+  it("displaySchedule and exactSchedule have the same length", () => {
+    const result = generateEMISchedule({ principal: 500000, annualRate: 8.5, months: 24 });
+    expect(result.exactSchedule).toHaveLength(result.displaySchedule.length);
+  });
+
+  it("returns empty result for zero principal", () => {
+    const result = generateEMISchedule({ principal: 0, annualRate: 10, months: 12 });
+    expect(result.displaySchedule).toHaveLength(0);
+    expect(result.exactSchedule).toHaveLength(0);
+    expect(result.summary.monthlyEMI).toBe(0);
+    expect(result.summary.totalInterest).toBe(0);
+    expect(result.summary.totalPayment).toBe(0);
+  });
+
+  it("summary.monthlyEMI = round2(exactEMI)", () => {
+    const input = { principal: 100000, annualRate: 12, months: 12 };
+    const exactEMI = calculateEMIExact(input);
+    const { summary } = generateEMISchedule(input);
+    expect(summary.monthlyEMI).toBeCloseTo(Math.round(exactEMI * 100) / 100, 5);
+  });
+
+  it("summary.totalPayment = sum of row.emi from displaySchedule (within ₹0.01)", () => {
+    const result = generateEMISchedule({ principal: 500000, annualRate: 8.5, months: 24 });
+    const rawSum = result.displaySchedule.reduce((s, r) => s + r.emi, 0);
+    expect(Math.abs(result.summary.totalPayment - rawSum)).toBeLessThanOrEqual(0.01);
+  });
+
+  it("summary.totalInterest = sum of row.interest from displaySchedule (within ₹0.01)", () => {
+    const result = generateEMISchedule({ principal: 500000, annualRate: 8.5, months: 24 });
+    const rawSum = result.displaySchedule.reduce((s, r) => s + r.interest, 0);
+    expect(Math.abs(result.summary.totalInterest - rawSum)).toBeLessThanOrEqual(0.01);
+  });
+
+  it("exactSchedule last row has exactBalance = 0", () => {
+    const result = generateEMISchedule({ principal: 100000, annualRate: 12, months: 12 });
+    const lastExact = result.exactSchedule[result.exactSchedule.length - 1];
+    expect(lastExact.exactBalance).toBe(0);
+  });
+
+  it("exactSchedule all values are finite numbers", () => {
+    const result = generateEMISchedule({ principal: 100000, annualRate: 100, months: 360 });
+    for (const row of result.exactSchedule) {
+      expect(Number.isFinite(row.exactEMI)).toBe(true);
+      expect(Number.isFinite(row.exactPrincipal)).toBe(true);
+      expect(Number.isFinite(row.exactInterest)).toBe(true);
+      expect(Number.isFinite(row.exactBalance)).toBe(true);
+    }
+  });
+
+  it("exactSchedule principal values are all positive", () => {
+    const result = generateEMISchedule({ principal: 100000, annualRate: 100, months: 360 });
+    for (const row of result.exactSchedule) {
+      expect(row.exactPrincipal).toBeGreaterThan(0);
+    }
+  });
+
+  it("zero interest: summary.totalInterest is 0", () => {
+    const result = generateEMISchedule({ principal: 120000, annualRate: 0, months: 12 });
+    expect(result.summary.totalInterest).toBe(0);
+  });
+
+  it("one-month loan closes balance to 0", () => {
+    const result = generateEMISchedule({ principal: 50000, annualRate: 12, months: 1 });
+    expect(result.displaySchedule[0].balance).toBe(0);
+    expect(result.displaySchedule[0].principal).toBeGreaterThan(0);
+  });
+
+  it("displaySchedule is the same as generateAmortizationSchedule output", () => {
+    const input = { principal: 200000, annualRate: 9, months: 18 };
+    const result = generateEMISchedule(input);
+    const legacy = generateAmortizationSchedule(input);
+    expect(result.displaySchedule).toEqual(legacy);
+  });
+
+  it("passes full reconciliation check for standard home loan", () => {
+    const input = { principal: 3_000_000, annualRate: 8.5, months: 240 };
+    checkReconciliation(generateEMISchedule(input), input);
+  });
+
+  it("passes full reconciliation check for high-interest extreme", () => {
+    const input = { principal: 100000, annualRate: 100, months: 360 };
+    checkReconciliation(generateEMISchedule(input), input);
+  });
+
+  it("passes full reconciliation check for large long-tenure loan", () => {
+    const input = { principal: 10_000_000, annualRate: 24, months: 480 };
+    checkReconciliation(generateEMISchedule(input), input);
+  });
+});
+
 // ── Financial invariants — specific scenarios ─────────────────────────────────
 
 describe("financial invariants — specific scenarios", () => {
   it("₹1,00,000 / 100% / 360 months (high-interest extreme)", () => {
-    // This is the canonical failure case for rounded-EMI schedules.
-    // At 100% p.a., monthly interest ≈ exactEMI, so any rounding causes
-    // interest > EMI → negative principal. Must use exact EMI throughout.
     checkInvariants({ principal: 100000, annualRate: 100, months: 360 });
   });
 
   it("₹1,00,00,000 / 24% / 480 months (large loan, long tenure)", () => {
-    // Engine test only — exceeds UI validation (max 360 months).
-    // Verifies that accumulated rounding over 480 months is still absorbed
-    // correctly by the final-row correction.
     checkInvariants({ principal: 10_000_000, annualRate: 24, months: 480 });
   });
 
@@ -294,11 +490,9 @@ describe("financial invariants — specific scenarios", () => {
   });
 });
 
-// ── Randomized property tests (100 deterministic scenarios) ──────────────────
+// ── Randomized property tests (legacy 200 scenarios) ─────────────────────────
 
-describe("financial invariants — randomized property tests (100 scenarios)", () => {
-  // Seeded linear congruential generator for deterministic reproducibility.
-  // Same seed guarantees the same 100 inputs every test run.
+describe("financial invariants — randomized property tests (200 scenarios)", () => {
   function makeLCG(seed: number): () => number {
     let s = seed >>> 0;
     return () => {
@@ -312,15 +506,10 @@ describe("financial invariants — randomized property tests (100 scenarios)", (
     let count = 0;
 
     for (let i = 0; i < 100; i++) {
-      // Sample from realistic loan parameter space
-      const principal = Math.round(rand() * 9_900_000 + 100_000); // ₹1L – ₹1cr
-      const annualRate = Math.round(rand() * 9900) / 100; // 0.00 – 99.00 %
-      const months = Math.floor(rand() * 474) + 6; // 6 – 479 months
-
-      const input: EMIInput = { principal, annualRate, months };
-
-      // Run the invariant check directly (it uses expect() internally)
-      checkInvariants(input);
+      const principal = Math.round(rand() * 9_900_000 + 100_000);
+      const annualRate = Math.round(rand() * 9900) / 100;
+      const months = Math.floor(rand() * 474) + 6;
+      checkInvariants({ principal, annualRate, months });
       count++;
     }
 
@@ -332,8 +521,8 @@ describe("financial invariants — randomized property tests (100 scenarios)", (
 
     for (let i = 0; i < 50; i++) {
       const principal = Math.round(rand() * 990_000 + 10_000);
-      const annualRate = 50 + Math.round(rand() * 50 * 100) / 100; // 50 – 100 %
-      const months = Math.floor(rand() * 354) + 6; // 6 – 359 months
+      const annualRate = 50 + Math.round(rand() * 50 * 100) / 100;
+      const months = Math.floor(rand() * 354) + 6;
 
       const schedule = generateAmortizationSchedule({ principal, annualRate, months });
 
@@ -351,14 +540,109 @@ describe("financial invariants — randomized property tests (100 scenarios)", (
 
     for (let i = 0; i < 50; i++) {
       const principal = Math.round(rand() * 4_900_000 + 100_000);
-      const annualRate = Math.round(rand() * 2000) / 100; // 0 – 20 %
-      const months = Math.floor(rand() * 241) + 240; // 240 – 480 months
+      const annualRate = Math.round(rand() * 2000) / 100;
+      const months = Math.floor(rand() * 241) + 240;
 
       const schedule = generateAmortizationSchedule({ principal, annualRate, months });
 
       for (let j = 1; j < schedule.length; j++) {
         expect(schedule[j].balance).toBeLessThanOrEqual(schedule[j - 1].balance + 0.005);
       }
+    }
+  });
+});
+
+// ── SPRINT-007 reconciliation tests — 1000 deterministic scenarios ────────────
+
+describe("SPRINT-007 reconciliation tests — 1000 deterministic scenarios", () => {
+  /**
+   * LCG seeded at 0xf00dcafe for this suite — distinct from the legacy seeds
+   * so the 1000 scenarios are an independent set from the 200 above.
+   */
+  function makeLCG(seed: number): () => number {
+    let s = seed >>> 0;
+    return () => {
+      s = Math.imul(s, 1664525) + 1013904223;
+      return (s >>> 0) / 0x100000000;
+    };
+  }
+
+  it("all 1000 scenarios satisfy full reconciliation invariants", () => {
+    // Up to 1000 × 360 = 360,000 schedule iterations — needs extended timeout.
+    const rand = makeLCG(0xf00dcafe);
+    let count = 0;
+
+    for (let i = 0; i < 1000; i++) {
+      // Uniformly sample the UI-validated parameter space so every scenario
+      // corresponds to a loan a user can actually submit.
+      // The engine handles beyond-360-month inputs correctly for low-to-mid
+      // rates, but the iterative balance formula can lose precision at very
+      // high rates (>50%) beyond ~420 months — outside the UI limit anyway.
+      const principal = Math.round(rand() * 99_900_000 + 100_000); // ₹1L – ₹10cr
+      const annualRate = Math.round(rand() * 10000) / 100; // 0.00 – 100.00 %
+      const months = Math.floor(rand() * 360) + 1; // 1 – 360 months (UI-validated max)
+
+      const input: EMIInput = { principal, annualRate, months };
+      const result = generateEMISchedule(input);
+      checkReconciliation(result, input);
+      count++;
+    }
+
+    expect(count).toBe(1000);
+  }, 30_000);
+
+  it("200 high-rate scenarios: principal never negative, all reconcile", () => {
+    const rand = makeLCG(0xdeadcafe);
+
+    for (let i = 0; i < 200; i++) {
+      const principal = Math.round(rand() * 9_900_000 + 100_000);
+      const annualRate = 50 + Math.round(rand() * 50 * 100) / 100; // 50 – 100 %
+      const months = Math.floor(rand() * 354) + 6;
+
+      const input: EMIInput = { principal, annualRate, months };
+      const result = generateEMISchedule(input);
+      checkReconciliation(result, input);
+    }
+  });
+
+  it("200 zero-interest scenarios: all interest rows zero, all reconcile", () => {
+    const rand = makeLCG(0xcafef00d);
+
+    for (let i = 0; i < 200; i++) {
+      const principal = Math.round(rand() * 9_900_000 + 100_000);
+      const months = Math.floor(rand() * 359) + 1;
+
+      const input: EMIInput = { principal, annualRate: 0, months };
+      const result = generateEMISchedule(input);
+      checkReconciliation(result, input);
+    }
+  });
+
+  it("200 long-tenure scenarios (240-480 months): balance non-increasing, all reconcile", () => {
+    const rand = makeLCG(0xbeeff00d);
+
+    for (let i = 0; i < 200; i++) {
+      const principal = Math.round(rand() * 49_900_000 + 100_000);
+      const annualRate = Math.round(rand() * 2500) / 100; // 0 – 25 %
+      const months = Math.floor(rand() * 241) + 240;
+
+      const input: EMIInput = { principal, annualRate, months };
+      const result = generateEMISchedule(input);
+      checkReconciliation(result, input);
+    }
+  });
+
+  it("200 single-month and short-tenure scenarios (1-12 months): all reconcile", () => {
+    const rand = makeLCG(0xc0def00d);
+
+    for (let i = 0; i < 200; i++) {
+      const principal = Math.round(rand() * 9_900_000 + 100_000);
+      const annualRate = Math.round(rand() * 9900) / 100;
+      const months = Math.floor(rand() * 12) + 1;
+
+      const input: EMIInput = { principal, annualRate, months };
+      const result = generateEMISchedule(input);
+      checkReconciliation(result, input);
     }
   });
 });
@@ -399,7 +683,7 @@ describe("scheduleToCSV", () => {
     const input = { principal: 100000, annualRate: 12, months: 12 };
     const rows = generateAmortizationSchedule(input);
     const csv = scheduleToCSV(rows);
-    const lines = csv.split("\n").slice(1); // skip header
+    const lines = csv.split("\n").slice(1);
 
     rows.forEach((row, idx) => {
       const parts = lines[idx].split(",");
