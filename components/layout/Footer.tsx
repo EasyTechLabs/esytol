@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { siteConfig } from "@/config/site";
 import { footerNav } from "@/config/nav";
+import { Logo } from "./Logo";
 
 export function Footer() {
   return (
@@ -9,17 +10,16 @@ export function Footer() {
         <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
           {/* Brand */}
           <div className="col-span-2 sm:col-span-1">
-            <Link href="/" className="flex items-center gap-2 font-bold text-gray-900">
-              <span>⚡</span>
-              <span>{siteConfig.name}</span>
+            <Link href="/" className="font-bold text-gray-900" aria-label="Esytol home">
+              <Logo />
             </Link>
             <p className="mt-3 text-sm text-gray-500">{siteConfig.tagline}</p>
           </div>
 
-          {/* Tools */}
+          {/* Calculators */}
           <div>
             <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-gray-500">
-              Tools
+              Calculators
             </h3>
             <ul className="space-y-2">
               {footerNav.tools.map((item) => (

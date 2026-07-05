@@ -4,7 +4,11 @@ import {
   isToolLive,
   getLiveTools,
   getLiveToolCount,
+  getLiveCategories,
   getToolBySlug,
+  getFeaturedTools,
+  getPopularTools,
+  getNewTools,
 } from "@/registry";
 import sitemap from "@/app/sitemap";
 
@@ -68,6 +72,33 @@ describe("tool status — placeholder handling", () => {
     const comingSoon = toolRegistry.filter((t) => t.status === "coming-soon").length;
     expect(getLiveToolCount()).toBe(toolRegistry.length - comingSoon);
     expect(getLiveToolCount()).toBe(LIVE_SLUGS.length);
+  });
+});
+
+describe("live-only listing surfaces", () => {
+  it("getLiveCategories returns only categories that contain a live tool", () => {
+    const live = getLiveCategories();
+    const liveToolCategories = new Set(getLiveTools().map((t) => t.category));
+    // Every returned category must contain at least one live tool.
+    for (const cat of live) {
+      expect(liveToolCategories.has(cat.slug)).toBe(true);
+    }
+    // Today, only the calculator category is live.
+    expect(live.map((c) => c.slug)).toContain("calculator");
+    expect(live.every((c) => c.slug === "calculator")).toBe(true);
+  });
+
+  it("featured / popular / new getters never return coming-soon tools", () => {
+    for (const tool of [...getFeaturedTools(), ...getPopularTools(), ...getNewTools()]) {
+      expect(tool.status).not.toBe("coming-soon");
+      expect(isToolLive(tool)).toBe(true);
+    }
+  });
+
+  it("Recently Added (new) surfaces real live calculators", () => {
+    const newTools = getNewTools();
+    expect(newTools.length).toBeGreaterThan(0);
+    expect(newTools.every((t) => t.category === "calculator")).toBe(true);
   });
 });
 

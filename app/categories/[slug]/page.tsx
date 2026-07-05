@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { buildMetadata } from "@/seo/metadata";
-import { getTools } from "@/registry";
+import { getTools, getLiveTools, getLiveCategories } from "@/registry";
 import { categories } from "@/registry/categories";
 import { ToolCard } from "@/components/ui/ToolCard";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -10,19 +10,26 @@ interface Props {
   params: Promise<{ slug: string }>;
 }
 
+// Pre-render only categories that contain live tools.
 export function generateStaticParams() {
-  return categories.map((cat) => ({ slug: cat.slug }));
+  return getLiveCategories().map((cat) => ({ slug: cat.slug }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const category = categories.find((c) => c.slug === slug);
   if (!category) return { title: "Category Not Found" };
-  return buildMetadata({
+  const hasLiveTools = getLiveTools().some((t) => t.category === category.slug);
+  const metadata = buildMetadata({
     title: category.name,
     description: category.description,
     path: `/categories/${category.slug}`,
   });
+  // Empty categories must not be indexed (thin/placeholder content).
+  if (!hasLiveTools) {
+    metadata.robots = { index: false, follow: true };
+  }
+  return metadata;
 }
 
 export default async function CategoryPage({ params }: Props) {
@@ -30,7 +37,7 @@ export default async function CategoryPage({ params }: Props) {
   const category = categories.find((c) => c.slug === slug);
   if (!category) notFound();
 
-  const tools = getTools({ category: category.slug });
+  const tools = getTools({ category: category.slug }).filter((t) => t.status !== "coming-soon");
 
   return (
     <div className="container-page section-gap">

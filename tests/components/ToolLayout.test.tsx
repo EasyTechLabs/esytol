@@ -75,4 +75,17 @@ describe("ToolLayout", () => {
     render(<ToolLayout tool={baseTool}>content</ToolLayout>);
     expect(screen.getByText("Share")).toBeInTheDocument();
   });
+
+  it("does NOT show the financial disclaimer for non-calculator tools", () => {
+    render(<ToolLayout tool={baseTool}>content</ToolLayout>);
+    expect(screen.queryByRole("note", { name: /financial disclaimer/i })).toBeNull();
+  });
+
+  it("shows the financial disclaimer for calculator tools", () => {
+    const calc: Tool = { ...baseTool, category: "calculator" };
+    render(<ToolLayout tool={calc}>content</ToolLayout>);
+    const note = screen.getByRole("note", { name: /financial disclaimer/i });
+    expect(note).toBeInTheDocument();
+    expect(note).toHaveTextContent(/estimates for educational purposes only/i);
+  });
 });

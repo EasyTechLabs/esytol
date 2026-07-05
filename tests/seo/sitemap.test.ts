@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import sitemap from "@/app/sitemap";
 import { siteConfig } from "@/config/site";
-import { toolRegistry, getLiveTools } from "@/registry";
+import { toolRegistry, getLiveTools, getLiveCategories } from "@/registry";
 import { categories } from "@/registry/categories";
 
 describe("sitemap", () => {
@@ -62,11 +62,25 @@ describe("sitemap", () => {
     }
   });
 
-  it("includes every category", () => {
-    for (const cat of categories) {
+  it("includes every live category", () => {
+    for (const cat of getLiveCategories()) {
       const found = entries.some((e) => e.url === `${siteConfig.url}/categories/${cat.slug}`);
       expect(found, `Missing category route: /categories/${cat.slug}`).toBe(true);
     }
+  });
+
+  it("excludes categories with no live tools", () => {
+    const liveSlugs = new Set(getLiveCategories().map((c) => c.slug));
+    const emptyCats = categories.filter((c) => !liveSlugs.has(c.slug));
+    expect(emptyCats.length).toBeGreaterThan(0);
+    for (const cat of emptyCats) {
+      const found = entries.some((e) => e.url === `${siteConfig.url}/categories/${cat.slug}`);
+      expect(found, `Empty category must not be in sitemap: ${cat.slug}`).toBe(false);
+    }
+  });
+
+  it("includes the contact route", () => {
+    expect(entries.some((e) => e.url === `${siteConfig.url}/contact`)).toBe(true);
   });
 
   it("all URLs start with the site base URL", () => {

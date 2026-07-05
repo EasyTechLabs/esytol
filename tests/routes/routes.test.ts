@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { toolRegistry, getToolBySlug } from "@/registry";
+import { toolRegistry, getToolBySlug, getLiveTools } from "@/registry";
 import { categories } from "@/registry/categories";
 import { mainNav, footerNav } from "@/config/nav";
 import type { CategorySlug } from "@/types/category";
@@ -55,16 +55,15 @@ describe("route integrity", () => {
     }
   });
 
-  it("all footer tool links reference valid category slugs", () => {
-    const validSlugs = new Set<string>(categories.map((c) => c.slug));
+  it("all footer tool links reference live tool routes", () => {
+    const liveUrls = new Set(getLiveTools().map((t) => t.url));
     for (const item of footerNav.tools) {
-      const slug = item.href.replace("/categories/", "");
-      expect(validSlugs.has(slug), `Invalid category slug in footer: ${slug}`).toBe(true);
+      expect(liveUrls.has(item.href), `Footer link is not a live tool: ${item.href}`).toBe(true);
     }
   });
 
   it("all footer company links reference known routes", () => {
-    const knownRoutes = new Set(["/about", "/blog", "/privacy", "/terms"]);
+    const knownRoutes = new Set(["/about", "/contact", "/privacy", "/terms"]);
     for (const item of footerNav.company) {
       expect(knownRoutes.has(item.href), `Unknown company link: ${item.href}`).toBe(true);
     }

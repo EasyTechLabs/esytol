@@ -12,17 +12,18 @@ export const mainNav: NavItem[] = [
 ];
 
 export const footerNav = {
+  // Direct links to live calculators — a focused finance-calculator site.
   tools: [
-    { label: "Text Tools", href: "/categories/text" },
-    { label: "Developer Tools", href: "/categories/developer" },
-    { label: "Converters", href: "/categories/converter" },
-    { label: "Generators", href: "/categories/generator" },
-    { label: "Encoders", href: "/categories/encoder" },
-    { label: "Security", href: "/categories/security" },
+    { label: "EMI Calculator", href: "/tools/emi-calculator" },
+    { label: "Home Loan Calculator", href: "/tools/home-loan-calculator" },
+    { label: "SIP Calculator", href: "/tools/sip-calculator" },
+    { label: "FD Calculator", href: "/tools/fd-calculator" },
+    { label: "GST Calculator", href: "/tools/gst-calculator" },
+    { label: "Personal Loan Calculator", href: "/tools/personal-loan-calculator" },
   ],
   company: [
     { label: "About", href: "/about" },
-    { label: "Blog", href: "/blog" },
+    { label: "Contact", href: "/contact" },
     { label: "Privacy", href: "/privacy" },
     { label: "Terms", href: "/terms" },
   ],

@@ -1,4 +1,6 @@
 import type { Tool, ToolFilter } from "@/types/tool";
+import type { Category } from "@/types/category";
+import { categories } from "./categories";
 
 export const toolRegistry: Tool[] = [
   // ─── Developer ───────────────────────────────────────────────────────────
@@ -14,7 +16,7 @@ export const toolRegistry: Tool[] = [
     icon: "📋",
     url: "/tools/json-formatter",
     version: "1.0.0",
-    lastUpdated: "Jan 2025",
+    lastUpdated: "Jul 2026",
     relatedTools: ["base64-encoder", "url-encoder"],
     faq: [
       {
@@ -48,7 +50,7 @@ export const toolRegistry: Tool[] = [
     icon: "🔡",
     url: "/tools/base64-encoder",
     version: "1.0.0",
-    lastUpdated: "Jan 2025",
+    lastUpdated: "Jul 2026",
     relatedTools: ["url-encoder", "json-formatter"],
     faq: [
       {
@@ -81,7 +83,7 @@ export const toolRegistry: Tool[] = [
     icon: "🔗",
     url: "/tools/url-encoder",
     version: "1.0.0",
-    lastUpdated: "Jan 2025",
+    lastUpdated: "Jul 2026",
     relatedTools: ["base64-encoder", "json-formatter"],
     faq: [
       {
@@ -111,7 +113,7 @@ export const toolRegistry: Tool[] = [
     icon: "🔢",
     url: "/tools/word-counter",
     version: "1.0.0",
-    lastUpdated: "Jan 2025",
+    lastUpdated: "Jul 2026",
     relatedTools: ["case-converter", "lorem-ipsum"],
     faq: [
       {
@@ -145,7 +147,7 @@ export const toolRegistry: Tool[] = [
     icon: "🔡",
     url: "/tools/case-converter",
     version: "1.0.0",
-    lastUpdated: "Jan 2025",
+    lastUpdated: "Jul 2026",
     relatedTools: ["word-counter", "lorem-ipsum"],
     faq: [
       {
@@ -173,7 +175,7 @@ export const toolRegistry: Tool[] = [
     icon: "📄",
     url: "/tools/lorem-ipsum",
     version: "1.0.0",
-    lastUpdated: "Jan 2025",
+    lastUpdated: "Jul 2026",
     relatedTools: ["word-counter", "case-converter"],
     faq: [
       {
@@ -211,7 +213,7 @@ export const toolRegistry: Tool[] = [
     icon: "🧮",
     url: "/tools/emi-calculator",
     version: "1.0.0",
-    lastUpdated: "Jul 2025",
+    lastUpdated: "Jul 2026",
     relatedTools: ["home-loan-calculator", "personal-loan-calculator", "fd-calculator"],
     faq: [
       {
@@ -270,7 +272,7 @@ export const toolRegistry: Tool[] = [
     icon: "🧾",
     url: "/tools/gst-calculator",
     version: "1.0.0",
-    lastUpdated: "Jul 2025",
+    lastUpdated: "Jul 2026",
     relatedTools: ["emi-calculator", "sip-calculator", "fd-calculator"],
     faq: [
       {
@@ -333,7 +335,7 @@ export const toolRegistry: Tool[] = [
     icon: "📈",
     url: "/tools/sip-calculator",
     version: "1.0.0",
-    lastUpdated: "Jul 2025",
+    lastUpdated: "Jul 2026",
     relatedTools: [
       "lumpsum-calculator",
       "fd-calculator",
@@ -402,7 +404,7 @@ export const toolRegistry: Tool[] = [
     icon: "🏦",
     url: "/tools/fd-calculator",
     version: "1.0.0",
-    lastUpdated: "Jul 2025",
+    lastUpdated: "Jul 2026",
     relatedTools: [
       "rd-calculator",
       "ppf-calculator",
@@ -480,7 +482,7 @@ export const toolRegistry: Tool[] = [
     icon: "💰",
     url: "/tools/rd-calculator",
     version: "1.0.0",
-    lastUpdated: "Jul 2025",
+    lastUpdated: "Jul 2026",
     relatedTools: [
       "fd-calculator",
       "ppf-calculator",
@@ -557,7 +559,7 @@ export const toolRegistry: Tool[] = [
     icon: "🏛️",
     url: "/tools/ppf-calculator",
     version: "1.0.0",
-    lastUpdated: "Jul 2025",
+    lastUpdated: "Jul 2026",
     relatedTools: [
       "sip-calculator",
       "fd-calculator",
@@ -604,6 +606,7 @@ export const toolRegistry: Tool[] = [
     id: "cagr-calculator",
     name: "CAGR Calculator",
     slug: "cagr-calculator",
+    isNew: true,
     description:
       "Calculate the Compound Annual Growth Rate (CAGR) of any investment from its beginning and ending value. Shows absolute return, total profit/loss, investment multiple, and a year-wise growth projection.",
     category: "calculator",
@@ -635,7 +638,7 @@ export const toolRegistry: Tool[] = [
     icon: "📊",
     url: "/tools/cagr-calculator",
     version: "1.0.0",
-    lastUpdated: "Jul 2025",
+    lastUpdated: "Jul 2026",
     relatedTools: [
       "lumpsum-calculator",
       "sip-calculator",
@@ -682,6 +685,7 @@ export const toolRegistry: Tool[] = [
     id: "lumpsum-calculator",
     name: "Lumpsum Calculator",
     slug: "lumpsum-calculator",
+    isNew: true,
     description:
       "Calculate the future value of a one-time (lumpsum) investment at an expected annual return. Shows estimated returns, maturity value, wealth gain %, CAGR, investment multiple, and a year-wise growth projection.",
     category: "calculator",
@@ -704,7 +708,7 @@ export const toolRegistry: Tool[] = [
     icon: "💵",
     url: "/tools/lumpsum-calculator",
     version: "1.0.0",
-    lastUpdated: "Jul 2025",
+    lastUpdated: "Jul 2026",
     relatedTools: [
       "sip-calculator",
       "fd-calculator",
@@ -752,6 +756,7 @@ export const toolRegistry: Tool[] = [
     id: "home-loan-calculator",
     name: "Home Loan Calculator",
     slug: "home-loan-calculator",
+    isNew: true,
     description:
       "Calculate your home loan EMI, total interest, and full amortization schedule. Includes processing fee, down payment, LTV, and the effective cost of borrowing for Indian home loans.",
     category: "calculator",
@@ -774,7 +779,7 @@ export const toolRegistry: Tool[] = [
     icon: "🏠",
     url: "/tools/home-loan-calculator",
     version: "1.0.0",
-    lastUpdated: "Jul 2025",
+    lastUpdated: "Jul 2026",
     relatedTools: [
       "emi-calculator",
       "personal-loan-calculator",
@@ -822,6 +827,7 @@ export const toolRegistry: Tool[] = [
     id: "personal-loan-calculator",
     name: "Personal Loan Calculator",
     slug: "personal-loan-calculator",
+    isNew: true,
     description:
       "Calculate your personal loan EMI, total interest, and full amortization schedule. Includes processing fee, total borrowing cost, and the effective cost of borrowing for Indian personal loans.",
     category: "calculator",
@@ -844,7 +850,7 @@ export const toolRegistry: Tool[] = [
     icon: "💳",
     url: "/tools/personal-loan-calculator",
     version: "1.0.0",
-    lastUpdated: "Jul 2025",
+    lastUpdated: "Jul 2026",
     relatedTools: [
       "emi-calculator",
       "home-loan-calculator",
@@ -906,7 +912,7 @@ export const toolRegistry: Tool[] = [
     icon: "🔑",
     url: "/tools/password-generator",
     version: "1.0.0",
-    lastUpdated: "Jan 2025",
+    lastUpdated: "Jul 2026",
     relatedTools: ["hash-generator", "uuid-generator"],
     faq: [
       {
@@ -939,7 +945,7 @@ export const toolRegistry: Tool[] = [
     icon: "🔏",
     url: "/tools/hash-generator",
     version: "1.0.0",
-    lastUpdated: "Jan 2025",
+    lastUpdated: "Jul 2026",
     relatedTools: ["password-generator", "uuid-generator"],
     faq: [
       {
@@ -967,7 +973,7 @@ export const toolRegistry: Tool[] = [
     icon: "🆔",
     url: "/tools/uuid-generator",
     version: "1.0.0",
-    lastUpdated: "Jan 2025",
+    lastUpdated: "Jul 2026",
     relatedTools: ["hash-generator", "password-generator"],
     faq: [
       {
@@ -1020,15 +1026,15 @@ export function getTools(filter?: ToolFilter): Tool[] {
 }
 
 export function getFeaturedTools(): Tool[] {
-  return getTools({ featured: true });
+  return getTools({ featured: true }).filter(isToolLive);
 }
 
 export function getPopularTools(): Tool[] {
-  return getTools({ popular: true });
+  return getTools({ popular: true }).filter(isToolLive);
 }
 
 export function getNewTools(): Tool[] {
-  return getTools({ isNew: true });
+  return getTools({ isNew: true }).filter(isToolLive);
 }
 
 export function getToolBySlug(slug: string): Tool | undefined {
@@ -1052,4 +1058,10 @@ export function getLiveTools(): Tool[] {
 /** Count of live (interactive) tools — used for honest, dynamic UI copy. */
 export function getLiveToolCount(): number {
   return getLiveTools().length;
+}
+
+/** Categories that contain at least one live tool — hides empty categories. */
+export function getLiveCategories(): Category[] {
+  const liveCategorySlugs = new Set(getLiveTools().map((t) => t.category));
+  return categories.filter((c) => liveCategorySlugs.has(c.slug));
 }
