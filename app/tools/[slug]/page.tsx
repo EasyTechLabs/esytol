@@ -9,6 +9,11 @@ interface Props {
   params: Promise<{ slug: string }>;
 }
 
+// Only registered tool slugs exist — any other slug is a hard 404 (not a
+// soft-404). Without this, unknown slugs render notFound() on-demand and can be
+// served with a 200 status.
+export const dynamicParams = false;
+
 export function generateStaticParams() {
   return toolRegistry.map((tool) => ({ slug: tool.slug }));
 }

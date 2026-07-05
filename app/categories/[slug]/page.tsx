@@ -10,7 +10,10 @@ interface Props {
   params: Promise<{ slug: string }>;
 }
 
-// Pre-render only categories that contain live tools.
+// Pre-render only categories that contain live tools. Any other category slug
+// (empty or unknown) is a hard 404 rather than a soft-404 empty page.
+export const dynamicParams = false;
+
 export function generateStaticParams() {
   return getLiveCategories().map((cat) => ({ slug: cat.slug }));
 }
