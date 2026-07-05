@@ -19,6 +19,8 @@ import type { NextConfig } from "next";
  * Microsoft Clarity:
  *   - script-src : www.clarity.ms                     (loads the Clarity tag)
  *                  c.clarity.ms                        (session-recorder script)
+ *                  scripts.clarity.ms                  (runtime recorder assets)
+ *   - img-src    : c.clarity.ms                        (c.gif tracking pixel)
  *   - connect-src: *.clarity.ms,                       (recording/metric upload,
  *                  c.bing.com                           regional collectors +
  *                                                       Microsoft telemetry)
@@ -27,9 +29,9 @@ import type { NextConfig } from "next";
  */
 const contentSecurityPolicy = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.clarity.ms https://c.clarity.ms",
+  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.clarity.ms https://c.clarity.ms https://scripts.clarity.ms",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://www.google-analytics.com",
+  "img-src 'self' data: blob: https://www.google-analytics.com https://c.clarity.ms",
   "font-src 'self' data:",
   "connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com https://*.clarity.ms https://c.bing.com",
   "object-src 'none'",
