@@ -40,6 +40,7 @@ const LIVE_SLUGS = [
   "income-tax-calculator",
   "hra-calculator",
   "epf-calculator",
+  "gratuity-calculator",
 ];
 
 describe("tool status — placeholder handling", () => {

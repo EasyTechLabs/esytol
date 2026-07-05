@@ -1117,6 +1117,77 @@ export const toolRegistry: Tool[] = [
     popular: true,
   },
 
+  {
+    id: "gratuity-calculator",
+    name: "Gratuity Calculator",
+    slug: "gratuity-calculator",
+    isNew: true,
+    description:
+      "Calculate your gratuity under the Payment of Gratuity Act, 1972. Enter your last drawn Basic + DA and years of service to see your gratuity amount, eligibility, the ₹20 lakh cap, tax exemption, and a step-by-step calculation.",
+    category: "calculator",
+    tags: ["gratuity", "retirement", "salary", "calculator", "india", "gratuity act"],
+    keywords: [
+      "gratuity calculator",
+      "gratuity calculation",
+      "gratuity calculator india",
+      "gratuity formula",
+      "how gratuity is calculated",
+      "gratuity calculator online",
+      "gratuity eligibility calculator",
+      "payment of gratuity act calculator",
+      "gratuity amount calculator",
+      "gratuity for private employees",
+      "gratuity tax exemption calculator",
+      "gratuity after 5 years",
+    ],
+    icon: "💼",
+    url: "/tools/gratuity-calculator",
+    version: "1.0.0",
+    lastUpdated: "Jul 2026",
+    relatedTools: [
+      "epf-calculator",
+      "income-tax-calculator",
+      "hra-calculator",
+      "ppf-calculator",
+      "sip-calculator",
+      "fd-calculator",
+    ],
+    faq: [
+      {
+        question: "How is gratuity calculated in India?",
+        answer:
+          "For employees covered under the Payment of Gratuity Act, 1972, gratuity = (15 × last drawn salary × years of service) ÷ 26, where salary means Basic + Dearness Allowance. For employees not covered, the divisor is 30 and only completed years count. Gratuity is capped at ₹20 lakh.",
+      },
+      {
+        question: "What is the eligibility for gratuity?",
+        answer:
+          "You generally need a minimum of 5 years of continuous service with the same employer to be eligible for gratuity. The 5-year condition is waived if service ends due to death or disablement. Below 5 years, no gratuity is payable.",
+      },
+      {
+        question: "How are the months of service rounded?",
+        answer:
+          "For employees covered under the Act, if the number of months in the final year exceeds 6, the year is rounded up to a full year (for example, 5 years 7 months counts as 6 years, but 5 years 6 months counts as 5 years). For employees not covered, only fully completed years are counted.",
+      },
+      {
+        question: "Is gratuity taxable?",
+        answer:
+          "Government employees receive fully tax-free gratuity. For non-government employees, gratuity is exempt up to ₹20 lakh under Section 10(10) — specifically the least of ₹20 lakh, the actual gratuity received, and the formula amount. Any amount above the exemption is taxable as salary income.",
+      },
+      {
+        question: "What is the maximum gratuity amount?",
+        answer:
+          "The maximum gratuity payable under the Act is ₹20,00,000 (₹20 lakh), following the 2018 amendment. This calculator applies the cap automatically, and the same ₹20 lakh is the lifetime tax-exemption ceiling.",
+      },
+      {
+        question: "Is my salary data sent to any server?",
+        answer:
+          "No. All calculations happen entirely in your browser using JavaScript. Nothing you enter is sent to or stored on any server.",
+      },
+    ],
+    featured: true,
+    popular: true,
+  },
+
   // ─── Security ─────────────────────────────────────────────────────────────
   {
     id: "password-generator",

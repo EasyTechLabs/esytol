@@ -57,6 +57,8 @@ const MOL: MethodologySource = {
   label: "Ministry of Labour & Employment",
   url: "https://labour.gov.in",
 };
+const GRATUITY_ACT: MethodologySource = { label: "Payment of Gratuity Act, 1972" };
+const IT_SEC_10_10: MethodologySource = { label: "Income-tax Act, 1961 — Section 10(10)" };
 
 export const methodology: Record<string, Methodology> = {
   "emi-calculator": {
@@ -249,6 +251,25 @@ export const methodology: Record<string, Methodology> = {
       "EPS eligibility rules for members joining after 1 Sep 2014 above ₹15,000 wages are not modelled",
       "The EPFO interest rate is notified yearly and may change; EPS is a pension, not part of the lump sum",
       "Interest on employee contributions above ₹2.5 lakh/year can be taxable — verify with a professional",
+    ],
+    reviewedBy: REVIEWER,
+  },
+  "gratuity-calculator": {
+    formula:
+      "Covered: Gratuity = 15 × salary × years ÷ 26  ·  Not covered: ÷ 30  ·  salary = last drawn Basic + DA  ·  capped at ₹20,00,000",
+    method:
+      "Applies the Payment of Gratuity Act, 1972. For employees covered by the Act, gratuity is 15 days' wages for each completed year of service based on the last drawn Basic + DA, using a 26-working-day month; trailing months over 6 round up to a full year. For those not covered, the divisor is 30 and only completed years count. A minimum of 5 years of continuous service is required, and the amount is capped at ₹20 lakh.",
+    sources: [GRATUITY_ACT, MOL, IT_SEC_10_10, ITD],
+    assumptions: [
+      "Salary = last drawn monthly Basic + Dearness Allowance",
+      "Covered under the Act: ÷26 and months over 6 round up; not covered: ÷30, whole years only",
+      "Minimum 5 years of continuous service (waived only on death/disablement, not modelled)",
+      "Maximum gratuity and lifetime tax exemption are both ₹20,00,000",
+    ],
+    limitations: [
+      "The 4-years-240-days interpretation for the 5th year is not applied; whole-year eligibility is used",
+      "Death/disablement cases (where the 5-year rule is waived) are not modelled",
+      "Taxability is informational; the exact exempt portion depends on prior exemptions used — verify with a professional",
     ],
     reviewedBy: REVIEWER,
   },
