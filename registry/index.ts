@@ -975,6 +975,77 @@ export const toolRegistry: Tool[] = [
     popular: true,
   },
 
+  {
+    id: "hra-calculator",
+    name: "HRA Calculator",
+    slug: "hra-calculator",
+    isNew: true,
+    description:
+      "Calculate your House Rent Allowance (HRA) exemption under Section 10(13A) and Rule 2A. Enter your salary, basic, HRA received and rent paid to see your exempt HRA, taxable HRA, and a step-by-step of all three exemption rules.",
+    category: "calculator",
+    tags: ["hra", "house rent allowance", "tax", "calculator", "india", "exemption", "salary"],
+    keywords: [
+      "hra calculator",
+      "hra exemption calculator",
+      "hra exemption calculation",
+      "house rent allowance calculator",
+      "hra calculator india",
+      "hra tax exemption calculator",
+      "section 10 13a calculator",
+      "rule 2a hra",
+      "hra exemption for metro cities",
+      "how to calculate hra exemption",
+      "hra calculator for salaried",
+      "rent paid tax exemption",
+    ],
+    icon: "🏠",
+    url: "/tools/hra-calculator",
+    version: "1.0.0",
+    lastUpdated: "Jul 2026",
+    relatedTools: [
+      "income-tax-calculator",
+      "home-loan-calculator",
+      "ppf-calculator",
+      "sip-calculator",
+      "emi-calculator",
+      "fd-calculator",
+    ],
+    faq: [
+      {
+        question: "How is HRA exemption calculated?",
+        answer:
+          "Under Section 10(13A) and Rule 2A, your HRA exemption is the least of three amounts: (1) the actual HRA received from your employer, (2) rent paid minus 10% of your basic salary, and (3) 50% of basic salary if you live in a metro city (Delhi, Mumbai, Kolkata, Chennai) or 40% if non-metro. The lowest of these three is exempt from tax; the rest of your HRA is taxable.",
+      },
+      {
+        question: "Which cities are considered metro for HRA?",
+        answer:
+          "For HRA purposes, only Delhi, Mumbai, Kolkata, and Chennai are treated as metro cities, where the exemption limit is 50% of basic salary. All other cities (including Bengaluru, Hyderabad, Pune, and Gurugram) are non-metro, with a 40% limit.",
+      },
+      {
+        question: "What counts as 'salary' for the HRA calculation?",
+        answer:
+          "For Rule 2A, salary means Basic Salary plus Dearness Allowance (if it forms part of retirement benefits) plus any commission at a fixed percentage of turnover. It does not include other allowances, bonuses, or perquisites. Enter this figure in the Basic Salary field.",
+      },
+      {
+        question: "Can I claim HRA exemption under the New Tax Regime?",
+        answer:
+          "No. The HRA exemption under Section 10(13A) is only available under the Old Tax Regime. If you opt for the default New Regime (Section 115BAC), you cannot claim HRA exemption, so factor this into your regime choice.",
+      },
+      {
+        question: "Can I claim both HRA and a home loan deduction?",
+        answer:
+          "Yes, in genuine cases you can claim both — for example, if you live in a rented house in one city while paying a home loan on a property in another city (or the same city, where justified). You claim HRA exemption for the rent and the home-loan interest deduction under Section 24(b) separately.",
+      },
+      {
+        question: "Is my salary or rent data sent to any server?",
+        answer:
+          "No. All calculations happen entirely in your browser using JavaScript. Nothing you enter is sent to or stored on any server.",
+      },
+    ],
+    featured: true,
+    popular: true,
+  },
+
   // ─── Security ─────────────────────────────────────────────────────────────
   {
     id: "password-generator",

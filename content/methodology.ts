@@ -47,6 +47,8 @@ const ITD: MethodologySource = {
 };
 const CBDT: MethodologySource = { label: "CBDT" };
 const FINANCE_ACT: MethodologySource = { label: "Finance Act, 2025" };
+const IT_ACT: MethodologySource = { label: "Income-tax Act, 1961 — Section 10(13A)" };
+const IT_RULES: MethodologySource = { label: "Income-tax Rules, 1962 — Rule 2A" };
 
 export const methodology: Record<string, Methodology> = {
   "emi-calculator": {
@@ -201,6 +203,25 @@ export const methodology: Record<string, Methodology> = {
       "Does not cover senior/super-senior slabs, capital-gains special rates, or firms/companies",
       "Surcharge marginal relief is applied; verify complex high-income or multiple-source cases with a tax professional",
       "Update when the next Finance Act changes slabs, rebate, or deductions",
+    ],
+    reviewedBy: REVIEWER,
+  },
+  "hra-calculator": {
+    formula:
+      "HRA Exemption = least of { Actual HRA · Rent − 10% × Basic · 50%/40% × Basic }   ·   Taxable HRA = HRA received − Exemption",
+    method:
+      "Applies Rule 2A of the Income-tax Rules, 1962 (read with Section 10(13A)). The exemption is the least of three amounts: the actual HRA received, rent paid in excess of 10% of salary, and 50% of salary for metro cities (Delhi, Mumbai, Kolkata, Chennai) or 40% for non-metro. The balance of the HRA is taxable. 'Salary' means Basic + DA (forming part of retirement benefits) + fixed-percentage commission.",
+    sources: [ITD, IT_ACT, IT_RULES, CBDT],
+    assumptions: [
+      "Salary for Rule 2A = Basic Salary (+ DA forming part of retirement benefits)",
+      "All amounts are annual and constant through the year",
+      "Metro = Delhi, Mumbai, Kolkata, Chennai (50%); everywhere else is 40%",
+      "HRA exemption is available under the Old Tax Regime only",
+    ],
+    limitations: [
+      "Mid-year changes in salary, rent, or city require a month-wise computation",
+      "Rent above ₹1,00,000 per year requires the landlord's PAN to claim the exemption",
+      "Does not itself compute your final income tax — use the Income Tax Calculator for that",
     ],
     reviewedBy: REVIEWER,
   },

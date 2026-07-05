@@ -38,6 +38,7 @@ const LIVE_SLUGS = [
   "home-loan-calculator",
   "personal-loan-calculator",
   "income-tax-calculator",
+  "hra-calculator",
 ];
 
 describe("tool status — placeholder handling", () => {
