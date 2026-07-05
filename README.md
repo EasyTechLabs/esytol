@@ -75,6 +75,19 @@ See [`docs/FolderStructure.md`](docs/FolderStructure.md) for the full structure.
 
 ## Documentation
 
+**Engineering**
+
 - [Architecture](docs/Architecture.md)
 - [Folder Structure](docs/FolderStructure.md)
 - [Development Guide](docs/DevelopmentGuide.md)
+
+**Deployment & Growth**
+
+- [Deployment Guide](DEPLOYMENT.md)
+- [Launch Checklist](docs/LaunchChecklist.md)
+- [Post-Launch Checklist](docs/PostLaunchChecklist.md)
+- [Google Search Console](docs/SearchConsole.md)
+- [Bing Webmaster Tools](docs/BingWebmaster.md)
+- [Google Analytics](docs/GoogleAnalytics.md)
+- [Microsoft Clarity](docs/MicrosoftClarity.md)
+- [AdSense Preparation](docs/AdSensePreparation.md)
