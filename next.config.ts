@@ -5,23 +5,33 @@ import type { NextConfig } from "next";
  *
  * CSP note: 'unsafe-inline' is required for Next.js's inline bootstrap script,
  * the inline JSON-LD scripts, and Tailwind's inline styles. A nonce-based CSP
- * would need request-time middleware; this conservative policy blocks all
- * external sources except the minimum Google Analytics 4 (gtag.js) domains
- * needed for the env-gated <Analytics /> loader:
+ * would need request-time middleware. This conservative policy blocks all
+ * external sources except the minimum domains needed by the env-gated
+ * <Analytics /> loader:
+ *
+ * Google Analytics 4 (gtag.js):
  *   - script-src : www.googletagmanager.com          (loads gtag.js)
  *   - connect-src: *.google-analytics.com,            (measurement beacons,
  *                  *.analytics.google.com,             regional + Signals)
  *                  www.googletagmanager.com
  *   - img-src    : www.google-analytics.com           (no-JS pixel fallback)
+ *
+ * Microsoft Clarity:
+ *   - script-src : www.clarity.ms                     (loads the Clarity tag)
+ *                  c.clarity.ms                        (session-recorder script)
+ *   - connect-src: *.clarity.ms,                       (recording/metric upload,
+ *                  c.bing.com                           regional collectors +
+ *                                                       Microsoft telemetry)
+ *
  * No other external hosts are permitted, so security is not otherwise weakened.
  */
 const contentSecurityPolicy = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com",
+  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.clarity.ms https://c.clarity.ms",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://www.google-analytics.com",
   "font-src 'self' data:",
-  "connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com",
+  "connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com https://*.clarity.ms https://c.bing.com",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",

@@ -37,15 +37,30 @@ mirrors the CI pipeline in `.github/workflows/ci.yml`.
 All environment variables are **public** (`NEXT_PUBLIC_*`) — there are **no
 secrets**. A template lives in [`.env.example`](.env.example).
 
-| Variable                 | Required        | Default (if unset)             | Purpose                                                                                                                                                                               |
-| ------------------------ | --------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `NEXT_PUBLIC_SITE_URL`   | **Recommended** | `https://esytol.com`           | Absolute base URL. Drives canonical URLs, the sitemap, `robots.txt`, and OpenGraph/Twitter tags. **Set this to the production domain.**                                               |
-| `NEXT_PUBLIC_SITE_NAME`  | Optional        | `Esytol`                       | Reserved for display/branding overrides. Informational today.                                                                                                                         |
-| `NEXT_PUBLIC_GA_ID`      | Optional        | _(empty → analytics disabled)_ | Google Analytics 4 measurement ID. Leave **empty** to ship with no analytics. Enabling it is out of scope for launch and also requires allowing Google's domains in the CSP (see §3). |
-| `NEXT_PUBLIC_ADSENSE_ID` | Optional        | _(empty → ads disabled)_       | AdSense publisher ID. Leave **empty**. Ads are not implemented.                                                                                                                       |
+| Variable                 | Required        | Default (if unset)           | Purpose                                                                                                                                   |
+| ------------------------ | --------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SITE_URL`   | **Recommended** | `https://esytol.com`         | Absolute base URL. Drives canonical URLs, the sitemap, `robots.txt`, and OpenGraph/Twitter tags. **Set this to the production domain.**   |
+| `NEXT_PUBLIC_SITE_NAME`  | Optional        | `Esytol`                     | Reserved for display/branding overrides. Informational today.                                                                             |
+| `NEXT_PUBLIC_GA_ID`      | Optional        | _(empty → GA disabled)_      | Google Analytics 4 measurement ID (`G-XXXXXXXXXX`). GA4 loads only when set. Its CSP domains are already allowlisted in `next.config.ts`. |
+| `NEXT_PUBLIC_CLARITY_ID` | Optional        | _(empty → Clarity disabled)_ | Microsoft Clarity project ID. Clarity loads only when set. Its CSP domains are already allowlisted in `next.config.ts`.                   |
+| `NEXT_PUBLIC_ADSENSE_ID` | Optional        | _(empty → ads disabled)_     | AdSense publisher ID. Leave **empty**. Ads are not implemented.                                                                           |
 
 > For a clean launch, set **only** `NEXT_PUBLIC_SITE_URL=https://esytol.com`.
-> Leave `GA` and `ADSENSE` empty.
+> Analytics (`GA`, `CLARITY`) and `ADSENSE` are optional and ship disabled.
+
+### Microsoft Clarity setup
+
+Clarity (heatmaps + session replay) is integrated via the same env-gated
+`<Analytics />` loader as GA4, and its domains are already in the CSP.
+
+1. Create a project at https://clarity.microsoft.com and copy the **Project ID**
+   (e.g. `xhjydf0y97`).
+2. Vercel → **Project → Settings → Environment Variables** → add
+   `NEXT_PUBLIC_CLARITY_ID` = your project ID for **Production**.
+3. **Redeploy** (public env vars are inlined at build time), then confirm
+   sessions appear in the Clarity dashboard.
+
+See [`docs/MicrosoftClarity.md`](docs/MicrosoftClarity.md) for details.
 
 ### Local setup
 
