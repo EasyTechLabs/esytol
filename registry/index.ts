@@ -1046,6 +1046,77 @@ export const toolRegistry: Tool[] = [
     popular: true,
   },
 
+  {
+    id: "epf-calculator",
+    name: "EPF Calculator",
+    slug: "epf-calculator",
+    isNew: true,
+    description:
+      "Project your Employees' Provident Fund (EPF) corpus at retirement. Calculates employee and employer contributions, the EPS pension split, EPFO interest, and a year-wise balance projection with charts and CSV export.",
+    category: "calculator",
+    tags: ["epf", "pf", "provident fund", "eps", "retirement", "calculator", "india"],
+    keywords: [
+      "epf calculator",
+      "pf calculator",
+      "provident fund calculator",
+      "epf interest calculator",
+      "employee provident fund calculator",
+      "epf calculator india",
+      "epf maturity calculator",
+      "pf balance calculator",
+      "eps pension calculator",
+      "epf contribution calculator",
+      "epf calculator with interest",
+      "retirement pf calculator",
+    ],
+    icon: "🏦",
+    url: "/tools/epf-calculator",
+    version: "1.0.0",
+    lastUpdated: "Jul 2026",
+    relatedTools: [
+      "income-tax-calculator",
+      "hra-calculator",
+      "ppf-calculator",
+      "sip-calculator",
+      "fd-calculator",
+      "home-loan-calculator",
+    ],
+    faq: [
+      {
+        question: "How much do I and my employer contribute to EPF?",
+        answer:
+          "You contribute 12% of your Basic Salary plus Dearness Allowance (DA), and your employer contributes a matching 12%. Your entire 12% goes to the EPF account. Of the employer's 12%, 8.33% of wages (capped at the ₹15,000 wage ceiling, so up to about ₹1,250 a month) goes to the Employees' Pension Scheme (EPS), and the remainder goes to your EPF account.",
+      },
+      {
+        question: "What is the EPS part of the employer's contribution?",
+        answer:
+          "EPS (Employees' Pension Scheme) is the pension portion of your employer's contribution — 8.33% of your wages, but only up to the ₹15,000 wage ceiling (a maximum of about ₹1,250 per month). EPS money funds your pension and does not earn EPF interest or form part of your EPF lump-sum corpus.",
+      },
+      {
+        question: "What is the current EPF interest rate?",
+        answer:
+          "The EPF interest rate is notified each year by EPFO and the Government. It was 8.25% for FY 2024-25. This calculator uses 8.25% by default, and you can change it to model different rates. Interest is calculated on the monthly running balance and credited at the end of each financial year.",
+      },
+      {
+        question: "Is EPF tax-free?",
+        answer:
+          "EPF enjoys EEE (exempt-exempt-exempt) status when conditions are met: contributions qualify under Section 80C, the interest is generally tax-free, and the maturity amount is exempt after five years of continuous service. However, interest on employee contributions above ₹2.5 lakh in a year is taxable. Consult a tax professional for your specific case.",
+      },
+      {
+        question: "What wage is used for EPF — full salary or Basic?",
+        answer:
+          "EPF is calculated on your 'wages', which means Basic Salary plus Dearness Allowance (DA), not your full CTC or gross salary. Enter your monthly Basic + DA in the calculator for an accurate projection.",
+      },
+      {
+        question: "Is my salary data sent to any server?",
+        answer:
+          "No. All calculations happen entirely in your browser using JavaScript. Nothing you enter is sent to or stored on any server.",
+      },
+    ],
+    featured: true,
+    popular: true,
+  },
+
   // ─── Security ─────────────────────────────────────────────────────────────
   {
     id: "password-generator",

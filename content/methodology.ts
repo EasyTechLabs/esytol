@@ -49,6 +49,14 @@ const CBDT: MethodologySource = { label: "CBDT" };
 const FINANCE_ACT: MethodologySource = { label: "Finance Act, 2025" };
 const IT_ACT: MethodologySource = { label: "Income-tax Act, 1961 — Section 10(13A)" };
 const IT_RULES: MethodologySource = { label: "Income-tax Rules, 1962 — Rule 2A" };
+const EPFO: MethodologySource = { label: "EPFO", url: "https://www.epfindia.gov.in" };
+const EPF_ACT: MethodologySource = {
+  label: "Employees' Provident Funds & Misc. Provisions Act, 1952",
+};
+const MOL: MethodologySource = {
+  label: "Ministry of Labour & Employment",
+  url: "https://labour.gov.in",
+};
 
 export const methodology: Record<string, Methodology> = {
   "emi-calculator": {
@@ -222,6 +230,25 @@ export const methodology: Record<string, Methodology> = {
       "Mid-year changes in salary, rent, or city require a month-wise computation",
       "Rent above ₹1,00,000 per year requires the landlord's PAN to claim the exemption",
       "Does not itself compute your final income tax — use the Income Tax Calculator for that",
+    ],
+    reviewedBy: REVIEWER,
+  },
+  "epf-calculator": {
+    formula:
+      "Employee 12% + Employer (12% − EPS) → EPF corpus · EPS = 8.33% × min(wages, ₹15,000) · interest on monthly running balance, credited yearly",
+    method:
+      "Projects the EPF corpus to retirement. The employee contributes 12% of wages (Basic + DA) and the employer 12%, of which 8.33% (capped at the ₹15,000 wage ceiling) goes to the EPS pension pool and the rest to EPF. Interest is calculated on the monthly running balance at the EPFO rate ÷ 12 and credited at the end of each financial year (no intra-year compounding). Wages grow by an assumed annual increment.",
+    sources: [EPFO, EPF_ACT, MOL, ITD],
+    assumptions: [
+      "Wages = Basic Salary + Dearness Allowance (not full CTC)",
+      "Employee and employer each contribute 12%; EPS is 8.33% capped at ₹15,000",
+      "Interest credited annually on the monthly running balance (EPFO method)",
+      "Interest rate and salary increment stay constant over the projection",
+    ],
+    limitations: [
+      "EPS eligibility rules for members joining after 1 Sep 2014 above ₹15,000 wages are not modelled",
+      "The EPFO interest rate is notified yearly and may change; EPS is a pension, not part of the lump sum",
+      "Interest on employee contributions above ₹2.5 lakh/year can be taxable — verify with a professional",
     ],
     reviewedBy: REVIEWER,
   },
