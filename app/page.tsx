@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { buildMetadata } from "@/seo/metadata";
-import { getLiveToolCount } from "@/registry";
+import { getLiveToolCount, getPopularTools } from "@/registry";
 import { HeroSection } from "@/features/home/HeroSection";
 import { CategoryGrid } from "@/features/home/CategoryGrid";
 import { FeaturedTools } from "@/features/home/FeaturedTools";
@@ -15,9 +15,13 @@ export const metadata: Metadata = buildMetadata({
 
 export default function HomePage() {
   const toolCount = getLiveToolCount();
+  // Popular live calculators — future calculators surface here automatically.
+  const quickLinks = getPopularTools()
+    .slice(0, 6)
+    .map((tool) => ({ label: tool.name, href: tool.url }));
   return (
     <>
-      <HeroSection toolCount={toolCount} />
+      <HeroSection toolCount={toolCount} quickLinks={quickLinks} />
 
       <div className="container-page">
         <section className="section-gap">

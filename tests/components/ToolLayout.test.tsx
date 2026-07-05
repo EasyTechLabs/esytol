@@ -88,4 +88,25 @@ describe("ToolLayout", () => {
     expect(note).toBeInTheDocument();
     expect(note).toHaveTextContent(/estimates for educational purposes only/i);
   });
+
+  it("shows the methodology + trust surface for a calculator with methodology data", () => {
+    const calc: Tool = { ...baseTool, category: "calculator", slug: "emi-calculator" };
+    render(<ToolLayout tool={calc}>content</ToolLayout>);
+    // Methodology section
+    expect(screen.getByRole("heading", { name: /how this is calculated/i })).toBeInTheDocument();
+    expect(screen.getByText(/EMI = P/)).toBeInTheDocument();
+    // E-E-A-T trust bar
+    expect(screen.getByText(/reviewed by/i)).toBeInTheDocument();
+    expect(screen.getByText(/EasyTechLabs Finance Team/)).toBeInTheDocument();
+    // Disclaimer still present
+    expect(screen.getByRole("note", { name: /financial disclaimer/i })).toBeInTheDocument();
+  });
+
+  it("does NOT show the methodology section when a calculator has no methodology data", () => {
+    const calc: Tool = { ...baseTool, category: "calculator", slug: "unknown-calc" };
+    render(<ToolLayout tool={calc}>content</ToolLayout>);
+    expect(screen.queryByRole("heading", { name: /how this is calculated/i })).toBeNull();
+    // Disclaimer still shows for any calculator
+    expect(screen.getByRole("note", { name: /financial disclaimer/i })).toBeInTheDocument();
+  });
 });

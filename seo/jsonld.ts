@@ -39,7 +39,7 @@ export function toolSchema(tool: Tool) {
     offers: {
       "@type": "Offer",
       price: "0",
-      priceCurrency: "USD",
+      priceCurrency: "INR",
     },
   };
 }

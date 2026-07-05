@@ -1,15 +1,23 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SearchBar } from "@/components/ui/SearchBar";
 import { siteConfig } from "@/config/site";
 
-interface HeroSectionProps {
-  toolCount: number;
+interface QuickLink {
+  label: string;
+  href: string;
 }
 
-export function HeroSection({ toolCount }: HeroSectionProps) {
+interface HeroSectionProps {
+  toolCount: number;
+  /** Live calculators surfaced as quick links — sourced from the registry. */
+  quickLinks: QuickLink[];
+}
+
+export function HeroSection({ toolCount, quickLinks }: HeroSectionProps) {
   const [query, setQuery] = useState("");
   const router = useRouter();
 
@@ -43,16 +51,16 @@ export function HeroSection({ toolCount }: HeroSectionProps) {
           </p>
         </form>
 
-        {/* Quick category links */}
+        {/* Quick links to popular live calculators (from the registry) */}
         <div className="mt-10 flex flex-wrap justify-center gap-2">
-          {["Developer", "Text", "Security", "Converter", "Generator"].map((cat) => (
-            <a
-              key={cat}
-              href={`/categories/${cat.toLowerCase()}`}
+          {quickLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
               className="rounded-full border border-gray-200 bg-white px-4 py-1.5 text-sm text-gray-700 shadow-sm transition hover:border-brand-300 hover:text-brand-700"
             >
-              {cat}
-            </a>
+              {link.label}
+            </Link>
           ))}
         </div>
       </div>
