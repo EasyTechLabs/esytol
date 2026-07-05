@@ -41,6 +41,12 @@ const NSI: MethodologySource = {
 const INDIA_POST: MethodologySource = { label: "India Post", url: "https://www.indiapost.gov.in" };
 const CFA: MethodologySource = { label: "CFA Institute", url: "https://www.cfainstitute.org" };
 const NSE: MethodologySource = { label: "NSE India", url: "https://www.nseindia.com" };
+const ITD: MethodologySource = {
+  label: "Income Tax Department",
+  url: "https://www.incometax.gov.in",
+};
+const CBDT: MethodologySource = { label: "CBDT" };
+const FINANCE_ACT: MethodologySource = { label: "Finance Act, 2025" };
 
 export const methodology: Record<string, Methodology> = {
   "emi-calculator": {
@@ -176,6 +182,25 @@ export const methodology: Record<string, Methodology> = {
     limitations: [
       "Ignores volatility and any interim cash flows",
       "For periodic investments (SIP), XIRR is more accurate",
+    ],
+    reviewedBy: REVIEWER,
+  },
+  "income-tax-calculator": {
+    formula:
+      "Tax = slab tax − §87A rebate + surcharge + 4% cess   ·   Taxable = Gross income − deductions",
+    method:
+      "Computes tax under both the Old and New regimes for FY 2025-26 (AY 2026-27). Slab tax is applied to taxable income, the Section 87A rebate and marginal relief are applied, then surcharge (with marginal relief) and a 4% Health & Education Cess. Both regimes are compared to recommend the cheaper one.",
+    sources: [ITD, CBDT, FINANCE_ACT, MOF],
+    assumptions: [
+      "Resident individual below 60; FY 2025-26 (AY 2026-27), Finance Act 2025",
+      "New Regime: only the ₹75,000 standard deduction (no 80C/80D/HRA/24b)",
+      "Old Regime: standard deduction ₹50,000 plus the deductions you enter (capped per section)",
+      "§87A rebate makes tax nil up to ₹12,00,000 (New) / ₹5,00,000 (Old) taxable income",
+    ],
+    limitations: [
+      "Does not cover senior/super-senior slabs, capital-gains special rates, or firms/companies",
+      "Surcharge marginal relief is applied; verify complex high-income or multiple-source cases with a tax professional",
+      "Update when the next Finance Act changes slabs, rebate, or deductions",
     ],
     reviewedBy: REVIEWER,
   },

@@ -37,6 +37,7 @@ const LIVE_SLUGS = [
   "lumpsum-calculator",
   "home-loan-calculator",
   "personal-loan-calculator",
+  "income-tax-calculator",
 ];
 
 describe("tool status — placeholder handling", () => {

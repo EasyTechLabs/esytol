@@ -894,6 +894,87 @@ export const toolRegistry: Tool[] = [
     popular: true,
   },
 
+  {
+    id: "income-tax-calculator",
+    name: "Income Tax Calculator",
+    slug: "income-tax-calculator",
+    isNew: true,
+    description:
+      "Calculate your income tax for FY 2025-26 (AY 2026-27) under both the Old and New regimes. Compares regimes, applies 80C, 80D, HRA and home-loan deductions, and shows your tax, cess, and effective rate.",
+    category: "calculator",
+    tags: [
+      "income tax",
+      "tax",
+      "calculator",
+      "india",
+      "new regime",
+      "old regime",
+      "80c",
+      "finance",
+    ],
+    keywords: [
+      "income tax calculator",
+      "income tax calculator india",
+      "income tax calculator fy 2025-26",
+      "income tax calculator ay 2026-27",
+      "new tax regime calculator",
+      "old vs new tax regime calculator",
+      "income tax slab calculator",
+      "tax calculator india",
+      "salary tax calculator",
+      "80c tax calculator",
+      "how much tax on my salary",
+      "income tax rebate 87a calculator",
+      "take home salary tax calculator",
+    ],
+    icon: "🧾",
+    url: "/tools/income-tax-calculator",
+    version: "1.0.0",
+    lastUpdated: "Jul 2026",
+    relatedTools: [
+      "emi-calculator",
+      "home-loan-calculator",
+      "sip-calculator",
+      "ppf-calculator",
+      "gst-calculator",
+      "fd-calculator",
+    ],
+    faq: [
+      {
+        question: "Which financial year does this calculator use?",
+        answer:
+          "It uses the rules for Financial Year 2025-26 (Assessment Year 2026-27) as per the Finance Act, 2025 — including the revised New Regime slabs, the ₹75,000 standard deduction, and the Section 87A rebate that makes income up to ₹12,00,000 tax-free under the New Regime.",
+      },
+      {
+        question: "What is the difference between the Old and New tax regimes?",
+        answer:
+          "The Old Regime has higher tax rates but lets you claim deductions and exemptions (80C, 80D, HRA, home-loan interest, etc.). The New Regime (the default) has lower slab rates and a larger standard deduction and rebate, but does not allow most deductions. This calculator computes both and tells you which is cheaper for you.",
+      },
+      {
+        question: "Is income up to ₹12 lakh really tax-free?",
+        answer:
+          "Under the New Regime for FY 2025-26, a resident individual with taxable income up to ₹12,00,000 pays no tax because of the Section 87A rebate. With the ₹75,000 standard deduction, a salaried person can earn up to ₹12,75,000 gross and still pay zero tax. Just above ₹12,00,000, marginal relief keeps the tax small.",
+      },
+      {
+        question: "What is Health and Education Cess?",
+        answer:
+          "A 4% Health and Education Cess is added on top of your income tax (plus surcharge, if any). This calculator includes it in the Total Tax.",
+      },
+      {
+        question: "What deductions can I claim in the Old Regime?",
+        answer:
+          "Common deductions include Section 80C (up to ₹1,50,000 for EPF, PPF, ELSS, life insurance, etc.), Section 80D (health insurance premiums), HRA exemption, home-loan interest under Section 24(b) (up to ₹2,00,000 for a self-occupied house), professional tax, and others such as 80CCD(1B) for NPS.",
+      },
+      {
+        question: "Is my salary or tax data sent to any server?",
+        answer:
+          "No. All calculations happen entirely in your browser using JavaScript. Nothing you enter is sent to or stored on any server.",
+      },
+    ],
+    featured: true,
+    popular: true,
+  },
+
   // ─── Security ─────────────────────────────────────────────────────────────
   {
     id: "password-generator",
