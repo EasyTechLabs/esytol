@@ -5,16 +5,23 @@ import type { NextConfig } from "next";
  *
  * CSP note: 'unsafe-inline' is required for Next.js's inline bootstrap script,
  * the inline JSON-LD scripts, and Tailwind's inline styles. A nonce-based CSP
- * would need request-time middleware; this conservative policy still blocks
- * external script/style/frame sources (the app makes no external network calls).
+ * would need request-time middleware; this conservative policy blocks all
+ * external sources except the minimum Google Analytics 4 (gtag.js) domains
+ * needed for the env-gated <Analytics /> loader:
+ *   - script-src : www.googletagmanager.com          (loads gtag.js)
+ *   - connect-src: *.google-analytics.com,            (measurement beacons,
+ *                  *.analytics.google.com,             regional + Signals)
+ *                  www.googletagmanager.com
+ *   - img-src    : www.google-analytics.com           (no-JS pixel fallback)
+ * No other external hosts are permitted, so security is not otherwise weakened.
  */
 const contentSecurityPolicy = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
+  "img-src 'self' data: blob: https://www.google-analytics.com",
   "font-src 'self' data:",
-  "connect-src 'self'",
+  "connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
