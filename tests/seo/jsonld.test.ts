@@ -36,6 +36,7 @@ describe("SoftwareApplication schema", () => {
       "hra-calculator",
       "epf-calculator",
       "gratuity-calculator",
+      "nps-calculator",
     ];
     for (const slug of financeSlugs) {
       const tool = getToolBySlug(slug) as Tool;

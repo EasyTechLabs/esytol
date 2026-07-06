@@ -1188,6 +1188,77 @@ export const toolRegistry: Tool[] = [
     popular: true,
   },
 
+  {
+    id: "nps-calculator",
+    name: "NPS Calculator",
+    slug: "nps-calculator",
+    isNew: true,
+    description:
+      "Project your National Pension System (NPS) corpus at retirement. Estimate your maturity amount, tax-free lump sum, monthly pension, total contributions, and returns — with a year-wise growth projection, charts, and CSV export.",
+    category: "calculator",
+    tags: ["nps", "national pension system", "retirement", "pension", "calculator", "india"],
+    keywords: [
+      "nps calculator",
+      "nps maturity calculator",
+      "national pension system calculator",
+      "nps corpus calculator",
+      "nps retirement calculator",
+      "nps calculator india",
+      "nps pension calculator",
+      "nps return calculator",
+      "nps monthly pension calculator",
+      "nps tax benefit calculator",
+      "nps 80ccd calculator",
+      "nps lump sum calculator",
+    ],
+    icon: "🌇",
+    url: "/tools/nps-calculator",
+    version: "1.0.0",
+    lastUpdated: "Jul 2026",
+    relatedTools: [
+      "epf-calculator",
+      "ppf-calculator",
+      "gratuity-calculator",
+      "income-tax-calculator",
+      "sip-calculator",
+      "hra-calculator",
+    ],
+    faq: [
+      {
+        question: "How is the NPS corpus calculated?",
+        answer:
+          "Your NPS corpus is the future value of your monthly contributions compounded at your expected annual return until retirement. Each contribution is invested and grows at the market-linked rate. This calculator uses monthly compounding and shows a year-wise projection of how the corpus builds.",
+      },
+      {
+        question: "How much of my NPS can I withdraw as a lump sum?",
+        answer:
+          "At retirement (age 60), you can withdraw up to 60% of your NPS corpus as a tax-free lump sum. The remaining minimum 40% must be used to purchase an annuity, which provides your monthly pension. You can choose any lump-sum percentage from 0% to 60% in the calculator.",
+      },
+      {
+        question: "How is the monthly pension from NPS calculated?",
+        answer:
+          "The portion of your corpus used for the annuity (at least 40%) is multiplied by the annuity rate offered by the insurer and divided by 12. For example, an annuity corpus of ₹40 lakh at a 6% annuity rate gives a monthly pension of about ₹20,000. The actual rate depends on the annuity plan you choose at retirement.",
+      },
+      {
+        question: "What are the tax benefits of NPS?",
+        answer:
+          "NPS contributions qualify under Section 80CCD(1) within the ₹1.5 lakh Section 80C limit, plus an exclusive additional deduction of up to ₹50,000 under Section 80CCD(1B). Employer contributions are deductible under Section 80CCD(2). At retirement, the 60% lump sum is tax-free, while the annuity income is taxed as per your slab.",
+      },
+      {
+        question: "What return should I expect from NPS?",
+        answer:
+          "NPS is market-linked and invests across equity, corporate bonds, and government securities based on your chosen allocation. Long-term returns have historically ranged around 8–12% per year, though they are not guaranteed. This calculator lets you model different expected returns.",
+      },
+      {
+        question: "Is my data sent to any server?",
+        answer:
+          "No. All calculations happen entirely in your browser using JavaScript. Nothing you enter is sent to or stored on any server.",
+      },
+    ],
+    featured: true,
+    popular: true,
+  },
+
   // ─── Security ─────────────────────────────────────────────────────────────
   {
     id: "password-generator",

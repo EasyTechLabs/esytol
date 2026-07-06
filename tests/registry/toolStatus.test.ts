@@ -41,6 +41,7 @@ const LIVE_SLUGS = [
   "hra-calculator",
   "epf-calculator",
   "gratuity-calculator",
+  "nps-calculator",
 ];
 
 describe("tool status — placeholder handling", () => {

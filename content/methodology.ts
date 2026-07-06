@@ -59,6 +59,11 @@ const MOL: MethodologySource = {
 };
 const GRATUITY_ACT: MethodologySource = { label: "Payment of Gratuity Act, 1972" };
 const IT_SEC_10_10: MethodologySource = { label: "Income-tax Act, 1961 — Section 10(10)" };
+const PFRDA: MethodologySource = { label: "PFRDA", url: "https://www.pfrda.org.in" };
+const NPS_TRUST: MethodologySource = {
+  label: "National Pension System Trust",
+  url: "https://npstrust.org.in",
+};
 
 export const methodology: Record<string, Methodology> = {
   "emi-calculator": {
@@ -270,6 +275,25 @@ export const methodology: Record<string, Methodology> = {
       "The 4-years-240-days interpretation for the 5th year is not applied; whole-year eligibility is used",
       "Death/disablement cases (where the 5-year rule is waived) are not modelled",
       "Taxability is informational; the exact exempt portion depends on prior exemptions used — verify with a professional",
+    ],
+    reviewedBy: REVIEWER,
+  },
+  "nps-calculator": {
+    formula:
+      "Corpus = P × [((1+i)^m − 1) ÷ i] × (1+i)  ·  Pension = annuity corpus × annuity rate ÷ 12  ·  Lump sum ≤ 60%, annuity ≥ 40%",
+    method:
+      "Projects the NPS corpus as the future value of monthly contributions (annuity due, compounded monthly at the expected return) from the current age to retirement. At retirement, up to 60% may be taken as a tax-free lump sum and at least 40% buys an annuity; the monthly pension is the annuity corpus times the annuity rate divided by 12.",
+    sources: [PFRDA, NPS_TRUST, ITD, MOF],
+    assumptions: [
+      "Contributions are made at the start of each month and grow at a constant expected return",
+      "The expected return and annuity rate stay constant over the projection",
+      "Up to 60% of the corpus is withdrawn as a tax-free lump sum; the rest is annuitised",
+      "Monthly pension uses a simple annuity rate; actual annuity plans vary by provider",
+    ],
+    limitations: [
+      "NPS returns are market-linked and not guaranteed; the figure is an estimate",
+      "Actual annuity rates and options are set by the annuity provider at retirement",
+      "Annuity/pension income is taxable as per slab; tax rules may change via the Finance Act",
     ],
     reviewedBy: REVIEWER,
   },
