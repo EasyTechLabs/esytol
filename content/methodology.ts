@@ -297,6 +297,31 @@ export const methodology: Record<string, Methodology> = {
     ],
     reviewedBy: REVIEWER,
   },
+  "age-calculator": {
+    formula:
+      "Age = whole months between the dates (month-end clamped) → years & months, then residual days · Totals derive from the exact calendar day count (leap-aware)",
+    method:
+      "Computes the exact calendar age from a date of birth to a chosen date (today by default). It finds the largest whole number of months between the two dates — clamping month ends, so 31 Jan + 1 month = 28/29 Feb — then the residual days to the target date. Total months, weeks, days, hours, minutes and seconds derive from the exact number of calendar days (UTC midnight difference), so leap days are counted precisely with no daylight-saving drift. The next birthday, the weekday of birth, and the optional two-date age difference use the same calendar arithmetic.",
+    sources: [
+      {
+        label: "ISO 8601 — date and time format",
+        url: "https://www.iso.org/iso-8601-date-and-time-format.html",
+      },
+      { label: "Gregorian calendar (leap-year rule)" },
+    ],
+    assumptions: [
+      "Dates follow the proleptic Gregorian calendar (ISO 8601)",
+      "Age is measured to whole-day precision; time of day is not considered",
+      "A 29 February birthday is observed on 1 March in common (non-leap) years",
+      "‘Age as of’ defaults to today in your local time zone",
+    ],
+    limitations: [
+      "Does not model time-of-birth or time-zone-specific precision",
+      "Total hours/minutes/seconds are derived from whole days, not the live clock",
+      "Historical dates before the Gregorian reform are treated proleptically",
+    ],
+    reviewedBy: "EasyTechLabs Team",
+  },
   "gst-calculator": {
     formula:
       "GST = Base × Rate ÷ 100 (add GST)   ·   Base = Total × 100 ÷ (100 + Rate) (remove GST)",

@@ -42,6 +42,7 @@ const LIVE_SLUGS = [
   "epf-calculator",
   "gratuity-calculator",
   "nps-calculator",
+  "age-calculator",
 ];
 
 describe("tool status — placeholder handling", () => {

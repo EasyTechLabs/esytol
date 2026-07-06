@@ -1259,6 +1259,78 @@ export const toolRegistry: Tool[] = [
     popular: true,
   },
 
+  // ─── Everyday Utilities ────────────────────────────────────────────────────
+  {
+    id: "age-calculator",
+    name: "Age Calculator",
+    slug: "age-calculator",
+    isNew: true,
+    description:
+      "Calculate your exact age in years, months and days from your date of birth — plus total months, weeks, days, hours, minutes and seconds, the day you were born, and a next-birthday countdown. Leap-year accurate, with an optional age-difference comparison.",
+    category: "calculator",
+    tags: ["age", "date", "birthday", "everyday", "utility", "calculator"],
+    keywords: [
+      "age calculator",
+      "date of birth calculator",
+      "how old am i",
+      "age calculator by date of birth",
+      "birthday calculator",
+      "age in years months days",
+      "date difference calculator",
+      "how many days until my birthday",
+      "chronological age calculator",
+      "age calculator online",
+      "days old calculator",
+      "exact age calculator",
+    ],
+    icon: "🎂",
+    url: "/tools/age-calculator",
+    version: "1.0.0",
+    lastUpdated: "Jul 2026",
+    relatedTools: [
+      "income-tax-calculator",
+      "sip-calculator",
+      "ppf-calculator",
+      "emi-calculator",
+      "gst-calculator",
+      "fd-calculator",
+    ],
+    faq: [
+      {
+        question: "How is my age calculated?",
+        answer:
+          "Your age is the exact calendar time from your date of birth to the chosen date (today by default), expressed in years, months and days. The calculator finds the largest whole number of months between the two dates — with month-end clamping — and then the remaining days, so month-end birthdays are handled correctly.",
+      },
+      {
+        question: "Does it account for leap years?",
+        answer:
+          "Yes. All calculations use the proleptic Gregorian calendar, so leap days (29 February) are counted exactly. The total-days figure — and everything derived from it (weeks, hours, minutes, seconds) — includes every leap day in the period.",
+      },
+      {
+        question: "What if I was born on 29 February?",
+        answer:
+          "In common (non-leap) years your birthday is observed on 1 March, which is when the next-birthday countdown lands. In leap years it falls on 29 February as usual.",
+      },
+      {
+        question: "What does the next-birthday countdown show?",
+        answer:
+          "It shows the date and weekday of your upcoming birthday, how many days remain, and the age you will turn. On your birthday itself it shows a celebration message.",
+      },
+      {
+        question: "Can I compare two dates or find an age difference?",
+        answer:
+          "Yes. Switch to Compare mode and enter two dates of birth to see the exact difference in years, months and days, plus the total number of days between them — useful for comparing ages between two people.",
+      },
+      {
+        question: "Is my data private?",
+        answer:
+          "Yes. All calculations happen entirely in your browser using JavaScript. Your date of birth is never sent to or stored on any server.",
+      },
+    ],
+    featured: true,
+    popular: true,
+  },
+
   // ─── Security ─────────────────────────────────────────────────────────────
   {
     id: "password-generator",
