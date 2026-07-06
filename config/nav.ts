@@ -9,6 +9,7 @@ export const mainNav: NavItem[] = [
   { label: "Categories", href: "/categories" },
   { label: "New", href: "/new" },
   { label: "Popular", href: "/popular" },
+  { label: "Learn", href: "/learn" },
 ];
 
 export const footerNav = {

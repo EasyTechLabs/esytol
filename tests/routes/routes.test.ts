@@ -45,6 +45,7 @@ describe("route integrity", () => {
       "/categories",
       "/popular",
       "/new",
+      "/learn",
       "/about",
       "/blog",
       "/privacy",
