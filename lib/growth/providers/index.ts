@@ -39,7 +39,7 @@ export function providerRegistry(): ProviderMeta[] {
       key: "analytics",
       label: "Google Analytics (GA4)",
       icon: "📈",
-      envVars: ["GA4_PROPERTY_ID", "GOOGLE_ACCESS_TOKEN"],
+      envVars: ["GA4_PROPERTY_ID", "GOOGLE_APPLICATION_CREDENTIALS"],
       configured: ga.isConfigured(),
     },
     {

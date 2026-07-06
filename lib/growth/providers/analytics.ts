@@ -1,16 +1,19 @@
 import type { ProviderResult, AnalyticsData, GaPageRow, BarDatum } from "../types";
 import { sampleAnalytics } from "../sample";
 import { postJson, asObj, asArr, asNum, asStr, errMsg } from "./http";
+import { getGoogleAccessToken, hasGoogleAuth, GA_SCOPE } from "./googleAuth";
 
 /**
  * Google Analytics (GA4 Data API — runReport) provider.
  *
- * Live when GA4_PROPERTY_ID and GOOGLE_ACCESS_TOKEN are set. Core totals, top
- * pages, sources, countries and devices are fetched; the users trend and
- * (future-ready) conversions are merged from the sample baseline until wired.
+ * Live when GA4_PROPERTY_ID is set together with Google credentials — either a
+ * Service Account (GOOGLE_SERVICE_ACCOUNT_JSON or GOOGLE_APPLICATION_CREDENTIALS)
+ * or a pre-minted GOOGLE_ACCESS_TOKEN. Core totals, top pages, sources, countries
+ * and devices are fetched; the users trend and (future-ready) conversions are
+ * merged from the sample baseline until wired.
  */
 export function isConfigured(): boolean {
-  return Boolean(process.env.GA4_PROPERTY_ID && process.env.GOOGLE_ACCESS_TOKEN);
+  return Boolean(process.env.GA4_PROPERTY_ID) && hasGoogleAuth();
 }
 
 export async function fetchAnalytics(now: Date): Promise<ProviderResult<AnalyticsData>> {
@@ -19,7 +22,7 @@ export async function fetchAnalytics(now: Date): Promise<ProviderResult<Analytic
     return {
       status: "sample",
       data: sampleAnalytics(now),
-      note: "Sample data — set GA4_PROPERTY_ID and GOOGLE_ACCESS_TOKEN to load live Analytics data.",
+      note: "Sample data — set GA4_PROPERTY_ID and provide Google credentials (GOOGLE_SERVICE_ACCOUNT_JSON or GOOGLE_APPLICATION_CREDENTIALS) to load live Analytics data.",
       fetchedAt,
     };
   }
@@ -37,7 +40,9 @@ export async function fetchAnalytics(now: Date): Promise<ProviderResult<Analytic
 
 async function runReports(now: Date): Promise<AnalyticsData> {
   const prop = process.env.GA4_PROPERTY_ID as string;
-  const headers = { authorization: `Bearer ${process.env.GOOGLE_ACCESS_TOKEN}` };
+  const token = await getGoogleAccessToken(GA_SCOPE, now);
+  if (!token) throw new Error("No Google credentials available for Analytics");
+  const headers = { authorization: `Bearer ${token}` };
   const url = `https://analyticsdata.googleapis.com/v1beta/properties/${prop}:runReport`;
   const dateRanges = [{ startDate: "28daysAgo", endDate: "yesterday" }];
 
