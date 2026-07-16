@@ -1,5 +1,5 @@
 ---
-title: "What is EPF? Employees' Provident Fund Explained (2025 Guide)"
+title: "What is EPF? Employees' Provident Fund Explained (2026)"
 metaTitle: "What is EPF? Employees' Provident Fund Explained | Esytol"
 metaDescription: "EPF (Employees' Provident Fund) is a retirement savings scheme for salaried employees. Learn how contributions, the EPS pension split, interest, and withdrawals work in India."
 slug: "what-is-epf"
@@ -60,7 +60,7 @@ Two forces build your EPF corpus:
 
 The EPF interest rate is notified annually by EPFO and the Government; it was **8.25% for FY 2024-25**. Interest is calculated on your monthly running balance and credited at the end of each financial year. Over a full career of 25–35 years, compounding does the heavy lifting: a large share of your final corpus is interest, not contributions.
 
-We break down the mechanics — including the exact monthly-balance method EPFO uses — in the companion article, [How EPF Interest is Calculated](/tools/epf-calculator). To see the compounding effect on your own numbers, the year-wise projection in the [EPF Calculator](/tools/epf-calculator) charts your balance climbing toward retirement.
+We break down the mechanics — including the exact monthly-balance method EPFO uses — in the companion article, [How EPF Interest is Calculated](/learn/how-epf-interest-is-calculated). To see the compounding effect on your own numbers, the year-wise projection in the [EPF Calculator](/tools/epf-calculator) charts your balance climbing toward retirement.
 
 ## EPF and tax: the EEE advantage
 
@@ -92,7 +92,7 @@ EPF is a strong foundation, but it is rarely enough on its own. Many people laye
 
 - The **[PPF Calculator](/tools/ppf-calculator)** models the Public Provident Fund, a voluntary, tax-free long-term option.
 - The **[SIP Calculator](/tools/sip-calculator)** projects mutual-fund investments for growth beyond fixed-income returns.
-- We compare all the major options in [EPF vs PPF vs NPS: Which is Best for Retirement?](/tools/epf-calculator)
+- We compare all the major options in [EPF vs PPF vs NPS: Which is Best for Retirement?](/learn/epf-vs-ppf-vs-nps)
 
 ## Frequently asked questions
 

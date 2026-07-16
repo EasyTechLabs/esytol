@@ -1,5 +1,5 @@
 ---
-title: "What is Gratuity? Meaning, Eligibility & Rules (2025 Guide)"
+title: "What is Gratuity? Meaning, Eligibility & Rules (2026)"
 metaTitle: "What is Gratuity? Meaning, Eligibility & Rules | Esytol"
 metaDescription: "Gratuity is a lump-sum reward for long service paid by employers in India. Learn what gratuity is, who is eligible, how it is paid, and how it is taxed."
 slug: "what-is-gratuity"
@@ -47,7 +47,7 @@ The formula depends on whether your employer is **covered** under the Act:
 
 Here, "salary" means your **last drawn Basic Salary + Dearness Allowance (DA)**, and "15" represents 15 days' wages for each completed year of service. For covered employees, a part-year of **more than 6 months rounds up** to a full year; for those not covered, only completed years count.
 
-We walk through the mechanics with worked examples in [How Gratuity is Calculated](/tools/gratuity-calculator). To skip the arithmetic, the [Gratuity Calculator](/tools/gratuity-calculator) applies the right formula, the rounding rule, and the cap automatically.
+We walk through the mechanics with worked examples in [How Gratuity is Calculated](/learn/how-gratuity-is-calculated). To skip the arithmetic, the [Gratuity Calculator](/tools/gratuity-calculator) applies the right formula, the rounding rule, and the cap automatically.
 
 ### A quick example
 

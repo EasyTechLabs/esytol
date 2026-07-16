@@ -13,7 +13,7 @@ reviewedBy: "EasyTechLabs Team"
 
 Most people know their age in years without a second thought. But have you ever wondered **how many days** you've been alive? Or how many hours, minutes or seconds? Measuring your life in smaller units is a surprisingly powerful way to appreciate time — and it makes for some genuinely fun milestones. This guide explains how these totals are worked out and what they mean.
 
-You can see every one of these numbers for your own birth date instantly with the [Age Calculator](/tools/age-calculator).
+You can see every one of these numbers for your own birth date instantly with the [Age Calculator](/tools/age-calculator). For another way to look at your birth date, [What Day of the Week Was I Born?](/learn/what-day-of-the-week-was-i-born) works out the weekday you arrived on.
 
 ## From years to days: the calculation
 
@@ -29,7 +29,7 @@ Once you have that exact day count, everything else follows:
 | **Seconds** | Total days × 86,400               |
 | **Months**  | Whole calendar months since birth |
 
-Because they all start from the exact day count, they're all leap-accurate. We cover the underlying calendar maths in [How Is Age Calculated?](/tools/age-calculator).
+Because they all start from the exact day count, they're all leap-accurate. We cover the underlying calendar maths in [How Is Age Calculated?](/learn/how-age-is-calculated).
 
 ## Why leap years change the number
 

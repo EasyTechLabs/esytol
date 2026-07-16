@@ -214,7 +214,14 @@ export const toolRegistry: Tool[] = [
     url: "/tools/emi-calculator",
     version: "1.0.0",
     lastUpdated: "Jul 2026",
-    relatedTools: ["home-loan-calculator", "personal-loan-calculator", "fd-calculator"],
+    relatedTools: [
+      "home-loan-calculator",
+      "personal-loan-calculator",
+      "fd-calculator",
+      "rd-calculator",
+      "sip-calculator",
+      "income-tax-calculator",
+    ],
     faq: [
       {
         question: "What is EMI?",
@@ -273,7 +280,14 @@ export const toolRegistry: Tool[] = [
     url: "/tools/gst-calculator",
     version: "1.0.0",
     lastUpdated: "Jul 2026",
-    relatedTools: ["emi-calculator", "sip-calculator", "fd-calculator"],
+    relatedTools: [
+      "income-tax-calculator",
+      "emi-calculator",
+      "sip-calculator",
+      "fd-calculator",
+      "rd-calculator",
+      "cagr-calculator",
+    ],
     faq: [
       {
         question: "What is GST?",
@@ -940,6 +954,11 @@ export const toolRegistry: Tool[] = [
       "fd-calculator",
     ],
     faq: [
+      {
+        question: "How much tax will I pay on my salary?",
+        answer:
+          "It depends on your total income, the regime you choose, and the deductions you can claim — so there is no single figure. Under the New Regime for FY 2025-26, income up to ₹12,00,000 is effectively tax-free thanks to the Section 87A rebate, and salaried employees also get a ₹75,000 standard deduction. Above that, tax rises through the slabs. The Old Regime charges higher slab rates but lets you subtract HRA, 80C, 80D and home-loan interest first, which can make it cheaper if your deductions are large. Enter your salary above and this calculator computes your tax under both regimes and tells you which one costs you less.",
+      },
       {
         question: "Which financial year does this calculator use?",
         answer:

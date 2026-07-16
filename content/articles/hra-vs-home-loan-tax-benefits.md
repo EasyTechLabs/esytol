@@ -15,6 +15,8 @@ One of the most common questions for salaried Indians is whether renting or buyi
 
 This article compares the two, explains the rules in plain language, and shows how to use Esytol's calculators to find the answer for your own numbers. Start by knowing your rent-side benefit with the [HRA Calculator](/tools/hra-calculator) and your ownership-side numbers with the [Home Loan Calculator](/tools/home-loan-calculator).
 
+If the rent side is new to you, [What is HRA?](/learn/what-is-hra) explains the allowance and who can claim it before you weigh it against a home loan.
+
 ## The two benefits at a glance
 
 | Feature                     | HRA (renting)                             | Home Loan (buying)                                                                  |
@@ -30,7 +32,7 @@ The headline difference: rent is money spent, while a home loan builds an asset 
 
 ## How the HRA benefit works
 
-As covered in depth in [How HRA Exemption is Calculated](/tools/hra-calculator), your HRA exemption is the **least** of:
+As covered in depth in [How HRA Exemption is Calculated](/learn/how-hra-exemption-is-calculated), your HRA exemption is the **least** of:
 
 1. Actual HRA received,
 2. Rent paid minus 10% of Basic Salary, and

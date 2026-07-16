@@ -92,6 +92,8 @@ Gratuity is a one-time boost, best viewed alongside your other retirement buildi
 - Voluntary long-term savings — the [PPF Calculator](/tools/ppf-calculator) and [SIP Calculator](/tools/sip-calculator).
 - The tax angle — the [Income Tax Calculator](/tools/income-tax-calculator) shows how the gratuity exemption and your regime choice interact.
 
+Two companion reads cover what the formula itself cannot: [What is Gratuity?](/learn/what-is-gratuity) explains the concept and who it is for, while [Gratuity Rules: Eligibility, ₹20 Lakh Limit & Tax](/learn/gratuity-eligibility-and-tax-rules) covers the 5-year condition, the cap, and when gratuity can be forfeited.
+
 ## Frequently asked questions
 
 **What is the gratuity formula?**

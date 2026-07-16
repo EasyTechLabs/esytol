@@ -93,6 +93,8 @@ Gratuity is a valuable one-time payout, but it works best as part of a broader p
 - **PPF and mutual funds** — voluntary long-term savings via the [PPF Calculator](/tools/ppf-calculator) and [SIP Calculator](/tools/sip-calculator).
 - **Tax planning** — the [Income Tax Calculator](/tools/income-tax-calculator) and [HRA Calculator](/tools/hra-calculator) help you optimise the salaried side.
 
+If you want the arithmetic behind your own payout, [How Gratuity is Calculated](/learn/how-gratuity-is-calculated) walks through the formula with worked examples; [What is Gratuity?](/learn/what-is-gratuity) covers the concept from scratch.
+
 ## Frequently asked questions
 
 **How many years for gratuity eligibility?**

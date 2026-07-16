@@ -89,6 +89,8 @@ EPF interest is a reliable, low-risk return, but many savers combine it with oth
 - The **[SIP Calculator](/tools/sip-calculator)** and **[Lumpsum Calculator](/tools/lumpsum-calculator)** project market-linked growth for the equity portion of a retirement plan.
 - The **[Income Tax Calculator](/tools/income-tax-calculator)** shows how your Section 80C contributions (including EPF) affect your tax.
 
+If you are still getting to grips with the basics — the wage definition, the EPS split, and the EEE tax treatment — start with [What is EPF?](/learn/what-is-epf). And if you are deciding where your next rupee of retirement saving should go, [EPF vs PPF vs NPS](/learn/epf-vs-ppf-vs-nps) compares all three side by side.
+
 ## Frequently asked questions
 
 **Is EPF interest simple or compound?**

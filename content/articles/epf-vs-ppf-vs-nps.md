@@ -33,7 +33,7 @@ Each column tells a different story. EPF and PPF prioritise **safety and certain
 
 If you are a salaried employee, EPF is largely automatic — 12% of your wages, matched by your employer, compounding at a government-notified rate. Its strengths are the **employer match** (effectively free money), **very low risk**, and **EEE tax treatment**. Its main limitation is that returns are fixed and modest compared with equities over the very long term.
 
-Because EPF is tied to your Basic + DA, its growth depends on your wages and increments. See exactly how your corpus builds — contributions versus interest — with the [EPF Calculator](/tools/epf-calculator). For the mechanics of how the rate is applied, read [How EPF Interest is Calculated](/tools/epf-calculator).
+Because EPF is tied to your Basic + DA, its growth depends on your wages and increments. See exactly how your corpus builds — contributions versus interest — with the [EPF Calculator](/tools/epf-calculator). For the mechanics of how the rate is applied, read [How EPF Interest is Calculated](/learn/how-epf-interest-is-calculated).
 
 ## PPF: the universal safe harbour
 

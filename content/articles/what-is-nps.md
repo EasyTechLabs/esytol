@@ -1,5 +1,5 @@
 ---
-title: "What is NPS? National Pension System Explained (2025 Guide)"
+title: "What is NPS? National Pension System Explained (2026)"
 metaTitle: "What is NPS? National Pension System Explained | Esytol"
 metaDescription: "NPS (National Pension System) is a market-linked retirement scheme regulated by PFRDA. Learn how NPS works, its tiers, returns, tax benefits, and how the pension is paid."
 slug: "what-is-nps"
@@ -71,7 +71,7 @@ NPS offers one of the most generous tax deduction structures available:
 - **Section 80CCD(1B):** an **exclusive additional deduction of up to ₹50,000**, over and above the ₹1.5 lakh limit — unique to NPS.
 - **Section 80CCD(2):** employer contributions are deductible separately.
 
-At maturity, the **60% lump sum is tax-free**, while the annuity/pension is taxed as income in the year you receive it. We cover this in depth in [NPS Tax Benefits: Section 80CCD Explained](/tools/nps-calculator). Because these deductions sit mainly under the Old Tax Regime, it is worth checking your overall position with the [Income Tax Calculator](/tools/income-tax-calculator).
+At maturity, the **60% lump sum is tax-free**, while the annuity/pension is taxed as income in the year you receive it. We cover this in depth in [NPS Tax Benefits: Section 80CCD Explained](/learn/nps-tax-benefits). Because these deductions sit mainly under the Old Tax Regime, it is worth checking your overall position with the [Income Tax Calculator](/tools/income-tax-calculator).
 
 ## NPS in your broader retirement plan
 

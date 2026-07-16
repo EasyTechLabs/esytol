@@ -15,6 +15,8 @@ The House Rent Allowance exemption is decided by a single, precise rule — yet 
 
 This guide walks through the calculation step by step, with worked examples you can follow, the edge cases that catch people out, and a way to get your exact figure instantly. If you would rather skip the arithmetic, the [HRA Calculator](/tools/hra-calculator) applies every rule below automatically and shows you which one determines your exemption.
 
+New to HRA altogether? [What is HRA?](/learn/what-is-hra) covers what the allowance is, who can claim it, and the regime rule that decides whether you can claim it at all — worth reading first, because the exemption is worth nothing under the New Regime.
+
 ## The legal basis: Section 10(13A) and Rule 2A
 
 The HRA exemption comes from **Section 10(13A)** of the Income-tax Act, 1961, and the actual computation is laid down in **Rule 2A** of the Income-tax Rules, 1962. Rule 2A states that the exemption is the **least** of three amounts. Everything in this article flows from that single principle.
@@ -148,7 +150,7 @@ It reduces your taxable income. Your actual tax saving equals the exemption mult
 Only Delhi, Mumbai, Kolkata, and Chennai. All other cities use the 40% limit.
 
 **Can I claim HRA and a home loan together?**
-Yes, in genuine cases. See [HRA vs Home Loan Tax Benefits](/tools/hra-calculator) for the full explanation.
+Yes, in genuine cases. See [HRA vs Home Loan Tax Benefits](/learn/hra-vs-home-loan-tax-benefits) for the full explanation.
 
 ---
 

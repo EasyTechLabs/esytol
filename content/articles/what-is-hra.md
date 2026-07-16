@@ -1,5 +1,5 @@
 ---
-title: "What is HRA? House Rent Allowance Explained (2025 Guide)"
+title: "What is HRA? House Rent Allowance Explained (2026)"
 metaTitle: "What is HRA? House Rent Allowance Explained | Esytol"
 metaDescription: "HRA (House Rent Allowance) is a salary component that can cut your income tax if you pay rent. Learn what HRA is, who can claim it, and how the exemption works in India."
 slug: "what-is-hra"
@@ -69,7 +69,7 @@ Your HRA exemption is the **least** of these three amounts:
 2. **Rent paid minus 10% of salary** (where salary means Basic + DA forming part of retirement benefits).
 3. **50% of salary** if you live in a metro city (Delhi, Mumbai, Kolkata, Chennai), or **40% of salary** if you live anywhere else.
 
-The lowest of these three is exempt; the rest of your HRA is taxable. We cover the mechanics, worked examples, and edge cases in depth in the companion article, [How HRA Exemption is Calculated](/tools/hra-calculator), but here is a quick example to make it concrete.
+The lowest of these three is exempt; the rest of your HRA is taxable. We cover the mechanics, worked examples, and edge cases in depth in the companion article, [How HRA Exemption is Calculated](/learn/how-hra-exemption-is-calculated), but here is a quick example to make it concrete.
 
 ### A quick example
 
@@ -125,7 +125,7 @@ The tax you save on HRA is money you can redirect toward your goals. Many people
 - A **[SIP Calculator](/tools/sip-calculator)** projects how monthly mutual-fund investments could grow over time.
 - If you are weighing renting against buying, the **[Home Loan Calculator](/tools/home-loan-calculator)** shows your EMI and total interest, which you can compare against your rent.
 
-We explore the rent-versus-buy tax angle in detail in [HRA vs Home Loan Tax Benefits](/tools/hra-calculator).
+We explore the rent-versus-buy tax angle in detail in [HRA vs Home Loan Tax Benefits](/learn/hra-vs-home-loan-tax-benefits).
 
 ## Frequently asked questions
 

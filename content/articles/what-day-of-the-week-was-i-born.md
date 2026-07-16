@@ -59,8 +59,8 @@ It's folklore, not fact — but it's a fun thing to check once you know your bir
 
 Your date of birth is the key to a surprising amount of useful information beyond the weekday:
 
-- Your **exact age** in years, months and days — see [How Is Age Calculated?](/tools/age-calculator).
-- Your age in **total days, weeks and seconds** — see [How Many Days Old Am I?](/tools/age-calculator).
+- Your **exact age** in years, months and days — see [How Is Age Calculated?](/learn/how-age-is-calculated).
+- Your age in **total days, weeks and seconds** — see [How Many Days Old Am I?](/learn/how-many-days-old-am-i).
 - Your **next birthday** and how many days remain.
 
 All of these come from the same calendar arithmetic, and the [Age Calculator](/tools/age-calculator) shows them together on one screen.

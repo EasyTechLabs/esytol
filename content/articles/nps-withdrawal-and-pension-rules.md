@@ -1,5 +1,5 @@
 ---
-title: "NPS Withdrawal Rules & How Your Pension Works (2025)"
+title: "NPS Withdrawal Rules & How Your Pension Works (2026)"
 metaTitle: "NPS Withdrawal Rules & Pension Explained | Esytol"
 metaDescription: "How NPS withdrawal works at retirement: the 60/40 rule, tax-free lump sum, annuity and monthly pension, premature exit, and partial withdrawals explained."
 slug: "nps-withdrawal-and-pension-rules"
@@ -87,6 +87,8 @@ The lump-sum/annuity decision is a genuine trade-off:
 - **More annuity (up to 100%)** — a larger, steady monthly pension for life, but less flexibility and taxable income.
 
 There is no universal answer. Many retirees take the full 60% lump sum, reinvest part of it, and rely on the 40% annuity plus other sources like [EPF](/tools/epf-calculator) and [PPF](/tools/ppf-calculator) for the rest.
+
+If you are earlier in the journey, [What is NPS?](/learn/what-is-nps) covers the scheme from the ground up, [NPS Tax Benefits: Section 80CCD](/learn/nps-tax-benefits) explains the deductions that got you here, and [EPF vs PPF vs NPS](/learn/epf-vs-ppf-vs-nps) compares the three main retirement routes.
 
 ## Frequently asked questions
 

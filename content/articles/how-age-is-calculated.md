@@ -82,7 +82,7 @@ Once you know the exact number of **calendar days** you've lived, the other tota
 - **Total seconds** = total days × 86,400
 - **Total months** = the whole-month count from the age calculation
 
-These "living in days" figures are a fun way to see your age from a different angle — and they're all leap-accurate because they start from the exact day count. We explore them in [How Many Days Old Am I?](/tools/age-calculator).
+These "living in days" figures are a fun way to see your age from a different angle — and they're all leap-accurate because they start from the exact day count. We explore them in [How Many Days Old Am I?](/learn/how-many-days-old-am-i).
 
 ## Chronological age vs other "ages"
 

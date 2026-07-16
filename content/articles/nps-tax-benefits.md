@@ -1,5 +1,5 @@
 ---
-title: "NPS Tax Benefits: Section 80CCD Explained (2025)"
+title: "NPS Tax Benefits: Section 80CCD Explained (2026)"
 metaTitle: "NPS Tax Benefits: Section 80CCD(1B) & More | Esytol"
 metaDescription: "Understand NPS tax benefits under Section 80CCD(1), 80CCD(1B), and 80CCD(2), the extra ₹50,000 deduction, and how NPS is taxed at maturity in India."
 slug: "nps-tax-benefits"
@@ -85,6 +85,8 @@ NPS deductions layer neatly on top of your other retirement instruments:
 - **Employer NPS (80CCD(2))** adds further, even under the New Regime.
 
 Used together, they can significantly reduce your tax while building a diversified retirement corpus.
+
+The tax break is only half the decision. [What is NPS?](/learn/what-is-nps) explains how the scheme actually works, [NPS Withdrawal Rules & How Your Pension Works](/learn/nps-withdrawal-and-pension-rules) covers what happens to the money at 60, and [EPF vs PPF vs NPS](/learn/epf-vs-ppf-vs-nps) weighs it against the alternatives.
 
 ## Frequently asked questions
 
