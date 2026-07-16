@@ -16,7 +16,7 @@ import path from "node:path";
 const ARTICLES_DIR = path.join(process.cwd(), "content", "articles");
 
 /** Display order for categories on the listing page and prev/next navigation. */
-const CATEGORY_ORDER = ["income-tax", "retirement", "everyday"];
+const CATEGORY_ORDER = ["income-tax", "loans", "retirement", "everyday"];
 
 export interface ArticleFrontmatter {
   title: string;
