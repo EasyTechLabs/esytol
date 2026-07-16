@@ -78,6 +78,7 @@ export function sampleSearchConsole(now: Date): SearchConsoleData {
         clicks: Math.round(impressions * ctr),
         ctr,
         position: Math.round((1.5 + seededUnit(query, "qpos") * 30) * 10) / 10,
+        positionDelta: Math.round((seededUnit(query, "qdelta") - 0.5) * 9 * 10) / 10,
       };
     })
     .sort((a, b) => b.impressions - a.impressions)

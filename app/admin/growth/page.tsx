@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { buildMetadata } from "@/seo/metadata";
 import { getGrowthData, providerRegistry } from "@/lib/growth";
 import {
@@ -160,6 +161,12 @@ export default async function GrowthDashboardPage() {
           <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-500">
             Internal · noindex
           </span>
+          <Link
+            href="/admin/marketing"
+            className="ml-auto text-sm font-medium text-brand-600 hover:text-brand-700"
+          >
+            Ranked actions → Marketing Agent
+          </Link>
         </div>
         <p className="mt-2 text-sm text-gray-500">
           Search Console · Analytics · Clarity · GitHub · Vercel — one place to drive SEO, UX, and

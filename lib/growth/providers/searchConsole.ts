@@ -55,6 +55,7 @@ async function queryGsc(now: Date): Promise<SearchConsoleData> {
       impressions: asNum(row.impressions),
       ctr: asNum(row.ctr),
       position: Math.round(asNum(row.position) * 10) / 10,
+      positionDelta: 0, // requires a second-period query; sample baseline covers this
     };
   });
 

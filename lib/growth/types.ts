@@ -30,6 +30,8 @@ export interface QueryRow {
   impressions: number;
   ctr: number; // 0..1
   position: number;
+  /** Change in average position vs the previous period (+ = worse, − = better). */
+  positionDelta: number;
 }
 
 export interface PageRow {
