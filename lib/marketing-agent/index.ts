@@ -9,10 +9,7 @@
  * the same ranked output, so the whole engine is unit-testable without a network.
  */
 
-import { getGrowthData } from "@/lib/growth";
-import { getLiveTools } from "@/registry";
-import { getArticleBySlug, getArticleSlugs } from "@/lib/learn";
-import type { Article } from "@/lib/learn";
+import { buildContext } from "./context";
 import { agents } from "./agents";
 import { rankRecommendations } from "./scoring";
 import { buildDailyReport } from "./reports/daily";
@@ -55,20 +52,10 @@ export function analyse(ctx: AgentContext): MarketingAgentResult {
  * so this never throws for missing credentials.
  */
 export async function getMarketingReport(now: Date = new Date()): Promise<MarketingAgentResult> {
-  const growth = await getGrowthData(now);
-  const ctx: AgentContext = {
-    growth,
-    tools: getLiveTools(),
-    // The Content Agent needs the parsed body (FAQs + tool links), so load full
-    // articles rather than the lightweight `getAllArticles()` metadata list.
-    articles: getArticleSlugs()
-      .map((slug) => getArticleBySlug(slug))
-      .filter((a): a is Article => a !== null),
-    now,
-  };
-  return analyse(ctx);
+  return analyse(await buildContext(now));
 }
 
+export { buildContext } from "./context";
 export { agents } from "./agents";
 export * from "./types";
 export {

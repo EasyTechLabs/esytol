@@ -62,6 +62,31 @@ export const financeTool = (over: Partial<Tool> = {}): Tool =>
     ...over,
   }) as Tool;
 
+/**
+ * A fully-formed article that triggers no content rule: it has an FAQ, links to a
+ * tool, and cross-links a sibling. Override one field to test one rule.
+ */
+export const article = (over: Partial<Article> = {}): Article => {
+  const frontmatter = {
+    title: "How to calculate income tax",
+    metaDescription: "A short guide.",
+    category: "income-tax",
+    tags: ["tax"],
+    lastUpdated: "2026-07-01",
+    reviewedBy: "Reviewer",
+    ...over.frontmatter,
+  };
+  return {
+    slug: "how-to-calculate-income-tax",
+    readingTime: 5,
+    body: "See /tools/income-tax-calculator and /learn/other-article.",
+    faqs: [{ question: "Q?", answer: "A." }],
+    relatedToolSlugs: ["income-tax-calculator"],
+    ...over,
+    frontmatter,
+  };
+};
+
 function wrap<T>(data: T): ProviderResult<T> {
   return { status: "sample", data, fetchedAt: "2026-07-16T08:00:00.000Z" };
 }

@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { buildMetadata } from "@/seo/metadata";
-import { getMarketingReport } from "@/lib/marketing-agent";
+import { analyse, buildContext } from "@/lib/marketing-agent";
+import { analyseSeo } from "@/lib/seo-intelligence";
 import type { Metric } from "@/lib/marketing-agent/types";
 import { StatCard } from "@/features/growth/StatCard";
 import { SectionCard, Panel } from "@/features/growth/SectionCard";
 import { Sparkline } from "@/features/growth/Sparkline";
 import { RecommendationCard } from "@/features/marketing/RecommendationCard";
+import { SeoRoadmapSection } from "@/features/marketing/SeoRoadmap";
 import { AgentStatusBadge } from "@/features/marketing/PriorityBadge";
 import { relativeTime } from "@/lib/growth/format";
 
@@ -22,13 +24,18 @@ export const metadata: Metadata = buildMetadata({
 const NAV = [
   { href: "#priorities", label: "Today" },
   { href: "#agents", label: "Agents" },
+  { href: "#seo", label: "SEO Roadmap" },
   { href: "#weekly", label: "Weekly" },
   { href: "#roster", label: "Roster" },
 ];
 
 export default async function MarketingAgentPage() {
   const now = new Date();
-  const report = await getMarketingReport(now);
+  // Both engines read the same context, so build it once — calling each engine's own
+  // entry point would fetch every provider twice for one page render.
+  const ctx = await buildContext(now);
+  const report = analyse(ctx);
+  const seo = analyseSeo(ctx);
   const { daily, weekly, agents, recommendations } = report;
 
   const totalUpside = recommendations.reduce((s, r) => s + (r.impactClicks ?? 0), 0);
@@ -192,6 +199,9 @@ export default async function MarketingAgentPage() {
             })}
           </div>
         </SectionCard>
+
+        {/* ── SEO Intelligence Engine (GROWTH-013) ── */}
+        <SeoRoadmapSection seo={seo} />
 
         {/* ── Weekly executive report ── */}
         <SectionCard id="weekly" icon="📈" title={`Weekly Executive Report — ${weekly.period}`}>
