@@ -56,12 +56,10 @@ export default function ContactPage() {
             </a>
           </div>
           <a
-            href={`${siteConfig.links.github}/issues/new`}
-            target="_blank"
-            rel="noopener noreferrer"
+            href={`mailto:${EMAIL}?subject=${encodeURIComponent("Esytol — accuracy report")}`}
             className="inline-flex items-center justify-center rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:border-brand-300 hover:text-brand-700"
           >
-            Open a GitHub issue ↗
+            Report a calculation error
           </a>
         </div>
 
@@ -69,17 +67,10 @@ export default function ContactPage() {
         <div className="mt-6 rounded-lg border border-gray-100 bg-gray-50 px-4 py-3">
           <p className="text-sm text-gray-600">
             <span className="font-medium text-gray-800">Response time:</span> Esytol is an
-            independent, open-source project. We read every message and typically reply within{" "}
-            <span className="font-medium">2–3 business days</span>. For anything code-related, a{" "}
-            <a
-              href={siteConfig.links.github}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-brand-600 hover:underline"
-            >
-              GitHub
-            </a>{" "}
-            issue is often the quickest path.
+            independent project run by a small team. We read every message and typically reply
+            within <span className="font-medium">2–3 business days</span>. If you think a
+            calculation is wrong, tell us which tool and the numbers you entered — we take accuracy
+            reports first.
           </p>
         </div>
 

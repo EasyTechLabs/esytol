@@ -43,7 +43,9 @@ export function HeroSection({ toolCount, quickLinks }: HeroSectionProps) {
           <SearchBar
             value={query}
             onChange={setQuery}
-            placeholder="Search tools — EMI, SIP, GST, FD, home loan…"
+            // Leads with finance because that is what we are best at, but ends on a
+            // non-finance tool so the placeholder itself signals the platform.
+            placeholder="Search tools — EMI, SIP, income tax, age…"
             size="lg"
           />
           <p className="mt-3 text-xs text-gray-400">

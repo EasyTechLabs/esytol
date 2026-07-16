@@ -6,7 +6,7 @@ import { siteConfig } from "@/config/site";
 export const metadata: Metadata = buildMetadata({
   title: "About",
   description:
-    "Esytol builds fast, accurate, privacy-first financial calculators for India — open source, no signup, everything runs in your browser.",
+    "Esytol is a free platform of online tools — fast, accurate and privacy-first. Finance is our deepest category today, with more on the way. No signup; everything runs in your browser.",
   path: "/about",
 });
 
@@ -25,16 +25,23 @@ export default function AboutPage() {
       <div className="max-w-2xl">
         <h1 className="text-3xl font-bold text-gray-900">About {siteConfig.name}</h1>
         <p className="mt-4 text-lg text-gray-600">
-          {siteConfig.name} is a growing collection of fast, accurate, privacy-first calculators for
-          everyday money decisions in India — EMIs, SIPs, fixed and recurring deposits, PPF, GST,
-          and more.
+          {siteConfig.name} is a platform of free online tools that are fast, accurate and
+          privacy-first. Our deepest category today is <strong>finance</strong> — EMIs, SIPs,
+          deposits, PPF, tax and GST, built specifically for India — alongside{" "}
+          <strong>everyday</strong> utilities. More categories are on the way.
         </p>
 
         <Section title="Our mission">
           <p>
-            Financial decisions shouldn’t require a spreadsheet or a login. Our mission is to make
-            trustworthy financial math available to everyone — instantly, for free, and without
-            collecting your data.
+            Useful tools shouldn’t require a spreadsheet, a login, or an ad-block. Our mission is to
+            build the tools people actually need — instantly, for free, and without collecting your
+            data — starting where the need is greatest and the stakes are highest: money decisions
+            in India.
+          </p>
+          <p>
+            We would rather be the best in the world at one category than mediocre across ten, so we
+            go deep before we go wide. Finance came first because the decisions are consequential
+            and the existing tools are poor. It will not be the last.
           </p>
         </Section>
 
@@ -75,19 +82,20 @@ export default function AboutPage() {
           </p>
         </Section>
 
-        <Section title="Open source">
+        <Section title="Showing our working">
           <p>
-            Esytol is open source. You can read the code, audit the math, file issues, or suggest
-            features on{" "}
-            <a
-              href={siteConfig.links.github}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-brand-600 hover:underline"
-            >
-              GitHub
-            </a>
-            .
+            You shouldn’t have to take our arithmetic on trust. Every calculator publishes the
+            formula it uses, the official sources behind it — RBI, the Income Tax Department, EPFO,
+            PFRDA and others — the assumptions it makes, and its limitations. If a number looks
+            wrong, the methodology on the page tells you exactly how it was produced.
+          </p>
+          <p>
+            Our{" "}
+            <Link href="/learn" className="text-brand-600 hover:underline">
+              Learn
+            </Link>{" "}
+            articles go further, explaining the rules themselves and citing the regulator rather
+            than asking you to believe us.
           </p>
         </Section>
 
@@ -100,9 +108,10 @@ export default function AboutPage() {
         </Section>
 
         <Section title="Roadmap">
-          <p>We’re actively expanding. On the way:</p>
+          <p>We’re actively expanding — in depth and in breadth. On the way:</p>
           <ul className="list-disc space-y-1 pl-5">
-            <li>More finance tools — income tax, NPS, gratuity, and goal planners</li>
+            <li>Deeper finance coverage — goal planners, capital gains, and advance tax</li>
+            <li>New categories beyond finance and everyday</li>
             <li>Comparison modes (e.g. SIP vs lumpsum, home vs personal loan)</li>
             <li>Prepayment and step-up scenarios for loans and SIPs</li>
             <li>Downloadable PDF summaries</li>
@@ -116,18 +125,7 @@ export default function AboutPage() {
           </p>
         </Section>
 
-        <p className="mt-10 text-sm text-gray-400">
-          Built by{" "}
-          <a
-            href={siteConfig.links.github}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:underline"
-          >
-            EasyTechLabs
-          </a>
-          .
-        </p>
+        <p className="mt-10 text-sm text-gray-400">Built by EasyTechLabs.</p>
       </div>
     </div>
   );

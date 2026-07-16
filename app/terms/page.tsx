@@ -77,22 +77,6 @@ export default function TermsPage() {
           </p>
         </Section>
 
-        <Section title="Open source">
-          <p>
-            The Service’s source code is published on{" "}
-            <a
-              href={siteConfig.links.github}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-brand-600 hover:underline"
-            >
-              GitHub
-            </a>{" "}
-            and is licensed under the terms stated in that repository. Your use of the source code
-            is governed by that license; these Terms govern your use of the hosted website.
-          </p>
-        </Section>
-
         <Section title="Limitation of liability">
           <p>
             To the maximum extent permitted by law, {siteConfig.name} and EasyTechLabs will not be

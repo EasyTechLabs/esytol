@@ -17,13 +17,16 @@ export function webSiteSchema() {
 }
 
 export function organizationSchema() {
+  // No `sameAs`: it previously pointed at a private GitHub repo, telling search
+  // engines our official profile was a URL that 404s for everyone. An absent
+  // property is better than a broken claim. Add it back when a real public profile
+  // exists.
   return {
     "@context": "https://schema.org",
     "@type": "Organization",
     name: "EasyTechLabs",
     url: siteConfig.url,
     logo: `${siteConfig.url}/logo.svg`,
-    sameAs: [siteConfig.links.github],
   };
 }
 

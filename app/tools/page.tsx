@@ -6,7 +6,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 
 export const metadata: Metadata = buildMetadata({
   title: "All Tools",
-  description: "Browse free online tools for developers, writers, designers, and everyday tasks.",
+  description:
+    "Browse every free tool on Esytol — finance calculators for India (EMI, SIP, tax, loans, retirement) and everyday utilities. No signup required.",
   path: "/tools",
 });
 

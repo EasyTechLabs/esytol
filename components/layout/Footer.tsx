@@ -16,10 +16,11 @@ export function Footer() {
             <p className="mt-3 text-sm text-gray-500">{siteConfig.tagline}</p>
           </div>
 
-          {/* Calculators */}
+          {/* Popular tools — labelled by what they are, not by the one category we
+              happen to have most of today. */}
           <div>
             <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-gray-500">
-              Calculators
+              Popular Tools
             </h3>
             <ul className="space-y-2">
               {footerNav.tools.map((item) => (
@@ -54,19 +55,23 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* GitHub */}
+          {/* Explore — category-agnostic, so a new category needs no footer change. */}
           <div>
             <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-gray-500">
-              Open Source
+              Explore
             </h3>
-            <a
-              href={siteConfig.links.github}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm text-gray-600 transition hover:text-gray-900"
-            >
-              GitHub ↗
-            </a>
+            <ul className="space-y-2">
+              {footerNav.explore.map((item) => (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    className="text-sm text-gray-600 transition hover:text-gray-900"
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
 

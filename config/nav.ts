@@ -13,14 +13,23 @@ export const mainNav: NavItem[] = [
 ];
 
 export const footerNav = {
-  // Direct links to live calculators — a focused finance-calculator site.
+  // The most-used live tools. Finance dominates because finance is our deepest
+  // category — not because the platform is defined by it. When another category
+  // grows, it earns a place here on the same basis.
   tools: [
     { label: "EMI Calculator", href: "/tools/emi-calculator" },
     { label: "Home Loan Calculator", href: "/tools/home-loan-calculator" },
     { label: "SIP Calculator", href: "/tools/sip-calculator" },
-    { label: "FD Calculator", href: "/tools/fd-calculator" },
+    { label: "Income Tax Calculator", href: "/tools/income-tax-calculator" },
     { label: "GST Calculator", href: "/tools/gst-calculator" },
-    { label: "Personal Loan Calculator", href: "/tools/personal-loan-calculator" },
+    { label: "Age Calculator", href: "/tools/age-calculator" },
+  ],
+  // Category-agnostic routes — these never need touching as categories are added.
+  explore: [
+    { label: "All Tools", href: "/tools" },
+    { label: "Learn", href: "/learn" },
+    { label: "New", href: "/new" },
+    { label: "Popular", href: "/popular" },
   ],
   company: [
     { label: "About", href: "/about" },
