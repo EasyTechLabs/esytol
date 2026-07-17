@@ -244,3 +244,23 @@ git push origin main
   Resolve by upgrading Next when a patched release is available.
 - **Optional polish before/after launch:** replace the placeholder
   `public/og-default.png` and `app/favicon.ico` with final brand assets.
+
+---
+
+## 10. Incident P0-1 — deployments silently stopped (2026-07)
+
+Between 2026-07-07 and 2026-07-17 production served commit `f3cbb0a` (GROWTH-011)
+while `main` advanced five sprints to `8f596cf`. Every push after 2026-07-07
+produced **no deployment**, and nothing in the local pipeline could tell: git sync
+was clean, CI was green, and the (since corrected) deployment workflow never
+fetched the live URL.
+
+Evidence gathered during recovery: the CDN cache for `/` dated to ~3 minutes after
+GROWTH-011's push (auto-deploy worked at that point); `npm ci --dry-run` clean
+(lockfile in sync, so builds were not failing on install); no `vercel.json`, no
+local Vercel link, no CI-driven deploy — deployment depends entirely on the
+Vercel↔GitHub integration, which is only inspectable from the Vercel dashboard.
+
+**Standing rule (from `ProductFactory/Execution`):** a deployment exists only when
+`forge execution production verify` passes against the public URL. Git sync and a
+green build are _permission to attempt_ a deployment, never evidence of one.
