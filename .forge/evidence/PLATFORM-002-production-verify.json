@@ -1,0 +1,43 @@
+{
+  "url": "https://www.esytol.com",
+  "verdict": "PASS",
+  "score": 100,
+  "checks": [
+    {
+      "name": "site reachable",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 1785ms",
+      "evidence": "200 https://www.esytol.com \u00b7 149882 bytes \u00b7 2026-07-17T18:59:56+00:00"
+    },
+    {
+      "name": "path /tools/emi-calculator",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 1144ms",
+      "evidence": "200 https://www.esytol.com/tools/emi-calculator \u00b7 59483 bytes \u00b7 2026-07-17T18:59:57+00:00"
+    },
+    {
+      "name": "path /tools/sip-calculator",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 1104ms",
+      "evidence": "200 https://www.esytol.com/tools/sip-calculator \u00b7 63084 bytes \u00b7 2026-07-17T18:59:59+00:00"
+    },
+    {
+      "name": "path /tools/income-tax-calculator",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 915ms",
+      "evidence": "200 https://www.esytol.com/tools/income-tax-calculator \u00b7 69983 bytes \u00b7 2026-07-17T19:00:00+00:00"
+    },
+    {
+      "name": "path /tools/financial-dashboard",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 785ms",
+      "evidence": "200 https://www.esytol.com/tools/financial-dashboard \u00b7 68515 bytes \u00b7 2026-07-17T19:00:01+00:00"
+    },
+    {
+      "name": "path /tools/financial-roadmap",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 760ms",
+      "evidence": "200 https://www.esytol.com/tools/financial-roadmap \u00b7 81350 bytes \u00b7 2026-07-17T19:00:01+00:00"
+    }
+  ]
+}
