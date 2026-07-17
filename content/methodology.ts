@@ -297,6 +297,28 @@ export const methodology: Record<string, Methodology> = {
     ],
     reviewedBy: REVIEWER,
   },
+  "financial-dashboard": {
+    formula:
+      "Every figure derives from the saved roadmap profile through the roadmap engine · Tracked net worth = emergency fund + retirement corpus − high-interest debt · Review due when 90 days have passed since the last review (or none was ever done)",
+    method:
+      "The dashboard reads the financial profile the Financial Roadmap saves in your browser's localStorage and passes it through the exact same engine that builds the roadmap — one engine, so the dashboard can never disagree with the roadmap. Health score, pillar states, milestone progress and every insight are that engine's outputs re-worded; nothing is computed twice and nothing is estimated. Recent tools are recorded locally when you open a tool (newest first, deduped, capped at eight). All data lives on this device only: there is no account, no server copy and no tracking of any kind.",
+    sources: [
+      { label: "RBI — household finance guidance", url: "https://www.rbi.org.in" },
+      { label: "IRDAI — insurance basics", url: "https://www.irdai.gov.in" },
+      { label: "Income Tax Department (regime comparison)", url: "https://www.incometax.gov.in" },
+    ],
+    assumptions: [
+      "Tracked net worth deliberately excludes assets the roadmap does not collect (property, gold, vehicles, other investments) — it understates rather than guesses",
+      "The 90-day review interval is a planning cadence, not a regulation; marking a review done only resets the timer",
+      "The profile shown is the one last saved by the Financial Roadmap on this device; editing the roadmap updates the dashboard",
+    ],
+    limitations: [
+      "Data exists in one browser on one device — clearing browser data erases it, and by design there is no cloud backup or recovery",
+      "Insights are deterministic statements of the roadmap engine's arithmetic on your own numbers — never product recommendations or advice",
+      "If you never build a Financial Roadmap, the dashboard has nothing to show and says so",
+    ],
+    reviewedBy: REVIEWER,
+  },
   "financial-roadmap": {
     formula:
       "Health Score = Σ(pillar score × weight) — Emergency 25 · Protection 25 · Debt 20 · Savings 15 · Retirement 15 · Actions follow the fixed sequence: emergency fund → health cover → term life → high-interest debt → tax → investing → retirement → wealth",

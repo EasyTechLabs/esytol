@@ -1280,6 +1280,68 @@ export const toolRegistry: Tool[] = [
 
   // ─── Everyday Utilities ────────────────────────────────────────────────────
   {
+    id: "financial-dashboard",
+    name: "Financial Dashboard",
+    slug: "financial-dashboard",
+    isNew: true,
+    description:
+      "Your complete financial position in one place: health score, roadmap progress, emergency fund, savings rate, tracked net worth, debt, insurance status and a 90-day review cycle — all computed from the roadmap profile saved in your own browser. No login, no cloud, no tracking.",
+    category: "calculator",
+    tags: ["finance", "dashboard", "net worth", "planning", "india", "tracker"],
+    keywords: [
+      "personal finance dashboard",
+      "financial dashboard india",
+      "net worth tracker",
+      "financial health dashboard",
+      "money dashboard no login",
+      "private finance tracker",
+    ],
+    icon: "📊",
+    url: "/tools/financial-dashboard",
+    version: "1.0.0",
+    lastUpdated: "Jul 2026",
+    relatedTools: [
+      "financial-roadmap",
+      "income-tax-calculator",
+      "sip-calculator",
+      "emi-calculator",
+      "ppf-calculator",
+      "fd-calculator",
+    ],
+    faq: [
+      {
+        question: "Where is my financial data stored?",
+        answer:
+          "Only in your own browser, in localStorage on this device. Nothing is sent to any server, there is no account and no cloud copy. Clearing your browser data — or the dashboard's own 'Clear my data' button — erases it completely.",
+      },
+      {
+        question: "How does the dashboard get my numbers?",
+        answer:
+          "The Financial Roadmap saves your inputs locally as you fill it in, and every tool you open records itself in your recent-tools list. The dashboard reads that saved profile and derives everything through the same roadmap engine — it never asks you to re-enter anything.",
+      },
+      {
+        question: "What is 'tracked net worth'?",
+        answer:
+          "Emergency fund plus retirement corpus minus high-interest debt — only the figures the roadmap actually collects. It deliberately excludes property, gold, vehicles and other assets you have not entered, so it understates your true net worth rather than guessing.",
+      },
+      {
+        question: "What is the 90-day review?",
+        answer:
+          "Every 90 days the dashboard prompts you to re-check your numbers and recalculate your roadmap, because salaries, prices and tax rules move every quarter. Marking a review done simply resets the timer — nothing else changes.",
+      },
+      {
+        question: "Are the insights personalised recommendations?",
+        answer:
+          "They are deterministic statements computed from your own numbers by the same engine that builds your roadmap — for example 'emergency fund complete' or 'term cover missing'. There are no product suggestions, no hidden assumptions and no AI-generated advice.",
+      },
+      {
+        question: "Can I use the calculators without the dashboard?",
+        answer:
+          "Yes. Every tool works standalone exactly as before. The dashboard is optional: it only becomes useful once you have built a Financial Roadmap, and ignoring it changes nothing else on the site.",
+      },
+    ],
+  },
+  {
     id: "financial-roadmap",
     name: "Financial Roadmap",
     slug: "financial-roadmap",

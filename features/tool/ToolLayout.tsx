@@ -5,6 +5,7 @@ import { ToolContainer } from "./ToolContainer";
 import { ToolSidebar } from "./ToolSidebar";
 import { FAQSection } from "./FAQSection";
 import { CalculatorTrust } from "./CalculatorTrust";
+import { RecentToolTracker } from "./RecentToolTracker";
 
 interface ToolLayoutProps {
   tool: Tool;
@@ -16,6 +17,7 @@ export function ToolLayout({ tool, children }: ToolLayoutProps) {
 
   return (
     <div className="container-page section-gap">
+      <RecentToolTracker slug={tool.slug} name={tool.name} />
       <ToolHeader tool={tool} />
 
       <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-[1fr_280px]">

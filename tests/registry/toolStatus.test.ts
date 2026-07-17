@@ -44,6 +44,7 @@ const LIVE_SLUGS = [
   "nps-calculator",
   "age-calculator",
   "financial-roadmap",
+  "financial-dashboard",
 ];
 
 describe("tool status — placeholder handling", () => {

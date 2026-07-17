@@ -8,7 +8,7 @@
  * consistent with the platform's privacy position.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   buildRoadmap,
   validateRoadmapInputs,
@@ -18,6 +18,7 @@ import {
   type RoadmapInput,
 } from "@/lib/financialRoadmap";
 import { cn } from "@/lib/cn";
+import { readStore, saveProfile } from "@/lib/localFinance";
 
 const GOALS: { value: PrimaryGoal; label: string }[] = [
   { value: "stability", label: "Financial stability" },
@@ -58,6 +59,33 @@ export function FinancialRoadmap() {
     primaryGoal: "stability" as PrimaryGoal,
   });
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+
+  // Returning visitors pick up where they left off — locally, from this browser
+  // only (PROJECT-003). Runs once, before any save can fire.
+  useEffect(() => {
+    const saved = readStore().profile;
+    if (saved) {
+      setForm({
+        age: String(saved.age),
+        monthlyIncome: String(saved.monthlyIncome),
+        hasPartner: saved.hasPartner,
+        dependants: String(saved.dependants),
+        emergencyFund: String(saved.emergencyFund),
+        monthlyExpenses: String(saved.monthlyExpenses),
+        monthlyEmi: String(saved.monthlyEmi),
+        highInterestDebt: String(saved.highInterestDebt),
+        hasHealthInsurance: saved.hasHealthInsurance,
+        healthCoverLakh: String(saved.healthCoverLakh),
+        hasTermInsurance: saved.hasTermInsurance,
+        termCoverLakh: String(saved.termCoverLakh),
+        monthlyInvesting: String(saved.monthlyInvesting),
+        retirementCorpus: String(saved.retirementCorpus),
+        primaryGoal: saved.primaryGoal,
+      });
+    }
+    setHydrated(true);
+  }, []);
 
   const input: RoadmapInput = useMemo(
     () => ({
@@ -83,6 +111,13 @@ export function FinancialRoadmap() {
   const errors = useMemo(() => validateRoadmapInputs(input), [input]);
   const isValid = Object.keys(errors).length === 0;
   const result = useMemo(() => (isValid ? buildRoadmap(input) : null), [isValid, input]);
+
+  // Valid inputs persist locally (debounced), feeding the personal dashboard.
+  useEffect(() => {
+    if (!hydrated || !isValid) return;
+    const t = setTimeout(() => saveProfile(input), 400);
+    return () => clearTimeout(t);
+  }, [hydrated, isValid, input]);
 
   const set = (key: keyof typeof form) => (value: string | boolean) =>
     setForm((f) => ({ ...f, [key]: value }));
