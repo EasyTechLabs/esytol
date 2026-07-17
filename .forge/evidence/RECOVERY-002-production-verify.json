@@ -1,0 +1,55 @@
+{
+  "url": "https://www.esytol.com",
+  "verdict": "PASS",
+  "score": 100,
+  "checks": [
+    {
+      "name": "site reachable",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 502ms",
+      "evidence": "200 https://www.esytol.com \u00b7 144055 bytes \u00b7 2026-07-17T04:11:07+00:00"
+    },
+    {
+      "name": "present: id=\"domain-finance\"",
+      "status": "PASS",
+      "message": "as expected in https://www.esytol.com",
+      "evidence": ""
+    },
+    {
+      "name": "present: id=\"domain-everyday\"",
+      "status": "PASS",
+      "message": "as expected in https://www.esytol.com",
+      "evidence": ""
+    },
+    {
+      "name": "absent: open source",
+      "status": "PASS",
+      "message": "as expected in https://www.esytol.com",
+      "evidence": ""
+    },
+    {
+      "name": "path /learn/complete-guide-to-loans-in-india",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 320ms",
+      "evidence": "200 https://www.esytol.com/learn/complete-guide-to-loans-in-india \u00b7 118955 bytes \u00b7 2026-07-17T04:11:08+00:00"
+    },
+    {
+      "name": "path /learn/loan-prepayment-guide",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 724ms",
+      "evidence": "200 https://www.esytol.com/learn/loan-prepayment-guide \u00b7 98245 bytes \u00b7 2026-07-17T04:11:08+00:00"
+    },
+    {
+      "name": "path /admin/marketing",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 1185ms",
+      "evidence": "200 https://www.esytol.com/admin/marketing \u00b7 368437 bytes \u00b7 2026-07-17T04:11:09+00:00"
+    },
+    {
+      "name": "path /tools/emi-calculator",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 739ms",
+      "evidence": "200 https://www.esytol.com/tools/emi-calculator \u00b7 58422 bytes \u00b7 2026-07-17T04:11:10+00:00"
+    }
+  ]
+}
