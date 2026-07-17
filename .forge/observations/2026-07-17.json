@@ -1,0 +1,128 @@
+{
+  "summary": {
+    "takenAt": "2026-07-17T07:31:25.600Z",
+    "providers": {
+      "searchConsole": {
+        "status": "error",
+        "note": "Live Search Console fetch failed (403 Forbidden)."
+      },
+      "analytics": {
+        "status": "unconfigured",
+        "note": "Analytics not configured — set GA4_PROPERTY_ID and grant the service account Viewer access to the GA4 property."
+      },
+      "clarity": {
+        "status": "unconfigured",
+        "note": "Clarity not configured — generate an API token in Clarity → Settings → Data Export and set CLARITY_API_TOKEN."
+      },
+      "github": {
+        "status": "unconfigured",
+        "note": "GitHub not configured — set GITHUB_TOKEN and GITHUB_REPO."
+      },
+      "vercel": {
+        "status": "unconfigured",
+        "note": "Vercel not configured — set VERCEL_TOKEN and VERCEL_PROJECT_ID."
+      }
+    },
+    "noneLive": true
+  },
+  "data": {
+    "searchConsole": {
+      "status": "error",
+      "data": {
+        "totals": {
+          "clicks": 0,
+          "impressions": 0,
+          "ctr": 0,
+          "position": 0
+        },
+        "clicksTrend": [],
+        "impressionsTrend": [],
+        "topQueries": [],
+        "topPages": [],
+        "indexCoverage": {
+          "indexed": 0,
+          "discovered": 0,
+          "excluded": 0,
+          "errors": 0
+        },
+        "sitemap": {
+          "path": "",
+          "submitted": 0,
+          "indexed": 0,
+          "lastRead": "",
+          "status": "unknown"
+        }
+      },
+      "note": "Live Search Console fetch failed (403 Forbidden).",
+      "fetchedAt": "2026-07-17T07:31:25.600Z"
+    },
+    "analytics": {
+      "status": "unconfigured",
+      "data": {
+        "totals": {
+          "users": 0,
+          "sessions": 0,
+          "engagementRate": 0,
+          "returningUsers": 0,
+          "avgEngagementSec": 0
+        },
+        "usersTrend": [],
+        "topPages": [],
+        "sources": [],
+        "countries": [],
+        "devices": [],
+        "conversions": []
+      },
+      "note": "Analytics not configured — set GA4_PROPERTY_ID and grant the service account Viewer access to the GA4 property.",
+      "fetchedAt": "2026-07-17T07:31:25.600Z"
+    },
+    "clarity": {
+      "status": "unconfigured",
+      "data": {
+        "sessions": 0,
+        "recordings": 0,
+        "deadClicks": 0,
+        "rageClicks": 0,
+        "quickBacks": 0,
+        "excessiveScroll": 0,
+        "avgScrollDepth": 0,
+        "scrollByPage": [],
+        "topPagesByActivity": []
+      },
+      "note": "Clarity not configured — generate an API token in Clarity → Settings → Data Export and set CLARITY_API_TOKEN.",
+      "fetchedAt": "2026-07-17T07:31:25.600Z"
+    },
+    "github": {
+      "status": "unconfigured",
+      "data": {
+        "repo": "",
+        "defaultBranch": "",
+        "commits": [],
+        "releases": [],
+        "deployments": []
+      },
+      "note": "GitHub not configured — set GITHUB_TOKEN and GITHUB_REPO.",
+      "fetchedAt": "2026-07-17T07:31:25.600Z"
+    },
+    "vercel": {
+      "status": "unconfigured",
+      "data": {
+        "project": "",
+        "productionUrl": "",
+        "latest": {
+          "state": "unknown",
+          "target": "",
+          "createdAt": "",
+          "url": ""
+        },
+        "builds": [],
+        "performance": []
+      },
+      "note": "Vercel not configured — set VERCEL_TOKEN and VERCEL_PROJECT_ID.",
+      "fetchedAt": "2026-07-17T07:31:25.600Z"
+    },
+    "insights": [],
+    "generatedAt": "2026-07-17T07:31:25.600Z",
+    "noneLive": true
+  }
+}
