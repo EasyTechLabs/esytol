@@ -80,7 +80,7 @@ Which regime is better for you depends on your full deduction profile. Compare b
 
 NPS deductions layer neatly on top of your other retirement instruments:
 
-- **EPF and PPF** fill the ₹1.5 lakh 80C bucket — model them with the [EPF Calculator](/tools/epf-calculator) and [PPF Calculator](/tools/ppf-calculator).
+- **EPF and PPF** fill the ₹1.5 lakh [Section 80C](/learn/section-80c-guide) bucket — model them with the [EPF Calculator](/tools/epf-calculator) and [PPF Calculator](/tools/ppf-calculator).
 - **NPS 80CCD(1B)** adds the exclusive ₹50,000 on top.
 - **Employer NPS (80CCD(2))** adds further, even under the New Regime.
 
@@ -111,5 +111,7 @@ It depends on your slab. In the 30% bracket, the ₹50,000 80CCD(1B) deduction a
 ---
 
 _Model your NPS corpus and pension with the [NPS Calculator](/tools/nps-calculator), then see your tax saving in the [Income Tax Calculator](/tools/income-tax-calculator)._
+
+_Official sources: [Income Tax Department](https://www.incometax.gov.in) — Sections 80CCD(1), 80CCD(1B), 80CCD(2); [PFRDA](https://www.pfrda.org.in) for scheme rules._
 
 _Disclaimer: This article is for general information only and is not tax advice. Tax rules change via the Finance Act; verify against official sources or consult a qualified professional._

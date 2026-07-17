@@ -121,7 +121,7 @@ Paying rent by bank transfer rather than cash creates a clean audit trail and is
 
 The tax you save on HRA is money you can redirect toward your goals. Many people channel it into tax-saving and wealth-building instruments:
 
-- A **[PPF Calculator](/tools/ppf-calculator)** helps you plan long-term, tax-free savings under Section 80C.
+- A **[PPF Calculator](/tools/ppf-calculator)** helps you plan long-term, tax-free savings under [Section 80C](/learn/section-80c-guide).
 - A **[SIP Calculator](/tools/sip-calculator)** projects how monthly mutual-fund investments could grow over time.
 - If you are weighing renting against buying, the **[Home Loan Calculator](/tools/home-loan-calculator)** shows your EMI and total interest, which you can compare against your rent.
 
@@ -150,5 +150,7 @@ Only Delhi, Mumbai, Kolkata, and Chennai qualify for the 50% limit. Everywhere e
 ---
 
 _Ready to see your number? Use the [HRA Calculator](/tools/hra-calculator) to compute your exact exemption, then head to the [Income Tax Calculator](/tools/income-tax-calculator) to see how it changes your overall tax._
+
+_Official sources: [Income Tax Department](https://www.incometax.gov.in) — Section 10(13A), Rule 2A, Section 80GG and Form 12BB requirements._
 
 _Disclaimer: This article is for general information only and does not constitute tax advice. Tax rules change; verify details against official sources or consult a qualified professional._

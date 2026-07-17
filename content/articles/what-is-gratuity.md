@@ -116,4 +116,6 @@ Use the formula (15 × last drawn salary × years ÷ 26 for covered employees), 
 
 _See your exact figure: use the [Gratuity Calculator](/tools/gratuity-calculator), then plan the rest of your retirement with the [EPF](/tools/epf-calculator), [PPF](/tools/ppf-calculator), and [SIP](/tools/sip-calculator) calculators._
 
+_Official sources: the Payment of Gratuity Act, 1972 ([Ministry of Labour & Employment](https://labour.gov.in)); [Income Tax Department](https://www.incometax.gov.in) for the Section 10(10) exemption._
+
 _Disclaimer: This article is for general information only and is not legal, financial, or tax advice. Rules change; verify against official sources or consult a qualified professional._

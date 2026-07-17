@@ -156,4 +156,6 @@ Yes, in genuine cases. See [HRA vs Home Loan Tax Benefits](/learn/hra-vs-home-lo
 
 _Skip the manual maths — the [HRA Calculator](/tools/hra-calculator) runs all three rules for you and highlights the exempt amount. Then use the [Income Tax Calculator](/tools/income-tax-calculator) to see the effect on your total tax._
 
+_Official sources: [Income Tax Department](https://www.incometax.gov.in) — Section 10(13A) and Rule 2A of the Income-tax Rules, 1962._
+
 _Disclaimer: This article is for general information only and is not tax advice. Verify against official sources or consult a qualified professional._

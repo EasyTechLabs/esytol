@@ -57,7 +57,7 @@ A common, sensible approach is not to choose one but to **combine**: EPF as the 
 ## Tax treatment compared
 
 - **EPF:** EEE when conditions are met; interest on employee contributions above ₹2.5 lakh a year is taxable.
-- **PPF:** fully EEE — contributions under 80C, tax-free interest, tax-free maturity.
+- **PPF:** fully EEE — contributions under [Section 80C](/learn/section-80c-guide), tax-free interest, tax-free maturity.
 - **NPS:** deduction under 80C and an extra ₹50,000 under 80CCD(1B); at maturity, part is tax-free but the annuity income is taxable.
 
 Because these deductions live mainly under the Old Tax Regime, check which regime is better for you with the [Income Tax Calculator](/tools/income-tax-calculator). If you also pay rent, the [HRA Calculator](/tools/hra-calculator) covers another major exemption that can tilt the regime decision.
@@ -89,10 +89,12 @@ Yes, and many people do. They serve different roles — EPF (automatic base), PP
 PPF is fully EEE. EPF is EEE with conditions. NPS offers an extra ₹50,000 deduction but has a partly taxable annuity at exit.
 
 **How do I decide the split?**
-Start with EPF (employer match), add PPF for safety, and use NPS or equity SIPs for growth. Use the [EPF](/tools/epf-calculator), [PPF](/tools/ppf-calculator), and [SIP](/tools/sip-calculator) calculators to size each.
+Start with EPF (employer match), add PPF for safety, and use NPS or equity SIPs for growth — the [Complete Guide to Investing](/learn/complete-guide-to-investing-in-india) shows where each fits. Use the [EPF](/tools/epf-calculator), [PPF](/tools/ppf-calculator), and [SIP](/tools/sip-calculator) calculators to size each.
 
 ---
 
 _Compare the numbers side by side: project your [EPF](/tools/epf-calculator), [PPF](/tools/ppf-calculator), and market-linked [SIP](/tools/sip-calculator) outcomes, then check the tax impact with the [Income Tax Calculator](/tools/income-tax-calculator)._
+
+_Official sources: [EPFO](https://www.epfindia.gov.in); [National Savings Institute](https://www.nsiindia.gov.in) (PPF); [PFRDA](https://www.pfrda.org.in) (NPS); [Income Tax Department](https://www.incometax.gov.in) for the tax treatment of each._
 
 _Disclaimer: This article is for general information only and is not financial or tax advice. Verify against official sources or consult a qualified professional._

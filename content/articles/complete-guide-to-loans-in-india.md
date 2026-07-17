@@ -109,7 +109,7 @@ If rates have moved or your credit record has improved since you borrowed, anoth
 A home loan is the only common retail loan with meaningful tax benefits, and they depend on your regime:
 
 - **Section 24(b)** — interest on a self-occupied property, deductible up to **₹2,00,000** a year under the **Old Regime**.
-- **Section 80C** — principal repayment, within the overall **₹1,50,000** limit, alongside EPF, PPF, life insurance and the rest. Stamp duty and registration charges also qualify, but only in the year you pay them.
+- **[Section 80C](/learn/section-80c-guide)** — principal repayment, within the overall **₹1,50,000** limit, alongside EPF, PPF, life insurance and the rest. Stamp duty and registration charges also qualify, but only in the year you pay them.
 - **Let-out property** — interest is deductible without the ₹2 lakh cap, though the loss you can set off against other income in a year is limited, with the balance carried forward.
 
 Under the **New Regime**, the self-occupied interest deduction is not available. Because the New Regime is the default, this quietly changes the maths for a large number of borrowers, and it is the sort of thing worth checking rather than assuming — the [Income Tax Calculator](/tools/income-tax-calculator) computes your tax both ways and tells you which regime is cheaper for your numbers.

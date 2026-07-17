@@ -127,4 +127,6 @@ Low rent shrinks your HRA exemption because of the "rent minus 10% of Basic" rul
 
 _Compare both sides with real numbers: start with the [HRA Calculator](/tools/hra-calculator), estimate ownership costs with the [Home Loan Calculator](/tools/home-loan-calculator), and settle it with the [Income Tax Calculator](/tools/income-tax-calculator)._
 
+_Official sources: [Income Tax Department](https://www.incometax.gov.in) — Sections 10(13A), 24(b) and 80C._
+
 _Disclaimer: This article is for general information only and is not tax or investment advice. Verify against official sources or consult a qualified professional._

@@ -119,4 +119,6 @@ Usually none, if the employer pays the statutory formula amount within ₹20 lak
 
 _Check your eligibility and tax-free amount with the [Gratuity Calculator](/tools/gratuity-calculator), then complete your retirement picture with the [EPF](/tools/epf-calculator), [PPF](/tools/ppf-calculator), and [Income Tax](/tools/income-tax-calculator) calculators._
 
+_Official sources: the Payment of Gratuity Act, 1972 ([Ministry of Labour & Employment](https://labour.gov.in)); [Income Tax Department](https://www.incometax.gov.in) for Section 10(10) limits._
+
 _Disclaimer: This article is for general information only and is not legal or tax advice. Verify against official sources or consult a qualified professional._

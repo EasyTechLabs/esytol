@@ -123,4 +123,6 @@ No. NPS is market-linked; returns vary with the performance of the underlying fu
 
 _Estimate your retirement outcome with the [NPS Calculator](/tools/nps-calculator), then round out your plan with the [EPF](/tools/epf-calculator), [PPF](/tools/ppf-calculator), and [SIP](/tools/sip-calculator) calculators._
 
+_Official sources: [PFRDA](https://www.pfrda.org.in) and [NPS Trust](https://www.npstrust.org.in) — scheme structure, fund managers and rules._
+
 _Disclaimer: This article is for general information only and is not financial or tax advice. NPS returns are market-linked; verify against official PFRDA/NPS Trust sources or consult a qualified professional._

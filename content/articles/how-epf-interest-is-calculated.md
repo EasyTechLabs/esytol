@@ -112,4 +112,6 @@ Yes. The [EPF Calculator](/tools/epf-calculator) defaults to 8.25% but lets you 
 
 _Put the method to work: the [EPF Calculator](/tools/epf-calculator) simulates every month and projects your corpus, then compare options with the [PPF](/tools/ppf-calculator) and [SIP](/tools/sip-calculator) calculators._
 
+_Official sources: [EPFO](https://www.epfindia.gov.in) — annual interest notifications and the monthly running-balance method._
+
 _Disclaimer: This article is for general information only and is not financial advice. Verify against official EPFO sources or consult a qualified professional._

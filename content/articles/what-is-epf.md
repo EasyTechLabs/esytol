@@ -66,7 +66,7 @@ We break down the mechanics — including the exact monthly-balance method EPFO 
 
 EPF is one of the few investments that can enjoy **EEE (exempt-exempt-exempt)** status:
 
-- **Contributions** qualify for deduction under **Section 80C** (up to ₹1.5 lakh a year).
+- **Contributions** qualify for deduction under **[Section 80C](/learn/section-80c-guide)** (up to ₹1.5 lakh a year).
 - **Interest** is generally tax-free.
 - **Maturity** is exempt from tax after five years of continuous service.
 
@@ -117,5 +117,7 @@ Yes, partial advances are allowed for specific needs like housing, medical, educ
 ---
 
 _See your own projection: use the [EPF Calculator](/tools/epf-calculator) to estimate your corpus at retirement, then explore [PPF](/tools/ppf-calculator) and [SIP](/tools/sip-calculator) to round out your plan._
+
+_Official sources: [EPFO](https://www.epfindia.gov.in) — the EPF & MP Act, 1952, contribution and interest rules; [Income Tax Department](https://www.incometax.gov.in) for the EEE treatment and Section 80C._
 
 _Disclaimer: This article is for general information only and is not financial or tax advice. Rules change; verify against official EPFO sources or consult a qualified professional._

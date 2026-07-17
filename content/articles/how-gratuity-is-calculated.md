@@ -118,4 +118,6 @@ Enter your salary, years, months, and coverage into the [Gratuity Calculator](/t
 
 _Run your numbers: the [Gratuity Calculator](/tools/gratuity-calculator) applies the formula, rounding, and cap, then compare your wider plan with the [EPF](/tools/epf-calculator) and [PPF](/tools/ppf-calculator) calculators._
 
+_Official sources: the Payment of Gratuity Act, 1972 ([Ministry of Labour & Employment](https://labour.gov.in)) — the 15/26 formula and rounding rules._
+
 _Disclaimer: This article is for general information only and is not legal or tax advice. Verify against official sources or consult a qualified professional._

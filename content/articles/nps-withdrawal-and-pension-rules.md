@@ -114,4 +114,6 @@ Yes, for specific needs like education, marriage, home purchase, or critical ill
 
 _See your lump sum and monthly pension for any split with the [NPS Calculator](/tools/nps-calculator), then complete your plan with the [EPF](/tools/epf-calculator), [PPF](/tools/ppf-calculator), and [Income Tax](/tools/income-tax-calculator) calculators._
 
+_Official sources: [PFRDA](https://www.pfrda.org.in) — exit and withdrawal regulations; [NPS Trust](https://www.npstrust.org.in); [Income Tax Department](https://www.incometax.gov.in) for taxation of the lump sum and pension._
+
 _Disclaimer: This article is for general information only and is not financial or tax advice. Verify against official PFRDA/NPS Trust sources or consult a qualified professional._
