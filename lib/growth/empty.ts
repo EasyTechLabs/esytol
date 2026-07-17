@@ -40,6 +40,7 @@ export function emptyAnalytics(): AnalyticsData {
     countries: [],
     devices: [],
     conversions: [],
+    events: [],
   };
 }
 

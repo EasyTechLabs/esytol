@@ -126,10 +126,23 @@ export function buildWeeklyReport(ctx: AgentContext, ranked: Recommendation[]): 
   if (strikers.length)
     opportunities.push(`Striking-distance pages are the fastest SEO wins available this week.`);
 
+  const providerStatus = (
+    [
+      ["Search Console", growth.searchConsole],
+      ["Analytics", growth.analytics],
+      ["Clarity", growth.clarity],
+    ] as const
+  ).map(([label, p]) =>
+    p.status === "live"
+      ? `${label}: live`
+      : `${label}: waiting for provider access (${p.status}${p.note ? ` — ${p.note}` : ""})`
+  );
+
   return {
     period: `${iso(new Date(now.getTime() - 6 * 86_400_000))} → ${iso(now)}`,
     generatedAt: now.toISOString(),
     noneLive: growth.noneLive,
+    providerStatus,
     kpis,
     graphs,
     insights,

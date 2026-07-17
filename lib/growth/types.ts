@@ -84,6 +84,13 @@ export interface AnalyticsData {
   devices: BarDatum[];
   /** Future-ready — empty until conversion tracking / revenue is wired. */
   conversions: BarDatum[];
+  /**
+   * GA4 event counts by eventName (28d) — includes the comparison-layer events
+   * (comparison_view, comparison_cta_click) instrumented in REVENUE-001.
+   * Per-comparison breakdown needs a registered GA4 custom dimension (founder
+   * action); until then, totals only — a documented limit, not a fabricated one.
+   */
+  events: BarDatum[];
 }
 
 // ── Microsoft Clarity ─────────────────────────────────────────────────────────

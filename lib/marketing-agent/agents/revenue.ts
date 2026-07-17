@@ -83,15 +83,17 @@ export const revenueAgent: Agent = {
   watches:
     "AdSense · Affiliate · Marketplace · Subscriptions (architecture only — no source wired)",
   run(ctx: AgentContext): Recommendation[] {
+    const out: Recommendation[] = [...comparisonFunnel(ctx)];
+
     const signals = fetchRevenueSignals();
-    if (signals) return []; // future: real revenue analysis lands here
+    if (signals) return out; // future: real revenue analysis lands here
 
     const sources = revenueSources();
-    if (sources.some((s) => s.configured)) return [];
+    if (sources.some((s) => s.configured)) return out;
 
     // Configuration fact, not invented data: nothing is monetised.
     const users = ctx.growth.analytics.data.totals.users;
-    return [
+    out.push(
       buildRecommendation({
         id: "revenue-not-configured",
         agent: "revenue",
@@ -111,10 +113,59 @@ export const revenueAgent: Agent = {
         businessValue: 1,
         deadlineDays: 30,
         now: ctx.now,
-      }),
-    ];
+      })
+    );
+    return out;
   },
 };
+
+/** Minimum views before the funnel ratio means anything. */
+const FUNNEL_MIN_VIEWS = 50;
+/** Below this view→click rate, the comparisons are being read but not acted on. */
+const FUNNEL_LOW_RATE = 0.02;
+
+/**
+ * Comparison funnel (GROWTH-002) — HARD-GATED on live analytics.
+ *
+ * Reads the GA4 event counts instrumented in REVENUE-001. If analytics is not
+ * live, or the events have not accumulated, this produces NOTHING — waiting for
+ * provider access is a state, never a guess.
+ */
+function comparisonFunnel(ctx: AgentContext): Recommendation[] {
+  const analytics = ctx.growth.analytics;
+  if (analytics.status !== "live") return [];
+
+  const count = (name: string) => analytics.data.events.find((e) => e.label === name)?.value ?? 0;
+  const views = count("comparison_view");
+  const clicks = count("comparison_cta_click");
+  if (views < FUNNEL_MIN_VIEWS) return [];
+
+  const rate = views ? clicks / views : 0;
+  if (rate >= FUNNEL_LOW_RATE) return [];
+
+  return [
+    buildRecommendation({
+      id: "revenue-comparison-funnel",
+      agent: "revenue",
+      title: "Comparisons are read but not acted on — review the commercial pages",
+      reason: `${fmt(views)} comparison views produced ${fmt(clicks)} option clicks (${(rate * 100).toFixed(1)}%) in 28 days. Readers engage with the decision frameworks but stop at the options.`,
+      expectedImpact:
+        "Clearer next-step CTAs (or the first real, disclosed partner link) converts existing decision-stage attention — the cheapest revenue improvement available.",
+      effort: "M",
+      confidence: 0.7,
+      owner: "Founder",
+      evidence: [
+        { label: "comparison_view (28d)", value: fmt(views) },
+        { label: "comparison_cta_click (28d)", value: fmt(clicks) },
+        { label: "View→click rate", value: `${(rate * 100).toFixed(1)}%` },
+      ],
+      trafficPotential: 0.5,
+      businessValue: 1,
+      deadlineDays: 21,
+      now: ctx.now,
+    }),
+  ];
+}
 
 function fmt(n: number): string {
   return new Intl.NumberFormat("en-IN").format(Math.round(n));

@@ -145,6 +145,7 @@ export function makeContext(o: ContextOverrides): AgentContext {
       countries: [],
       devices: o.devices ?? [],
       conversions: [],
+      events: [],
     }),
     clarity: wrap({
       sessions: o.claritySessions ?? 100,

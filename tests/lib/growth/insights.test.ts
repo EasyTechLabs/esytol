@@ -23,6 +23,7 @@ function ga(topPages: AnalyticsData["topPages"]): AnalyticsData {
     countries: [],
     devices: [],
     conversions: [],
+    events: [],
   };
 }
 const emptyClarity: ClarityData = {

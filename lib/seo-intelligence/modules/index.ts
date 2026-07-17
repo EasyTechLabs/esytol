@@ -12,6 +12,7 @@ import { internalLinksModule } from "./internalLinks";
 import { serpModule } from "./serp";
 import { clustersModule } from "./clusters";
 import { ctrModule } from "./ctr";
+import { freshnessModule } from "./freshness";
 
 export const SEO_MODULES: SeoModule[] = [
   keywordsModule,
@@ -20,6 +21,7 @@ export const SEO_MODULES: SeoModule[] = [
   serpModule,
   clustersModule,
   ctrModule,
+  freshnessModule,
 ];
 
 export {
@@ -29,6 +31,7 @@ export {
   serpModule,
   clustersModule,
   ctrModule,
+  freshnessModule,
 };
 export { keywordOpportunities } from "./keywords";
 export { linkSuggestions, inboundGraph, outboundLinks } from "./internalLinks";

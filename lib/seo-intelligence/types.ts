@@ -27,7 +27,7 @@ import type { AgentContext, Recommendation, Effort, Priority } from "@/lib/marke
 export type SeoContext = AgentContext;
 
 export type SeoModuleKey =
-  "keywords" | "content-gap" | "internal-links" | "serp" | "clusters" | "ctr";
+  "keywords" | "content-gap" | "internal-links" | "serp" | "clusters" | "ctr" | "freshness";
 
 export interface SeoModule {
   key: SeoModuleKey;

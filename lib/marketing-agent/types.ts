@@ -144,6 +144,11 @@ export interface WeeklyReport {
   period: string;
   generatedAt: string;
   noneLive: boolean;
+  /**
+   * One line per provider: live | unconfigured | error, with its note.
+   * "Waiting for provider access" is a reportable state, never a guessed number.
+   */
+  providerStatus: string[];
   kpis: Metric[];
   /** Series for the report graphs. */
   graphs: { label: string; series: number[]; unit?: string }[];

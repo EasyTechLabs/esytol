@@ -111,13 +111,14 @@ async function runReports(now: Date): Promise<AnalyticsData> {
     headers
   );
 
-  const [sources, countries, devices, totalsJson, trend, returning] = await Promise.all([
+  const [sources, countries, devices, totalsJson, trend, returning, events] = await Promise.all([
     barReport("sessionDefaultChannelGroup"),
     barReport("country", "totalUsers"),
     barReport("deviceCategory", "totalUsers"),
     totalsReport,
     barReport("date", "totalUsers", 28),
     barReport("newVsReturning", "totalUsers"),
+    barReport("eventName", "eventCount", 20),
   ]);
 
   const totalsRow = asArr(asObj(asArr(asObj(totalsJson).rows)[0]).metricValues).map((v) =>
@@ -139,5 +140,6 @@ async function runReports(now: Date): Promise<AnalyticsData> {
     countries,
     devices,
     conversions: [],
+    events,
   };
 }
