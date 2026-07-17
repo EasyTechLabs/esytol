@@ -135,13 +135,18 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                     </li>
                   )
                 )}
-
-                {comparisonsFor(slug).map((comparison) => (
-                  <ComparisonSection key={comparison.id} comparison={comparison} />
-                ))}
               </ul>
             </section>
           )}
+
+          {/* Decision comparisons (REVENUE-001) — their own section so they never
+              depend on the article also carrying methodology sources, and are never
+              nested inside the sources <ul>. */}
+          {comparisonsFor(slug).map((comparison) => (
+            <div key={comparison.id} className="mt-10">
+              <ComparisonSection comparison={comparison} />
+            </div>
+          ))}
 
           <div className="mt-6">
             <FinancialDisclaimer />
