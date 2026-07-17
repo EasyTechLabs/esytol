@@ -1,0 +1,37 @@
+{
+  "url": "https://www.esytol.com",
+  "verdict": "PASS",
+  "score": 100,
+  "checks": [
+    {
+      "name": "site reachable",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 3513ms",
+      "evidence": "200 https://www.esytol.com \u00b7 146986 bytes \u00b7 2026-07-17T10:43:03+00:00"
+    },
+    {
+      "name": "present: id=\"domain-finance\"",
+      "status": "PASS",
+      "message": "as expected in https://www.esytol.com",
+      "evidence": ""
+    },
+    {
+      "name": "absent: open source",
+      "status": "PASS",
+      "message": "as expected in https://www.esytol.com",
+      "evidence": ""
+    },
+    {
+      "name": "path /tools/financial-roadmap",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 2745ms",
+      "evidence": "200 https://www.esytol.com/tools/financial-roadmap \u00b7 80378 bytes \u00b7 2026-07-17T10:43:06+00:00"
+    },
+    {
+      "name": "path /tools/emi-calculator",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 1088ms",
+      "evidence": "200 https://www.esytol.com/tools/emi-calculator \u00b7 58422 bytes \u00b7 2026-07-17T10:43:09+00:00"
+    }
+  ]
+}
