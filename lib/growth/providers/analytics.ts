@@ -1,5 +1,5 @@
 import type { ProviderResult, AnalyticsData, GaPageRow, BarDatum } from "../types";
-import { sampleAnalytics } from "../sample";
+import { emptyAnalytics } from "../empty";
 import { postJson, asObj, asArr, asNum, asStr, errMsg } from "./http";
 import { getGoogleAccessToken, hasGoogleAuth, GA_SCOPE } from "./googleAuth";
 
@@ -8,9 +8,10 @@ import { getGoogleAccessToken, hasGoogleAuth, GA_SCOPE } from "./googleAuth";
  *
  * Live when GA4_PROPERTY_ID is set together with Google credentials — either a
  * Service Account (GOOGLE_SERVICE_ACCOUNT_JSON or GOOGLE_APPLICATION_CREDENTIALS)
- * or a pre-minted GOOGLE_ACCESS_TOKEN. Core totals, top pages, sources, countries
- * and devices are fetched; the users trend and (future-ready) conversions are
- * merged from the sample baseline until wired.
+ * or a pre-minted GOOGLE_ACCESS_TOKEN. Everything shown is fetched (P0-3): totals,
+ * the 28-day users trend, returning users, top pages, sources, countries and
+ * devices. Conversions stay empty until conversion tracking exists — an honest
+ * blank, not a placeholder.
  */
 export function isConfigured(): boolean {
   return Boolean(process.env.GA4_PROPERTY_ID) && hasGoogleAuth();
@@ -20,9 +21,9 @@ export async function fetchAnalytics(now: Date): Promise<ProviderResult<Analytic
   const fetchedAt = now.toISOString();
   if (!isConfigured()) {
     return {
-      status: "sample",
-      data: sampleAnalytics(now),
-      note: "Sample data — set GA4_PROPERTY_ID and provide Google credentials (GOOGLE_SERVICE_ACCOUNT_JSON or GOOGLE_APPLICATION_CREDENTIALS) to load live Analytics data.",
+      status: "unconfigured",
+      data: emptyAnalytics(),
+      note: "Analytics not configured — set GA4_PROPERTY_ID and grant the service account Viewer access to the GA4 property.",
       fetchedAt,
     };
   }
@@ -31,8 +32,8 @@ export async function fetchAnalytics(now: Date): Promise<ProviderResult<Analytic
   } catch (err) {
     return {
       status: "error",
-      data: sampleAnalytics(now),
-      note: `Live Analytics fetch failed (${errMsg(err)}). Showing sample data.`,
+      data: emptyAnalytics(),
+      note: `Live Analytics fetch failed (${errMsg(err)}).`,
       fetchedAt,
     };
   }
@@ -46,10 +47,14 @@ async function runReports(now: Date): Promise<AnalyticsData> {
   const url = `https://analyticsdata.googleapis.com/v1beta/properties/${prop}:runReport`;
   const dateRanges = [{ startDate: "28daysAgo", endDate: "yesterday" }];
 
-  const barReport = async (dimension: string, metric = "sessions"): Promise<BarDatum[]> => {
+  const barReport = async (
+    dimension: string,
+    metric = "sessions",
+    limit = 8
+  ): Promise<BarDatum[]> => {
     const json = await postJson(
       url,
-      { dateRanges, dimensions: [{ name: dimension }], metrics: [{ name: metric }], limit: 8 },
+      { dateRanges, dimensions: [{ name: dimension }], metrics: [{ name: metric }], limit },
       headers
     );
     return asArr(asObj(json).rows).map((r) => {
@@ -90,28 +95,49 @@ async function runReports(now: Date): Promise<AnalyticsData> {
     };
   });
 
-  const [sources, countries, devices] = await Promise.all([
+  // Property-level totals in one report — no summing of top-N rows, no ratios
+  // invented from other metrics.
+  const totalsReport = postJson(
+    url,
+    {
+      dateRanges,
+      metrics: [
+        { name: "totalUsers" },
+        { name: "sessions" },
+        { name: "engagementRate" },
+        { name: "userEngagementDuration" },
+      ],
+    },
+    headers
+  );
+
+  const [sources, countries, devices, totalsJson, trend, returning] = await Promise.all([
     barReport("sessionDefaultChannelGroup"),
     barReport("country", "totalUsers"),
     barReport("deviceCategory", "totalUsers"),
+    totalsReport,
+    barReport("date", "totalUsers", 28),
+    barReport("newVsReturning", "totalUsers"),
   ]);
 
-  const users = topPages.reduce((s, p) => s + p.users, 0);
-  const baseline = sampleAnalytics(now);
+  const totalsRow = asArr(asObj(asArr(asObj(totalsJson).rows)[0]).metricValues).map((v) =>
+    asNum(asObj(v).value)
+  );
+  const [users = 0, sessions = 0, engagementRate = 0, engagementDuration = 0] = totalsRow;
 
   return {
     totals: {
       users,
-      sessions: sources.reduce((s, d) => s + d.value, 0) || Math.round(users * 1.35),
-      engagementRate: baseline.totals.engagementRate,
-      returningUsers: baseline.totals.returningUsers,
-      avgEngagementSec: baseline.totals.avgEngagementSec,
+      sessions,
+      engagementRate: Math.round(engagementRate * 100) / 100,
+      returningUsers: returning.find((r) => r.label === "returning")?.value ?? 0,
+      avgEngagementSec: sessions ? Math.round(engagementDuration / sessions) : 0,
     },
-    usersTrend: baseline.usersTrend,
-    topPages: topPages.length ? topPages : baseline.topPages,
-    sources: sources.length ? sources : baseline.sources,
-    countries: countries.length ? countries : baseline.countries,
-    devices: devices.length ? devices : baseline.devices,
+    usersTrend: [...trend].sort((a, b) => a.label.localeCompare(b.label)).map((r) => r.value),
+    topPages,
+    sources,
+    countries,
+    devices,
     conversions: [],
   };
 }

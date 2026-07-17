@@ -1,12 +1,13 @@
 import type { ProviderResult, VercelData, VercelBuildRow } from "../types";
-import { sampleVercel } from "../sample";
+import { emptyVercel } from "../empty";
 import { getJson, asObj, asArr, asNum, asStr, errMsg } from "./http";
 
 /**
  * Vercel provider (REST API v6 deployments).
  *
  * Live when VERCEL_TOKEN and VERCEL_PROJECT_ID are set. Fetches recent
- * deployments/builds; Core Web Vitals are merged from the sample baseline until a
+ * deployments/builds; Core Web Vitals have no export API on this plan and stay
+ * empty with a note rather than being fabricated —
  * Speed Insights export is wired.
  */
 export function isConfigured(): boolean {
@@ -17,9 +18,9 @@ export async function fetchVercel(now: Date): Promise<ProviderResult<VercelData>
   const fetchedAt = now.toISOString();
   if (!isConfigured()) {
     return {
-      status: "sample",
-      data: sampleVercel(now),
-      note: "Sample data — set VERCEL_TOKEN and VERCEL_PROJECT_ID to load live deployment data.",
+      status: "unconfigured",
+      data: emptyVercel(),
+      note: "Vercel not configured — set VERCEL_TOKEN and VERCEL_PROJECT_ID.",
       fetchedAt,
     };
   }
@@ -28,8 +29,8 @@ export async function fetchVercel(now: Date): Promise<ProviderResult<VercelData>
   } catch (err) {
     return {
       status: "error",
-      data: sampleVercel(now),
-      note: `Live Vercel fetch failed (${errMsg(err)}). Showing sample data.`,
+      data: emptyVercel(),
+      note: `Live Vercel fetch failed (${errMsg(err)}).`,
       fetchedAt,
     };
   }
@@ -58,17 +59,18 @@ async function fetchDeployments(now: Date): Promise<VercelData> {
     };
   });
 
-  const baseline = sampleVercel(now);
   const first = builds[0];
-  const productionUrl = baseline.productionUrl;
+  const productionUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "";
 
   return {
     project,
     productionUrl,
     latest: first
       ? { state: first.state, target: first.target, createdAt: first.createdAt, url: productionUrl }
-      : baseline.latest,
-    builds: builds.length ? builds : baseline.builds,
-    performance: baseline.performance,
+      : emptyVercel().latest,
+    builds,
+    // Core Web Vitals come from Vercel Speed Insights, which has no export API on
+    // this plan — empty is the truth, not a placeholder (P0-3).
+    performance: [],
   };
 }

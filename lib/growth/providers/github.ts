@@ -1,5 +1,5 @@
 import type { ProviderResult, GitHubData, CommitRow, ReleaseRow, DeploymentRow } from "../types";
-import { sampleGitHub } from "../sample";
+import { emptyGitHub } from "../empty";
 import { getJson, asObj, asArr, asStr, errMsg } from "./http";
 
 /**
@@ -19,9 +19,9 @@ export async function fetchGitHub(now: Date): Promise<ProviderResult<GitHubData>
   const fetchedAt = now.toISOString();
   if (!isConfigured()) {
     return {
-      status: "sample",
-      data: sampleGitHub(now),
-      note: "Sample data — set GITHUB_TOKEN (and optionally GITHUB_REPO) to load live GitHub activity.",
+      status: "unconfigured",
+      data: emptyGitHub(),
+      note: "GitHub not configured — set GITHUB_TOKEN and GITHUB_REPO.",
       fetchedAt,
     };
   }
@@ -30,8 +30,8 @@ export async function fetchGitHub(now: Date): Promise<ProviderResult<GitHubData>
   } catch (err) {
     return {
       status: "error",
-      data: sampleGitHub(now),
-      note: `Live GitHub fetch failed (${errMsg(err)}). Showing sample data.`,
+      data: emptyGitHub(),
+      note: `Live GitHub fetch failed (${errMsg(err)}).`,
       fetchedAt,
     };
   }

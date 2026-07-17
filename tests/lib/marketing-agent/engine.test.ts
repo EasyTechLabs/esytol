@@ -176,7 +176,7 @@ describe("weekly report", () => {
 describe("getMarketingReport — live wiring (providers degrade to sample)", () => {
   it("runs end-to-end with no credentials and no network", async () => {
     const r = await getMarketingReport(NOW);
-    expect(r.allSample).toBe(true);
+    expect(r.noneLive).toBe(true);
     expect(r.agents).toHaveLength(7);
     expect(r.recommendations.length).toBeGreaterThan(0);
     expect(r.daily.topPriorities.length).toBeGreaterThan(0);

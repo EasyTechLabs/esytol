@@ -172,11 +172,11 @@ export default async function GrowthDashboardPage() {
           Search Console · Analytics · Clarity · GitHub · Vercel — one place to drive SEO, UX, and
           revenue decisions. Generated {relativeTime(data.generatedAt, now)}.
         </p>
-        {data.allSample && (
+        {data.noneLive && (
           <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-            All providers are showing <strong>sample data</strong>. Set each provider&rsquo;s
-            environment variables (see the Connections section) to load live production data. This
-            page is <strong>noindex</strong>; add authentication before exposing live credentials.
+            <strong>Analytics not configured.</strong> No provider is returning live data, so every
+            metric below is empty — real blanks, never fabricated numbers. Set each provider&rsquo;s
+            environment variables (see the Connections section) to go live.
           </p>
         )}
       </div>
@@ -503,7 +503,7 @@ export default async function GrowthDashboardPage() {
                   <span className="font-medium text-gray-900">{p.label}</span>
                   <span className="ml-auto">
                     <StatusBadge
-                      status={p.planned ? "planned" : p.configured ? "live" : "sample"}
+                      status={p.planned ? "planned" : p.configured ? "live" : "unconfigured"}
                     />
                   </span>
                 </div>

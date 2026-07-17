@@ -69,11 +69,11 @@ export default async function MarketingAgentPage() {
           {daily.headline}
         </p>
 
-        {daily.allSample && (
+        {daily.noneLive && (
           <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-            All providers are on <strong>sample data</strong> — recommendations are structurally
-            real but the numbers are synthetic. Connect credentials (see the Growth Dashboard
-            Connections section) for live decisions.
+            <strong>Analytics not configured</strong> — search and traffic data are absent, so the
+            recommendations below come from the registry and content alone. Connect credentials (see
+            the Growth Dashboard Connections section) for search-driven decisions.
           </p>
         )}
       </div>

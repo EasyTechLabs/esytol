@@ -184,14 +184,16 @@ describe("fetchAnalytics — live path via Service Account", () => {
     expect(res.data.sources[0].label).toBe("Organic Search");
   });
 
-  it("falls back to sample (unchanged) when unconfigured", async () => {
+  it("reports unconfigured with EMPTY data when credentials are absent (P0-3)", async () => {
     const res = await fetchAnalytics(NOW);
-    expect(res.status).toBe("sample");
-    expect(res.note).toMatch(/GOOGLE_SERVICE_ACCOUNT_JSON|GOOGLE_APPLICATION_CREDENTIALS/);
-    expect(res.data.topPages.length).toBeGreaterThan(0);
+    expect(res.status).toBe("unconfigured");
+    expect(res.note).toMatch(/not configured/i);
+    // Honest blank, never fabricated numbers.
+    expect(res.data.topPages).toEqual([]);
+    expect(res.data.totals.users).toBe(0);
   });
 
-  it("falls back to error+sample when the live fetch fails", async () => {
+  it("reports error with EMPTY data when the live fetch fails", async () => {
     process.env.GA4_PROPERTY_ID = "123456789";
     process.env.GOOGLE_SERVICE_ACCOUNT_JSON = JSON.stringify(SA);
     vi.stubGlobal(
@@ -201,6 +203,7 @@ describe("fetchAnalytics — live path via Service Account", () => {
 
     const res = await fetchAnalytics(NOW);
     expect(res.status).toBe("error");
-    expect(res.data.topPages.length).toBeGreaterThan(0); // graceful sample fallback
+    expect(res.data.topPages).toEqual([]); // the error is shown; nothing is invented
+    expect(res.note).toMatch(/failed/);
   });
 });

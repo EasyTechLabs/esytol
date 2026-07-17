@@ -10,8 +10,8 @@ import type { Insight } from "@/lib/growth/types";
 
 describe("growth widgets", () => {
   it("StatusBadge renders the label for each status", () => {
-    render(<StatusBadge status="sample" />);
-    expect(screen.getByText("Sample")).toBeInTheDocument();
+    render(<StatusBadge status="unconfigured" />);
+    expect(screen.getByText("Not configured")).toBeInTheDocument();
   });
 
   it("StatCard shows value, hint and a positive delta", () => {

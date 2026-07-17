@@ -126,7 +126,8 @@ export interface DailyReport {
   date: string;
   generatedAt: string;
   /** True when every provider is unconfigured (sample data). */
-  allSample: boolean;
+  /** True when no analytics provider is live — recommendations rest on registry/content data only. */
+  noneLive: boolean;
   headline: string;
   yesterday: Metric[];
   wins: string[];
@@ -142,7 +143,7 @@ export interface DailyReport {
 export interface WeeklyReport {
   period: string;
   generatedAt: string;
-  allSample: boolean;
+  noneLive: boolean;
   kpis: Metric[];
   /** Series for the report graphs. */
   graphs: { label: string; series: number[]; unit?: string }[];
@@ -165,7 +166,7 @@ export interface AgentRun {
 
 export interface MarketingAgentResult {
   generatedAt: string;
-  allSample: boolean;
+  noneLive: boolean;
   agents: AgentRun[];
   /** Every recommendation, ranked by opportunity score. */
   recommendations: Recommendation[];

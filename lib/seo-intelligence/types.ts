@@ -164,7 +164,8 @@ export interface MonthlySeoReport {
 
 export interface SeoIntelligenceResult {
   generatedAt: string;
-  allSample: boolean;
+  /** True when no analytics provider is live — search-derived figures are absent, not estimated. */
+  noneLive: boolean;
   /** Every SEO recommendation, ranked. */
   recommendations: Recommendation[];
   roadmap: SeoRoadmap;

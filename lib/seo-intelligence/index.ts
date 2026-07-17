@@ -52,7 +52,7 @@ export function analyseSeo(ctx: SeoContext): SeoIntelligenceResult {
 
   return {
     generatedAt: ctx.now.toISOString(),
-    allSample: ctx.growth.allSample,
+    noneLive: ctx.growth.noneLive,
     recommendations: roadmap.tasks,
     roadmap,
     keywords: input.keywords,

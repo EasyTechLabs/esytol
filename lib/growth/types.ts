@@ -7,7 +7,12 @@
  * without changing the widgets.
  */
 
-export type ProviderStatus = "live" | "sample" | "error";
+/**
+ * "unconfigured" replaced "sample" in P0-3: a provider without credentials now
+ * returns EMPTY data and says so, never fabricated numbers. The dashboard's job is
+ * to report reality, and a plausible fake value is worse than an honest blank.
+ */
+export type ProviderStatus = "live" | "unconfigured" | "error";
 
 export interface ProviderResult<T> {
   status: ProviderStatus;
@@ -174,6 +179,7 @@ export interface GrowthData {
   vercel: ProviderResult<VercelData>;
   insights: Insight[];
   generatedAt: string;
-  /** True when every provider is serving sample (unconnected) data. */
-  allSample: boolean;
+
+  /** True when no provider returned live data — the dashboard is effectively blind. */
+  noneLive: boolean;
 }

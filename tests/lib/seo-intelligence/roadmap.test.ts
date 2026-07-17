@@ -168,7 +168,7 @@ describe("SEO reports", () => {
   });
 
   it("carries the sample-data flag through from the providers", () => {
-    expect(analyseSeo(richContext()).allSample).toBe(true);
+    expect(analyseSeo(richContext()).noneLive).toBe(true);
   });
 
   it("exposes cluster health on the weekly and monthly reports", () => {

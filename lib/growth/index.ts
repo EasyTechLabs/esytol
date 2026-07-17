@@ -1,7 +1,7 @@
 /**
- * Growth Dashboard aggregator. Runs every provider in parallel (each degrades to
- * sample data when unconfigured), then derives cross-provider insights. A single
- * `getGrowthData()` call powers the whole /admin/growth page.
+ * Growth Dashboard aggregator. Runs every provider in parallel (each returns an
+ * honest empty dataset when unconfigured — never fabricated numbers), then derives
+ * cross-provider insights. A single `getGrowthData()` call powers /admin/growth.
  */
 
 import {
@@ -25,8 +25,8 @@ export async function getGrowthData(now: Date = new Date()): Promise<GrowthData>
 
   const insights = computeInsights(searchConsole.data, analytics.data, clarity.data);
 
-  const allSample = [searchConsole, analytics, clarity, github, vercel].every(
-    (p) => p.status === "sample"
+  const noneLive = [searchConsole, analytics, clarity, github, vercel].every(
+    (p) => p.status !== "live"
   );
 
   return {
@@ -37,7 +37,7 @@ export async function getGrowthData(now: Date = new Date()): Promise<GrowthData>
     vercel,
     insights,
     generatedAt: now.toISOString(),
-    allSample,
+    noneLive,
   };
 }
 

@@ -38,7 +38,7 @@ export function analyse(ctx: AgentContext): MarketingAgentResult {
   const { runs, ranked } = runAgents(ctx);
   return {
     generatedAt: ctx.now.toISOString(),
-    allSample: ctx.growth.allSample,
+    noneLive: ctx.growth.noneLive,
     agents: runs,
     recommendations: ranked,
     daily: buildDailyReport(ctx, runs, ranked),

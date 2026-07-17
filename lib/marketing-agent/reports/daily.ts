@@ -138,7 +138,7 @@ export function buildDailyReport(
   return {
     date: iso(now),
     generatedAt: now.toISOString(),
-    allSample: growth.allSample,
+    noneLive: growth.noneLive,
     headline,
     yesterday,
     wins,

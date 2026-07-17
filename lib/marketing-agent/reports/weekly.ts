@@ -106,8 +106,10 @@ export function buildWeeklyReport(ctx: AgentContext, ranked: Recommendation[]): 
   const losingPages = gsc.topPages.filter((p) => p.positionDelta >= 1);
   if (losingPages.length)
     risks.push(`${losingPages.length} page${losingPages.length > 1 ? "s" : ""} losing rankings.`);
-  if (growth.allSample)
-    risks.push("All providers are on sample data — connect live credentials for real decisions.");
+  if (growth.noneLive)
+    risks.push(
+      "No analytics provider is live — search and traffic figures are absent, not estimated."
+    );
 
   // ── Opportunities: the ranked upside, in money-shaped language ──
   const opportunities: string[] = [];
@@ -127,7 +129,7 @@ export function buildWeeklyReport(ctx: AgentContext, ranked: Recommendation[]): 
   return {
     period: `${iso(new Date(now.getTime() - 6 * 86_400_000))} → ${iso(now)}`,
     generatedAt: now.toISOString(),
-    allSample: growth.allSample,
+    noneLive: growth.noneLive,
     kpis,
     graphs,
     insights,

@@ -88,7 +88,7 @@ export const article = (over: Partial<Article> = {}): Article => {
 };
 
 function wrap<T>(data: T): ProviderResult<T> {
-  return { status: "sample", data, fetchedAt: "2026-07-16T08:00:00.000Z" };
+  return { status: "unconfigured", data, fetchedAt: "2026-07-16T08:00:00.000Z" };
 }
 
 export interface ContextOverrides {
@@ -178,7 +178,7 @@ export function makeContext(o: ContextOverrides): AgentContext {
     }),
     insights: [],
     generatedAt: o.now.toISOString(),
-    allSample: true,
+    noneLive: true,
   };
 
   return {

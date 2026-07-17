@@ -16,6 +16,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 
 export const GA_SCOPE = "https://www.googleapis.com/auth/analytics.readonly";
+export const WEBMASTERS_SCOPE = "https://www.googleapis.com/auth/webmasters.readonly";
 
 interface ServiceAccount {
   client_email: string;
@@ -91,7 +92,7 @@ export function resetTokenCache(): void {
 /**
  * Returns a Google OAuth access token for the given scope, or null when no
  * credentials are configured. Throws only on an actual auth failure (which the
- * calling provider catches and turns into a graceful sample fallback).
+ * calling provider catches and reports as an honest error state).
  */
 export async function getGoogleAccessToken(
   scope: string,
