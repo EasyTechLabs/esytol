@@ -1,10 +1,10 @@
 {
   "summary": {
-    "takenAt": "2026-07-17T07:31:25.600Z",
+    "takenAt": "2026-07-17T09:01:52.277Z",
     "providers": {
       "searchConsole": {
-        "status": "error",
-        "note": "Live Search Console fetch failed (403 Forbidden)."
+        "status": "unconfigured",
+        "note": "Search Console not configured — set GSC_SITE_URL and grant the service account access to the property."
       },
       "analytics": {
         "status": "unconfigured",
@@ -27,7 +27,7 @@
   },
   "data": {
     "searchConsole": {
-      "status": "error",
+      "status": "unconfigured",
       "data": {
         "totals": {
           "clicks": 0,
@@ -53,8 +53,8 @@
           "status": "unknown"
         }
       },
-      "note": "Live Search Console fetch failed (403 Forbidden).",
-      "fetchedAt": "2026-07-17T07:31:25.600Z"
+      "note": "Search Console not configured — set GSC_SITE_URL and grant the service account access to the property.",
+      "fetchedAt": "2026-07-17T09:01:52.277Z"
     },
     "analytics": {
       "status": "unconfigured",
@@ -71,10 +71,11 @@
         "sources": [],
         "countries": [],
         "devices": [],
-        "conversions": []
+        "conversions": [],
+        "events": []
       },
       "note": "Analytics not configured — set GA4_PROPERTY_ID and grant the service account Viewer access to the GA4 property.",
-      "fetchedAt": "2026-07-17T07:31:25.600Z"
+      "fetchedAt": "2026-07-17T09:01:52.277Z"
     },
     "clarity": {
       "status": "unconfigured",
@@ -90,7 +91,7 @@
         "topPagesByActivity": []
       },
       "note": "Clarity not configured — generate an API token in Clarity → Settings → Data Export and set CLARITY_API_TOKEN.",
-      "fetchedAt": "2026-07-17T07:31:25.600Z"
+      "fetchedAt": "2026-07-17T09:01:52.277Z"
     },
     "github": {
       "status": "unconfigured",
@@ -102,7 +103,7 @@
         "deployments": []
       },
       "note": "GitHub not configured — set GITHUB_TOKEN and GITHUB_REPO.",
-      "fetchedAt": "2026-07-17T07:31:25.600Z"
+      "fetchedAt": "2026-07-17T09:01:52.277Z"
     },
     "vercel": {
       "status": "unconfigured",
@@ -119,10 +120,10 @@
         "performance": []
       },
       "note": "Vercel not configured — set VERCEL_TOKEN and VERCEL_PROJECT_ID.",
-      "fetchedAt": "2026-07-17T07:31:25.600Z"
+      "fetchedAt": "2026-07-17T09:01:52.277Z"
     },
     "insights": [],
-    "generatedAt": "2026-07-17T07:31:25.600Z",
+    "generatedAt": "2026-07-17T09:01:52.277Z",
     "noneLive": true
   }
 }

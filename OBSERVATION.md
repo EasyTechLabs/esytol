@@ -67,3 +67,62 @@ Ranked by what is knowable today. **Items marked ⏳ cannot be ranked until the 
 | 9   | ⏳ Rage/dead-click UX fixes                             | **awaiting Clarity**                                                        | unknown                                                                                 |
 
 Day-30 output: this table re-ranked with real numbers, one page each for the top 5, and nothing optimized until then.
+
+---
+
+# OPERATION-001 — The 90-Day Operating Calendar
+
+## Every Monday (~15 minutes)
+
+```
+npx tsx scripts/weekly.mjs        # Executive Growth Report -> .forge/reports/
+npx tsx scripts/observe.mjs       # provider snapshot        -> .forge/observations/
+forge execution production verify --url https://www.esytol.com -e 'id="domain-finance"' -x "open source"
+forge doctor --repo esytol        # HEAD deploy status + production age
+```
+
+Commit the report and snapshot. The weekly script exits 1 while all providers are
+blind — that exit code is the week's headline until Gate 0 opens.
+
+## Monthly (first Monday)
+
+Diff the four weekly reports: impressions, clicks, CTR, position, comparison
+views/CTA clicks, returning visitors, top/worst pages. Re-rank the backlog from
+evidence. Roadmap changes happen here and only here.
+
+## Content rule
+
+No speculative articles. A new article requires either search-data demand (GSC
+queries we rank 11+ for with real impressions) or explicit user demand. The
+freshness module governs updates to existing articles.
+
+## Optimization rule
+
+Touch only: top-10 landing pages, top-10 opportunity pages (engine-ranked), top-10
+comparison pages — all three lists require live data. Until Gate 0: optimization
+is frozen (there is nothing honest to optimize against).
+
+## Revenue: the ONE affiliate launch (runbook)
+
+The plumbing has been ready since REVENUE-001. The launch is one founder action
+plus one small PR:
+
+1. **Founder:** choose ONE program matched to our strongest decision surface —
+   recommended order: credit-score/loan marketplace, direct-MF platform,
+   tax-filing software. Register, obtain the tracked link and the payout terms.
+2. **Code (10 minutes):** add the partner as ONE option `link` in
+   `content/comparisons.ts` with `sponsored: true` — the UI renders the Sponsored
+   tag, `rel="sponsored"`, and the disclosure automatically. **In the same commit**,
+   update the guard test in `tests/content/comparisons.test.ts` that currently
+   forbids all affiliate links (it exists precisely so this step is deliberate).
+   Update the comparison's disclosure text to name the partnership.
+3. **Measure:** `comparison_cta_click{affiliate:"yes"}` is already instrumented;
+   partner-side conversions come from the program dashboard weekly.
+4. **Rule:** ranking never changes for payment; the partner joins as an option,
+   not a winner.
+
+## Day-90 Growth Report
+
+Assembled from the 12–13 weekly reports: traffic, rankings, revenue, user
+behaviour, lessons learned, next-quarter roadmap. Every number cited to a weekly
+snapshot.
