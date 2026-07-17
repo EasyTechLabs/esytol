@@ -34,8 +34,11 @@ mirrors the CI pipeline in `.github/workflows/ci.yml`.
 
 ## 2. Environment Variables
 
-All environment variables are **public** (`NEXT_PUBLIC_*`) — there are **no
-secrets**. A template lives in [`.env.example`](.env.example).
+Public configuration uses `NEXT_PUBLIC_*` variables. **Server-side secrets exist
+since GROWTH-010/P0-2** — the Growth-Dashboard provider credentials and the
+`ADMIN_USER`/`ADMIN_PASSWORD` pair that gates `/admin` (fail-closed: while unset,
+`/admin` returns 401 for everyone). Set secrets only in the deployment
+environment; a template lives in [`.env.example`](.env.example).
 
 | Variable                 | Required        | Default (if unset)           | Purpose                                                                                                                                   |
 | ------------------------ | --------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
