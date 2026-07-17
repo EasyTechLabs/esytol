@@ -27,20 +27,27 @@ describe("Domains", () => {
     expect(total).toBe(getLiveTools().length);
   });
 
-  it("surfaces Finance and Everyday today", () => {
+  it("surfaces Finance, Everyday and Developer today", () => {
     const names = getLiveDomains().map((d) => d.name);
     expect(names).toContain("Finance");
     expect(names).toContain("Everyday");
+    // PLATFORM-003 made Developer the platform's second major category.
+    expect(names).toContain("Developer");
   });
 
   it("ranks Finance first — it is the strongest category", () => {
     expect(getLiveDomains()[0].name).toBe("Finance");
   });
 
-  it("leaves the format taxonomy untouched", () => {
-    // Domains are a view, not a migration. If this fails, someone retagged tools and
-    // the E-E-A-T trust surface (gated on category === "calculator") is now missing.
-    expect(getLiveTools().every((t) => t.category === "calculator")).toBe(true);
+  it("keeps every Finance tool a calculator (protects the E-E-A-T trust surface)", () => {
+    // Domains are a view, not a migration. The finance trust surface is gated on
+    // category === "calculator"; if a finance tool ever loses that category it
+    // silently loses methodology, sources, reviewer and disclaimer. Developer
+    // tools (PLATFORM-003) intentionally carry other categories and their own
+    // trust surface, so the invariant is scoped to the Finance domain.
+    const financeTools = toolsInDomain(DOMAINS.find((d) => d.slug === "finance")!);
+    expect(financeTools.length).toBeGreaterThan(0);
+    expect(financeTools.every((t) => t.category === "calculator")).toBe(true);
   });
 
   it("keeps the Age Calculator out of Finance", () => {

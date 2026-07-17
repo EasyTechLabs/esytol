@@ -14,9 +14,7 @@ import sitemap from "@/app/sitemap";
 
 // Tools that are registered/listed but not yet implemented.
 const COMING_SOON_SLUGS = [
-  "json-formatter",
-  "base64-encoder",
-  "url-encoder",
+  // json-formatter, base64-encoder and url-encoder went live in PLATFORM-003.
   "word-counter",
   "case-converter",
   "lorem-ipsum",
@@ -45,6 +43,10 @@ const LIVE_SLUGS = [
   "age-calculator",
   "financial-roadmap",
   "financial-dashboard",
+  // Developer category (PLATFORM-003) — the platform's second first-class category.
+  "json-formatter",
+  "base64-encoder",
+  "url-encoder",
 ];
 
 describe("tool status — placeholder handling", () => {
@@ -91,9 +93,12 @@ describe("live-only listing surfaces", () => {
     for (const cat of live) {
       expect(liveToolCategories.has(cat.slug)).toBe(true);
     }
-    // Today, only the calculator category is live.
-    expect(live.map((c) => c.slug)).toContain("calculator");
-    expect(live.every((c) => c.slug === "calculator")).toBe(true);
+    // Finance (calculator) remains live, and PLATFORM-003 added the Developer
+    // category — the platform now surfaces more than one live format category.
+    const slugs = live.map((c) => c.slug);
+    expect(slugs).toContain("calculator");
+    expect(slugs).toContain("developer"); // json-formatter
+    expect(slugs).toContain("encoder"); // base64 + url
   });
 
   it("featured / popular / new getters never return coming-soon tools", () => {
@@ -103,10 +108,11 @@ describe("live-only listing surfaces", () => {
     }
   });
 
-  it("Recently Added (new) surfaces real live calculators", () => {
+  it("Recently Added (new) surfaces real live tools", () => {
     const newTools = getNewTools();
     expect(newTools.length).toBeGreaterThan(0);
-    expect(newTools.every((t) => t.category === "calculator")).toBe(true);
+    // Live only — across any category now that Developer is live (PLATFORM-003).
+    expect(newTools.every((t) => isToolLive(t))).toBe(true);
   });
 });
 

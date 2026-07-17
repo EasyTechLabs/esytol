@@ -5,8 +5,10 @@ import { ToolContainer } from "./ToolContainer";
 import { ToolSidebar } from "./ToolSidebar";
 import { FAQSection } from "./FAQSection";
 import { CalculatorTrust } from "./CalculatorTrust";
+import { DeveloperTrust } from "./DeveloperTrust";
 import { RecentToolTracker } from "./RecentToolTracker";
 import { ToolIntelligence } from "./ToolIntelligence";
+import { domainForTool } from "@/registry/domains";
 
 interface ToolLayoutProps {
   tool: Tool;
@@ -14,7 +16,11 @@ interface ToolLayoutProps {
 }
 
 export function ToolLayout({ tool, children }: ToolLayoutProps) {
+  // `category === "calculator"` gates the finance E-E-A-T surface (unchanged).
+  // Developer tools carry their own category (developer/encoder/…) and get the
+  // developer trust surface instead — one additive branch, no fork.
   const isCalculator = tool.category === "calculator";
+  const isDeveloper = domainForTool(tool)?.slug === "developer";
 
   return (
     <div className="container-page section-gap">
@@ -26,6 +32,7 @@ export function ToolLayout({ tool, children }: ToolLayoutProps) {
           <ToolContainer>{children}</ToolContainer>
           {isCalculator && <ToolIntelligence slug={tool.slug} />}
           {isCalculator && <CalculatorTrust tool={tool} />}
+          {isDeveloper && <DeveloperTrust tool={tool} />}
           {tool.faq && tool.faq.length > 0 && <FAQSection items={tool.faq} />}
         </main>
 
