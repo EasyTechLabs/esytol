@@ -1,0 +1,73 @@
+{
+  "url": "https://www.esytol.com",
+  "verdict": "PASS",
+  "score": 100,
+  "checks": [
+    {
+      "name": "site reachable",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 2067ms",
+      "evidence": "200 https://www.esytol.com \u00b7 144055 bytes \u00b7 2026-07-17T06:11:44+00:00"
+    },
+    {
+      "name": "present: id=\"domain-finance\"",
+      "status": "PASS",
+      "message": "as expected in https://www.esytol.com",
+      "evidence": ""
+    },
+    {
+      "name": "absent: open source",
+      "status": "PASS",
+      "message": "as expected in https://www.esytol.com",
+      "evidence": ""
+    },
+    {
+      "name": "path /learn/section-80c-guide",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 1169ms",
+      "evidence": "200 https://www.esytol.com/learn/section-80c-guide \u00b7 96844 bytes \u00b7 2026-07-17T06:11:46+00:00"
+    },
+    {
+      "name": "path /learn/capital-gains-tax-guide",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 1380ms",
+      "evidence": "200 https://www.esytol.com/learn/capital-gains-tax-guide \u00b7 91063 bytes \u00b7 2026-07-17T06:11:47+00:00"
+    },
+    {
+      "name": "path /learn/tds-explained",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 970ms",
+      "evidence": "200 https://www.esytol.com/learn/tds-explained \u00b7 88307 bytes \u00b7 2026-07-17T06:11:49+00:00"
+    },
+    {
+      "name": "path /learn/advance-tax-guide",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 1129ms",
+      "evidence": "200 https://www.esytol.com/learn/advance-tax-guide \u00b7 84979 bytes \u00b7 2026-07-17T06:11:50+00:00"
+    },
+    {
+      "name": "path /learn/complete-guide-to-investing-in-india",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 1056ms",
+      "evidence": "200 https://www.esytol.com/learn/complete-guide-to-investing-in-india \u00b7 113168 bytes \u00b7 2026-07-17T06:11:51+00:00"
+    },
+    {
+      "name": "path /learn/mutual-funds-elss-etf-guide",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 790ms",
+      "evidence": "200 https://www.esytol.com/learn/mutual-funds-elss-etf-guide \u00b7 97671 bytes \u00b7 2026-07-17T06:11:52+00:00"
+    },
+    {
+      "name": "path /learn/sip-vs-lumpsum-vs-swp",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 813ms",
+      "evidence": "200 https://www.esytol.com/learn/sip-vs-lumpsum-vs-swp \u00b7 90971 bytes \u00b7 2026-07-17T06:11:53+00:00"
+    },
+    {
+      "name": "path /learn/fd-vs-rd-vs-ppf",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 912ms",
+      "evidence": "200 https://www.esytol.com/learn/fd-vs-rd-vs-ppf \u00b7 94665 bytes \u00b7 2026-07-17T06:11:53+00:00"
+    }
+  ]
+}
