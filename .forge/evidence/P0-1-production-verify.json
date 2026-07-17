@@ -1,0 +1,37 @@
+{
+  "url": "https://www.esytol.com",
+  "verdict": "FAIL",
+  "score": 20,
+  "checks": [
+    {
+      "name": "site reachable",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 433ms",
+      "evidence": "200 https://www.esytol.com \u00b7 122979 bytes \u00b7 2026-07-17T03:32:24+00:00"
+    },
+    {
+      "name": "present: id=\"domain-finance\"",
+      "status": "FAIL",
+      "message": "expected text not found in the live response",
+      "evidence": ""
+    },
+    {
+      "name": "absent: open source",
+      "status": "FAIL",
+      "message": "text that should have been removed is still live",
+      "evidence": ""
+    },
+    {
+      "name": "path /learn/complete-guide-to-loans-in-india",
+      "status": "FAIL",
+      "message": "HTTP 404",
+      "evidence": "404 https://www.esytol.com/learn/complete-guide-to-loans-in-india (HTTP 404) \u00b7 2026-07-17T03:32:25+00:00"
+    },
+    {
+      "name": "path /admin/marketing",
+      "status": "FAIL",
+      "message": "HTTP 404",
+      "evidence": "404 https://www.esytol.com/admin/marketing (HTTP 404) \u00b7 2026-07-17T03:32:25+00:00"
+    }
+  ]
+}
