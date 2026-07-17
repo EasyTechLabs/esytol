@@ -1,0 +1,31 @@
+{
+  "url": "https://www.esytol.com",
+  "verdict": "PASS",
+  "score": 100,
+  "checks": [
+    {
+      "name": "site reachable",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 504ms",
+      "evidence": "200 https://www.esytol.com \u00b7 149882 bytes \u00b7 2026-07-17T16:47:40+00:00"
+    },
+    {
+      "name": "present: Financial Dashboard",
+      "status": "PASS",
+      "message": "as expected in https://www.esytol.com",
+      "evidence": ""
+    },
+    {
+      "name": "path /tools/financial-dashboard",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 413ms",
+      "evidence": "200 https://www.esytol.com/tools/financial-dashboard \u00b7 68185 bytes \u00b7 2026-07-17T16:47:41+00:00"
+    },
+    {
+      "name": "path /tools/financial-roadmap",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 266ms",
+      "evidence": "200 https://www.esytol.com/tools/financial-roadmap \u00b7 81023 bytes \u00b7 2026-07-17T16:47:41+00:00"
+    }
+  ]
+}
