@@ -5,6 +5,8 @@ import { Breadcrumb } from "@/features/tool/Breadcrumb";
 import { FinancialDisclaimer } from "@/features/tool/FinancialDisclaimer";
 import { Markdown } from "@/features/learn/Markdown";
 import { ArticleCard } from "@/features/learn/ArticleCard";
+import { ComparisonSection } from "@/features/learn/ComparisonSection";
+import { comparisonsFor } from "@/content/comparisons";
 import { buildArticleMetadata, buildArticleSchemas } from "@/seo/learn-seo";
 import {
   getArticleBySlug,
@@ -133,6 +135,10 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                     </li>
                   )
                 )}
+
+                {comparisonsFor(slug).map((comparison) => (
+                  <ComparisonSection key={comparison.id} comparison={comparison} />
+                ))}
               </ul>
             </section>
           )}
