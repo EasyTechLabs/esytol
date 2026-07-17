@@ -1,0 +1,37 @@
+{
+  "url": "https://www.esytol.com",
+  "verdict": "PASS",
+  "score": 100,
+  "checks": [
+    {
+      "name": "site reachable",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 1614ms",
+      "evidence": "200 https://www.esytol.com \u00b7 149882 bytes \u00b7 2026-07-17T19:24:03+00:00"
+    },
+    {
+      "name": "path /learn/home-loan-vs-personal-loan",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 906ms",
+      "evidence": "200 https://www.esytol.com/learn/home-loan-vs-personal-loan \u00b7 110371 bytes \u00b7 2026-07-17T19:24:05+00:00"
+    },
+    {
+      "name": "path /learn/fd-vs-rd-vs-ppf",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 1022ms",
+      "evidence": "200 https://www.esytol.com/learn/fd-vs-rd-vs-ppf \u00b7 103862 bytes \u00b7 2026-07-17T19:24:06+00:00"
+    },
+    {
+      "name": "path /learn/credit-score-and-loan-eligibility",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 1029ms",
+      "evidence": "200 https://www.esytol.com/learn/credit-score-and-loan-eligibility \u00b7 102149 bytes \u00b7 2026-07-17T19:24:07+00:00"
+    },
+    {
+      "name": "path /tools",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 974ms",
+      "evidence": "200 https://www.esytol.com/tools \u00b7 75714 bytes \u00b7 2026-07-17T19:24:08+00:00"
+    }
+  ]
+}
