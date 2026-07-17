@@ -1280,6 +1280,68 @@ export const toolRegistry: Tool[] = [
 
   // ─── Everyday Utilities ────────────────────────────────────────────────────
   {
+    id: "financial-roadmap",
+    name: "Financial Roadmap",
+    slug: "financial-roadmap",
+    isNew: true,
+    description:
+      "Turn your financial situation into a step-by-step action plan: a Financial Health Score across five pillars, and the canonical eight-step sequence — emergency fund, insurance, debt, tax, investing, retirement, wealth — with gaps computed from your own numbers. Deterministic, private, and product-free.",
+    category: "calculator",
+    tags: ["finance", "planning", "roadmap", "health score", "india", "calculator"],
+    keywords: [
+      "financial roadmap",
+      "financial health score",
+      "financial planning india",
+      "personal finance checklist",
+      "money action plan",
+      "financial plan calculator",
+    ],
+    icon: "🗺️",
+    url: "/tools/financial-roadmap",
+    version: "1.0.0",
+    lastUpdated: "Jul 2026",
+    relatedTools: [
+      "income-tax-calculator",
+      "sip-calculator",
+      "emi-calculator",
+      "ppf-calculator",
+      "nps-calculator",
+      "fd-calculator",
+    ],
+    faq: [
+      {
+        question: "How is the Financial Health Score calculated?",
+        answer:
+          "Five weighted pillars: emergency fund (25) measured in months of your expenses, insurance protection (25), debt health (20), savings rate (15) and retirement readiness (15). Every input stays in your browser and the same inputs always produce the same score.",
+      },
+      {
+        question: "Why does the roadmap order the steps this way?",
+        answer:
+          "Each step protects the ones after it. An emergency fund stops a shock from destroying your investments; insurance stops one event from destroying the emergency fund; clearing high-interest debt is a guaranteed return no investment matches. Only then does growth become safe to pursue.",
+      },
+      {
+        question: "Does this recommend funds or products?",
+        answer:
+          "Never. The roadmap names categories of action (term insurance, SIP investing, tax-regime check) and links to our calculators and guides. It contains no product names, no fund names and no affiliate placements.",
+      },
+      {
+        question: "What do the target amounts mean?",
+        answer:
+          "They are computed from your own inputs using declared planning heuristics: 6 months of your expenses for the emergency fund, roughly 10 times annual income for term cover, a 20% savings rate, and an age-based retirement ladder. Every heuristic is listed in the methodology below.",
+      },
+      {
+        question: "Why is the tax step never marked done?",
+        answer:
+          "Because the regime choice is a yearly decision that repays checking every year — the calculator computes both regimes on your real numbers in minutes.",
+      },
+      {
+        question: "Is my financial data stored anywhere?",
+        answer:
+          "No. Everything is computed in your browser; nothing is transmitted, stored or logged. Close the tab and it is gone.",
+      },
+    ],
+  },
+  {
     id: "age-calculator",
     name: "Age Calculator",
     slug: "age-calculator",

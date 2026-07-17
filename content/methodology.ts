@@ -297,6 +297,33 @@ export const methodology: Record<string, Methodology> = {
     ],
     reviewedBy: REVIEWER,
   },
+  "financial-roadmap": {
+    formula:
+      "Health Score = Σ(pillar score × weight) — Emergency 25 · Protection 25 · Debt 20 · Savings 15 · Retirement 15 · Actions follow the fixed sequence: emergency fund → health cover → term life → high-interest debt → tax → investing → retirement → wealth",
+    method:
+      "Each pillar is scored 0–1 from your inputs and weighted to a 0–100 score. Emergency: months of expenses saved vs a 6-month target. Protection: health cover vs a ₹5-lakh floor, and (only when someone depends on your income) term cover vs ≈10× annual income. Debt: EMIs vs a 40%-of-income ceiling, and any high-interest balance zeroes half the pillar. Savings: monthly investing vs a 20%-of-income benchmark. Retirement: corpus vs an age-band ladder (≈1× annual income by 30, 3× by 40, 6× by 50, 8× by 60). Each roadmap step is marked done, pending, or not-applicable from the same inputs; the first pending step is where you start, and every gap amount is arithmetic on your own numbers.",
+    sources: [
+      { label: "RBI — household finance guidance", url: "https://www.rbi.org.in" },
+      { label: "IRDAI — insurance basics", url: "https://www.irdai.gov.in" },
+      { label: "Income Tax Department (regime comparison)", url: "https://www.incometax.gov.in" },
+    ],
+    assumptions: [
+      "Emergency-fund target: 6 months of stated monthly expenses (3 months treated as the working minimum)",
+      "Term-cover heuristic: ≈10× annual income, applicable only when a partner or dependants rely on the income",
+      "Health-cover floor: ₹5 lakh per household",
+      "Healthy savings-rate benchmark: 20% of take-home income",
+      "EMI ceiling: 40% of take-home income",
+      "Retirement ladder (corpus vs annual income): 1× by 30 · 3× by 40 · 6× by 50 · 8× by 60 — a widely used planning heuristic, not a regulation",
+      "Timelines estimate the effort of completing each step, never market outcomes",
+    ],
+    limitations: [
+      "A planning aid, not financial advice — it cannot see income stability, health history, family obligations or local costs",
+      "Heuristics are population-level rules of thumb; a fee-only SEBI-registered adviser can calibrate them to you",
+      "No return projections are made anywhere; growth outcomes belong to the individual calculators where you set the assumptions",
+      "Recommends categories of action only — never products, funds, insurers or platforms",
+    ],
+    reviewedBy: REVIEWER,
+  },
   "age-calculator": {
     formula:
       "Age = whole months between the dates (month-end clamped) → years & months, then residual days · Totals derive from the exact calendar day count (leap-aware)",
