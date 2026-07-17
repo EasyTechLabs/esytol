@@ -1,5 +1,8 @@
 "use client";
 
+import { CalculationSync } from "@/features/tool/CalculationSync";
+import type { FinanceEvent } from "@/lib/financeEvents";
+
 import { useState, useMemo, useCallback } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -55,6 +58,19 @@ export function EMICalculator() {
     if (!isValid) return null;
     return generateEMISchedule({ principal: numAmount, annualRate: numRate, months });
   }, [isValid, numAmount, numRate, months]);
+
+  const financeEvent = useMemo<FinanceEvent | null>(() => {
+    if (!scheduleResult) return null;
+    return {
+      type: "LoanCalculated",
+      slug: "emi-calculator",
+      name: "EMI Calculator",
+      emi: scheduleResult.summary.monthlyEMI,
+      principal: numAmount,
+      annualRate: numRate,
+      months,
+    };
+  }, [scheduleResult, numAmount, numRate, months]);
 
   const schedule = scheduleResult?.displaySchedule ?? [];
 
@@ -266,6 +282,8 @@ export function EMICalculator() {
           </div>
         </section>
       )}
+
+      <CalculationSync event={financeEvent} />
 
       {/* ── Charts ─────────────────────────────────────────────────────────── */}
       {scheduleResult && (

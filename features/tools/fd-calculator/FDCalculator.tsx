@@ -1,5 +1,8 @@
 "use client";
 
+import { CalculationSync } from "@/features/tool/CalculationSync";
+import type { FinanceEvent } from "@/lib/financeEvents";
+
 import { useState, useMemo, useCallback } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -74,6 +77,18 @@ export function FDCalculator() {
     if (!isValid) return null;
     return calculateFD({ principal: numPrincipal, annualRate: numRate, months, frequency });
   }, [isValid, numPrincipal, numRate, months, frequency]);
+
+  const financeEvent = useMemo<FinanceEvent | null>(() => {
+    if (!result) return null;
+    return {
+      type: "GrowthProjected",
+      slug: "fd-calculator",
+      name: "FD Calculator",
+      invested: result.summary.principal,
+      maturityValue: result.summary.maturityAmount,
+      months,
+    };
+  }, [result, months]);
 
   const unitLabel = periodLabel(frequency);
 
@@ -341,6 +356,8 @@ export function FDCalculator() {
           </div>
         </section>
       )}
+
+      <CalculationSync event={financeEvent} />
 
       {/* ── Charts ──────────────────────────────────────────────────────────── */}
       {result && result.summary.interestEarned > 0 && (

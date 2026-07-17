@@ -1,5 +1,8 @@
 "use client";
 
+import { CalculationSync } from "@/features/tool/CalculationSync";
+import type { FinanceEvent } from "@/lib/financeEvents";
+
 import { useState, useMemo, useCallback } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -58,6 +61,18 @@ export function SIPCalculator() {
     if (!isValid) return null;
     return calculateSIP({ monthlyAmount: numAmount, annualRate: numRate, months });
   }, [isValid, numAmount, numRate, months]);
+
+  const financeEvent = useMemo<FinanceEvent | null>(() => {
+    if (!result) return null;
+    return {
+      type: "InvestmentCalculated",
+      slug: "sip-calculator",
+      name: "SIP Calculator",
+      monthlyInvestment: numAmount,
+      maturityValue: result.summary.totalValue,
+      months,
+    };
+  }, [result, numAmount, months]);
 
   const handleReset = useCallback(() => {
     setAmount(DEFAULT_AMOUNT);
@@ -296,6 +311,8 @@ export function SIPCalculator() {
           </div>
         </section>
       )}
+
+      <CalculationSync event={financeEvent} />
 
       {/* ── Charts ──────────────────────────────────────────────────────────── */}
       {result && result.summary.estimatedReturn > 0 && (

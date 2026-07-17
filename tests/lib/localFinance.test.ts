@@ -12,6 +12,8 @@ import {
   readStore,
   saveProfile,
   recordToolUse,
+  recordCalculation,
+  applyProfileFields,
   markReviewed,
   reviewDue,
   daysUntilReview,
@@ -142,15 +144,62 @@ describe("the 90-day review", () => {
   });
 });
 
+describe("calculation history (PLATFORM-002)", () => {
+  const FIGS = [{ label: "EMI", value: "₹25,000/mo" }];
+
+  it("records a calculation newest-first, deduped by slug, capped", () => {
+    for (let i = 0; i < RECENT_LIMIT + 3; i++) {
+      recordCalculation(`tool-${i}`, `Tool ${i}`, FIGS, NOW);
+    }
+    const calcs = readStore().lastCalculations;
+    expect(calcs).toHaveLength(RECENT_LIMIT);
+    expect(calcs[0].slug).toBe(`tool-${RECENT_LIMIT + 2}`);
+  });
+
+  it("re-recording a tool moves it to the front with fresh figures", () => {
+    recordCalculation("emi-calculator", "EMI", [{ label: "EMI", value: "₹10,000" }], NOW);
+    recordCalculation("sip-calculator", "SIP", FIGS, NOW);
+    recordCalculation("emi-calculator", "EMI", [{ label: "EMI", value: "₹20,000" }], NOW);
+    const calcs = readStore().lastCalculations;
+    expect(calcs.map((c) => c.slug)).toEqual(["emi-calculator", "sip-calculator"]);
+    expect(calcs[0].figures[0].value).toBe("₹20,000");
+  });
+
+  it("recording a calculation does not disturb the saved profile", () => {
+    saveProfile(PROFILE, NOW);
+    recordCalculation("emi-calculator", "EMI", FIGS, NOW);
+    expect(readStore().profile).toEqual(PROFILE);
+  });
+});
+
+describe("applyProfileFields (PLATFORM-002)", () => {
+  it("merges one field and refreshes the saved timestamp", () => {
+    saveProfile(PROFILE, NOW);
+    const later = new Date(NOW.getTime() + 1000);
+    expect(applyProfileFields({ monthlyEmi: 25_000 }, later)).toBe(true);
+    const store = readStore();
+    expect(store.profile!.monthlyEmi).toBe(25_000);
+    expect(store.profile!.monthlyIncome).toBe(PROFILE.monthlyIncome);
+    expect(store.profileSavedAt).toBe(later.toISOString());
+  });
+
+  it("is a no-op without a saved profile (a delta cannot invent one)", () => {
+    expect(applyProfileFields({ monthlyEmi: 25_000 }, NOW)).toBe(false);
+    expect(readStore().profile).toBeNull();
+  });
+});
+
 describe("reset", () => {
-  it("clearStore erases everything", () => {
+  it("clearStore erases everything, including calculation history", () => {
     saveProfile(PROFILE, NOW);
     recordToolUse("emi-calculator", "EMI Calculator", NOW);
+    recordCalculation("emi-calculator", "EMI Calculator", [{ label: "EMI", value: "₹1" }], NOW);
     markReviewed(NOW);
     expect(clearStore()).toBe(true);
     const store = readStore();
     expect(store.profile).toBeNull();
     expect(store.recentTools).toEqual([]);
+    expect(store.lastCalculations).toEqual([]);
     expect(store.lastReviewAt).toBeNull();
     expect(window.localStorage.getItem(FINANCE_STORAGE_KEY)).toBeNull();
   });

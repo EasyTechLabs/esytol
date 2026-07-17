@@ -1,5 +1,8 @@
 "use client";
 
+import { CalculationSync } from "@/features/tool/CalculationSync";
+import type { FinanceEvent } from "@/lib/financeEvents";
+
 import { useState, useMemo, useCallback } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -56,6 +59,17 @@ export function EPFCalculator() {
   const errors = useMemo(() => validateEPFInputs(input), [input]);
   const isValid = Object.keys(errors).length === 0;
   const result = useMemo(() => (isValid ? calculateEPF(input) : null), [isValid, input]);
+
+  const financeEvent = useMemo<FinanceEvent | null>(() => {
+    if (!result) return null;
+    return {
+      type: "RetirementPlanned",
+      slug: "epf-calculator",
+      name: "EPF Calculator",
+      projectedCorpus: result.maturityBalance,
+      corpusLabel: "EPF at retirement",
+    };
+  }, [result]);
 
   const handleReset = useCallback(() => {
     setWages("25000");
@@ -249,6 +263,8 @@ export function EPFCalculator() {
           </div>
         </section>
       )}
+
+      <CalculationSync event={financeEvent} />
 
       {/* ── Charts ──────────────────────────────────────────────────────────── */}
       {result && <EPFCharts result={result} currentBalance={input.currentBalance} />}

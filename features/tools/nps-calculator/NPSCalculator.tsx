@@ -1,5 +1,8 @@
 "use client";
 
+import { CalculationSync } from "@/features/tool/CalculationSync";
+import type { FinanceEvent } from "@/lib/financeEvents";
+
 import { useState, useMemo, useCallback } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -55,6 +58,17 @@ export function NPSCalculator() {
   const errors = useMemo(() => validateNPSInputs(input), [input]);
   const isValid = Object.keys(errors).length === 0;
   const result = useMemo(() => (isValid ? calculateNPS(input) : null), [isValid, input]);
+
+  const financeEvent = useMemo<FinanceEvent | null>(() => {
+    if (!result) return null;
+    return {
+      type: "RetirementPlanned",
+      slug: "nps-calculator",
+      name: "NPS Calculator",
+      projectedCorpus: result.corpus,
+      monthlyPension: result.monthlyPension,
+    };
+  }, [result]);
 
   const handleReset = useCallback(() => {
     setAge("30");
@@ -257,6 +271,8 @@ export function NPSCalculator() {
           </div>
         </section>
       )}
+
+      <CalculationSync event={financeEvent} />
 
       {/* ── Charts ──────────────────────────────────────────────────────────── */}
       {result && <NPSCharts result={result} />}

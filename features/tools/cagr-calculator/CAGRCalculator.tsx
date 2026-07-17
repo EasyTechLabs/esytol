@@ -1,5 +1,8 @@
 "use client";
 
+import { CalculationSync } from "@/features/tool/CalculationSync";
+import type { FinanceEvent } from "@/lib/financeEvents";
+
 import { useState, useMemo, useCallback } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -54,6 +57,18 @@ export function CAGRCalculator() {
     if (!isValid) return null;
     return calculateCAGR({ beginningValue: numBeginning, endingValue: numEnding, months });
   }, [isValid, numBeginning, numEnding, months]);
+
+  const financeEvent = useMemo<FinanceEvent | null>(() => {
+    if (!result) return null;
+    return {
+      type: "GrowthProjected",
+      slug: "cagr-calculator",
+      name: "CAGR Calculator",
+      invested: numBeginning,
+      maturityValue: numEnding,
+      months,
+    };
+  }, [result, numBeginning, numEnding, months]);
 
   const handleReset = useCallback(() => {
     setBeginning(DEFAULT_BEGINNING);
@@ -297,6 +312,8 @@ export function CAGRCalculator() {
           </div>
         </section>
       )}
+
+      <CalculationSync event={financeEvent} />
 
       {/* ── Charts ──────────────────────────────────────────────────────────── */}
       {result && (

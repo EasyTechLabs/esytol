@@ -1,5 +1,8 @@
 "use client";
 
+import { CalculationSync } from "@/features/tool/CalculationSync";
+import type { FinanceEvent } from "@/lib/financeEvents";
+
 import { useState, useMemo, useCallback } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -57,6 +60,18 @@ export function LumpsumCalculator() {
     if (!isValid) return null;
     return calculateLumpsum({ initialInvestment: numAmount, annualRate: numRate, months });
   }, [isValid, numAmount, numRate, months]);
+
+  const financeEvent = useMemo<FinanceEvent | null>(() => {
+    if (!result) return null;
+    return {
+      type: "GrowthProjected",
+      slug: "lumpsum-calculator",
+      name: "Lumpsum Calculator",
+      invested: result.summary.initialInvestment,
+      maturityValue: result.summary.maturityValue,
+      months,
+    };
+  }, [result, months]);
 
   const handleReset = useCallback(() => {
     setAmount(DEFAULT_AMOUNT);
@@ -316,6 +331,8 @@ export function LumpsumCalculator() {
           </div>
         </section>
       )}
+
+      <CalculationSync event={financeEvent} />
 
       {/* ── Charts ──────────────────────────────────────────────────────────── */}
       {result && (

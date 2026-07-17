@@ -32,6 +32,20 @@ export interface RecentTool {
   at: string;
 }
 
+export interface CalculationFigure {
+  label: string;
+  value: string;
+}
+
+/** Headline figures of a tool's last stable calculation (PLATFORM-002). */
+export interface CalculationRecord {
+  slug: string;
+  name: string;
+  /** ISO timestamp of the calculation. */
+  at: string;
+  figures: CalculationFigure[];
+}
+
 export interface FinanceStore {
   version: number;
   /** The household's financial position — written by the Financial Roadmap. */
@@ -40,6 +54,8 @@ export interface FinanceStore {
   profileSavedAt: string | null;
   /** Most-recently-used tools, newest first, deduped by slug. */
   recentTools: RecentTool[];
+  /** Last stable calculation per tool, newest first, deduped by slug. */
+  lastCalculations: CalculationRecord[];
   /** When the user last completed a financial review (ISO). */
   lastReviewAt: string | null;
 }
@@ -49,6 +65,7 @@ const EMPTY: FinanceStore = {
   profile: null,
   profileSavedAt: null,
   recentTools: [],
+  lastCalculations: [],
   lastReviewAt: null,
 };
 
@@ -73,6 +90,9 @@ export function readStore(): FinanceStore {
       profileSavedAt: parsed.profileSavedAt ?? null,
       recentTools: Array.isArray(parsed.recentTools)
         ? parsed.recentTools.slice(0, RECENT_LIMIT)
+        : [],
+      lastCalculations: Array.isArray(parsed.lastCalculations)
+        ? parsed.lastCalculations.slice(0, RECENT_LIMIT)
         : [],
       lastReviewAt: parsed.lastReviewAt ?? null,
     };
@@ -105,6 +125,37 @@ export function recordToolUse(slug: string, name: string, now: Date = new Date()
   const rest = store.recentTools.filter((t) => t.slug !== slug);
   const recentTools = [{ slug, name, at: now.toISOString() }, ...rest].slice(0, RECENT_LIMIT);
   return writeStore({ ...store, recentTools });
+}
+
+/** Record a tool's last stable calculation — newest first, deduped, capped. */
+export function recordCalculation(
+  slug: string,
+  name: string,
+  figures: CalculationFigure[],
+  now: Date = new Date()
+): boolean {
+  const store = readStore();
+  const rest = store.lastCalculations.filter((c) => c.slug !== slug);
+  const lastCalculations = [{ slug, name, at: now.toISOString(), figures }, ...rest].slice(
+    0,
+    RECENT_LIMIT
+  );
+  return writeStore({ ...store, lastCalculations });
+}
+
+/**
+ * Merge specific fields into the saved profile (explicit user action from a
+ * calculator's "Update my plan"). Requires an existing profile — a delta alone
+ * cannot invent the other fields, so without a roadmap profile this is a no-op.
+ */
+export function applyProfileFields(fields: Partial<RoadmapInput>, now: Date = new Date()): boolean {
+  const store = readStore();
+  if (!store.profile) return false;
+  return writeStore({
+    ...store,
+    profile: { ...store.profile, ...fields },
+    profileSavedAt: now.toISOString(),
+  });
 }
 
 /** Mark the 90-day financial review as done today. */

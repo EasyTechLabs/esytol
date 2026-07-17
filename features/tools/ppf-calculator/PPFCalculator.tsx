@@ -1,5 +1,8 @@
 "use client";
 
+import { CalculationSync } from "@/features/tool/CalculationSync";
+import type { FinanceEvent } from "@/lib/financeEvents";
+
 import { useState, useMemo, useCallback } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -57,6 +60,18 @@ export function PPFCalculator() {
       openingBalance: numOpening,
     });
   }, [isValid, numContribution, numYears, numRate, numOpening]);
+
+  const financeEvent = useMemo<FinanceEvent | null>(() => {
+    if (!result) return null;
+    return {
+      type: "GrowthProjected",
+      slug: "ppf-calculator",
+      name: "PPF Calculator",
+      invested: result.summary.totalContribution,
+      maturityValue: result.summary.maturityValue,
+      months: numYears * 12,
+    };
+  }, [result, numYears]);
 
   const handleReset = useCallback(() => {
     setContribution(DEFAULT_CONTRIBUTION);
@@ -328,6 +343,8 @@ export function PPFCalculator() {
           </div>
         </section>
       )}
+
+      <CalculationSync event={financeEvent} />
 
       {/* ── Charts ──────────────────────────────────────────────────────────── */}
       {result && result.summary.totalInterest > 0 && (

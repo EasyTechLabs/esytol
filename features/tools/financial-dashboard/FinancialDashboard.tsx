@@ -54,7 +54,7 @@ export function FinancialDashboard() {
   }
 
   if (!store.profile) {
-    return <EmptyState recent={store.recentTools} />;
+    return <EmptyState recent={store.recentTools} calculations={store.lastCalculations} />;
   }
 
   const profile = store.profile;
@@ -230,7 +230,8 @@ export function FinancialDashboard() {
         </p>
       </section>
 
-      {/* ── Recent tools ──────────────────────────────────────────────── */}
+      {/* ── Recent calculations (PLATFORM-002) + recent tools ─────────── */}
+      <RecentCalculations calculations={store.lastCalculations} />
       <RecentTools recent={store.recentTools} />
 
       {/* ── Privacy + reset ───────────────────────────────────────────── */}
@@ -374,6 +375,36 @@ function Tile({
   );
 }
 
+function RecentCalculations({ calculations }: { calculations: FinanceStore["lastCalculations"] }) {
+  if (calculations.length === 0) return null;
+  return (
+    <section
+      aria-label="Recent calculations"
+      className="rounded-xl border border-gray-200 bg-white p-5"
+    >
+      <h2 className="text-sm font-semibold text-gray-900">Recent calculations</h2>
+      <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+        {calculations.map((calc) => (
+          <li
+            key={calc.slug}
+            className="flex flex-wrap items-baseline justify-between gap-2 rounded-lg border border-gray-100 px-3 py-2 text-sm"
+          >
+            <Link
+              href={`/tools/${calc.slug}`}
+              className="font-medium text-gray-800 hover:text-brand-700"
+            >
+              {calc.name}
+            </Link>
+            <span className="text-xs text-gray-500">
+              {calc.figures.map((f) => `${f.label} ${f.value}`).join(" · ")}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function RecentTools({ recent }: { recent: FinanceStore["recentTools"] }) {
   if (recent.length === 0) return null;
   return (
@@ -395,7 +426,13 @@ function RecentTools({ recent }: { recent: FinanceStore["recentTools"] }) {
   );
 }
 
-function EmptyState({ recent }: { recent: FinanceStore["recentTools"] }) {
+function EmptyState({
+  recent,
+  calculations,
+}: {
+  recent: FinanceStore["recentTools"];
+  calculations: FinanceStore["lastCalculations"];
+}) {
   return (
     <div className="flex flex-col gap-6">
       <div className="rounded-xl border border-gray-200 bg-white p-8 text-center">
@@ -412,6 +449,7 @@ function EmptyState({ recent }: { recent: FinanceStore["recentTools"] }) {
           Build my roadmap →
         </Link>
       </div>
+      <RecentCalculations calculations={calculations} />
       <RecentTools recent={recent} />
     </div>
   );

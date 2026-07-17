@@ -1,5 +1,8 @@
 "use client";
 
+import { CalculationSync } from "@/features/tool/CalculationSync";
+import type { FinanceEvent } from "@/lib/financeEvents";
+
 import { useState, useMemo, useCallback } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -69,6 +72,19 @@ export function HomeLoanCalculator() {
       downPayment: numDown,
     });
   }, [isValid, numAmount, numRate, months, numFee, numDown]);
+
+  const financeEvent = useMemo<FinanceEvent | null>(() => {
+    if (!result) return null;
+    return {
+      type: "LoanCalculated",
+      slug: "home-loan-calculator",
+      name: "Home Loan Calculator",
+      emi: result.summary.monthlyEMI,
+      principal: result.summary.loanAmount,
+      annualRate: numRate,
+      months,
+    };
+  }, [result, numRate, months]);
 
   const handleReset = useCallback(() => {
     setAmount(DEFAULT_AMOUNT);
@@ -382,6 +398,8 @@ export function HomeLoanCalculator() {
           </div>
         </section>
       )}
+
+      <CalculationSync event={financeEvent} />
 
       {/* ── Charts ──────────────────────────────────────────────────────────── */}
       {result && result.schedule.length > 0 && (

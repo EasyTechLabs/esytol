@@ -1,5 +1,8 @@
 "use client";
 
+import { CalculationSync } from "@/features/tool/CalculationSync";
+import type { FinanceEvent } from "@/lib/financeEvents";
+
 import { useState, useMemo, useCallback } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -80,6 +83,19 @@ export function IncomeTaxCalculator() {
   const isValid = Object.keys(errors).length === 0;
 
   const result = useMemo(() => (isValid ? calculateIncomeTax(input) : null), [isValid, input]);
+
+  const financeEvent = useMemo<FinanceEvent | null>(() => {
+    if (!result) return null;
+    return {
+      type: "TaxCompared",
+      slug: "income-tax-calculator",
+      name: "Income Tax Calculator",
+      annualIncome: input.annualSalary + input.otherIncome,
+      recommended: result.recommended,
+      totalTax: result[result.recommended].totalTax,
+      taxSaved: result.taxSaved,
+    };
+  }, [result, input]);
   const selected = result ? result[regime] : null;
 
   const handleReset = useCallback(() => {
@@ -364,6 +380,8 @@ export function IncomeTaxCalculator() {
           </div>
         </section>
       )}
+
+      <CalculationSync event={financeEvent} />
 
       {/* ── Charts ──────────────────────────────────────────────────────────── */}
       {result && <IncomeTaxCharts result={result} regime={regime} />}

@@ -1,5 +1,8 @@
 "use client";
 
+import { CalculationSync } from "@/features/tool/CalculationSync";
+import type { FinanceEvent } from "@/lib/financeEvents";
+
 import { useState, useMemo, useCallback } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -58,6 +61,18 @@ export function RDCalculator() {
     if (!isValid) return null;
     return calculateRD({ monthlyDeposit: numAmount, annualRate: numRate, months });
   }, [isValid, numAmount, numRate, months]);
+
+  const financeEvent = useMemo<FinanceEvent | null>(() => {
+    if (!result) return null;
+    return {
+      type: "InvestmentCalculated",
+      slug: "rd-calculator",
+      name: "RD Calculator",
+      monthlyInvestment: numAmount,
+      maturityValue: result.summary.maturityAmount,
+      months,
+    };
+  }, [result, numAmount, months]);
 
   const handleReset = useCallback(() => {
     setAmount(DEFAULT_AMOUNT);
@@ -295,6 +310,8 @@ export function RDCalculator() {
           </div>
         </section>
       )}
+
+      <CalculationSync event={financeEvent} />
 
       {/* ── Charts ──────────────────────────────────────────────────────────── */}
       {result && result.summary.interestEarned > 0 && (

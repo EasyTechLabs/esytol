@@ -1,5 +1,8 @@
 "use client";
 
+import { CalculationSync } from "@/features/tool/CalculationSync";
+import type { FinanceEvent } from "@/lib/financeEvents";
+
 import { useState, useMemo, useCallback } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -59,6 +62,17 @@ export function GratuityCalculator() {
   );
   const isValid = Object.keys(errors).length === 0;
   const result = useMemo(() => (isValid ? calculateGratuity(input) : null), [isValid, input]);
+
+  const financeEvent = useMemo<FinanceEvent | null>(() => {
+    if (!result) return null;
+    return {
+      type: "RetirementPlanned",
+      slug: "gratuity-calculator",
+      name: "Gratuity Calculator",
+      projectedCorpus: result.gratuityAmount,
+      corpusLabel: "Gratuity payable",
+    };
+  }, [result]);
 
   const handleReset = useCallback(() => {
     setSalary("50000");
@@ -310,6 +324,8 @@ export function GratuityCalculator() {
           </div>
         </section>
       )}
+
+      <CalculationSync event={financeEvent} />
 
       {/* ── Charts ──────────────────────────────────────────────────────────── */}
       {result && <GratuityCharts input={input} result={result} />}

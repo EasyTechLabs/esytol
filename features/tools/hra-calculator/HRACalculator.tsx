@@ -1,5 +1,8 @@
 "use client";
 
+import { CalculationSync } from "@/features/tool/CalculationSync";
+import type { FinanceEvent } from "@/lib/financeEvents";
+
 import { useState, useMemo, useCallback } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -54,6 +57,17 @@ export function HRACalculator() {
   const isValid = Object.keys(errors).length === 0;
 
   const result = useMemo(() => (isValid ? calculateHRA(input) : null), [isValid, input]);
+
+  const financeEvent = useMemo<FinanceEvent | null>(() => {
+    if (!result) return null;
+    return {
+      type: "SalaryCalculated",
+      slug: "hra-calculator",
+      name: "HRA Calculator",
+      exemptAmount: result.hraExemption,
+      taxableAmount: result.taxableHRA,
+    };
+  }, [result]);
 
   const winner = result?.rules.find((r) => r.isWinner);
 
@@ -308,6 +322,8 @@ export function HRACalculator() {
           </div>
         </section>
       )}
+
+      <CalculationSync event={financeEvent} />
 
       {/* ── Charts ──────────────────────────────────────────────────────────── */}
       {result && <HRACharts input={input} result={result} />}
