@@ -1,0 +1,43 @@
+{
+  "url": "https://www.esytol.com",
+  "verdict": "PASS",
+  "score": 100,
+  "checks": [
+    {
+      "name": "site reachable",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 1249ms",
+      "evidence": "200 https://www.esytol.com \u00b7 144055 bytes \u00b7 2026-07-17T04:33:34+00:00"
+    },
+    {
+      "name": "present: id=\"domain-finance\"",
+      "status": "PASS",
+      "message": "as expected in https://www.esytol.com",
+      "evidence": ""
+    },
+    {
+      "name": "absent: open source",
+      "status": "PASS",
+      "message": "as expected in https://www.esytol.com",
+      "evidence": ""
+    },
+    {
+      "name": "path /learn/complete-guide-to-loans-in-india",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 908ms",
+      "evidence": "200 https://www.esytol.com/learn/complete-guide-to-loans-in-india \u00b7 118955 bytes \u00b7 2026-07-17T04:33:35+00:00"
+    },
+    {
+      "name": "path /tools/emi-calculator",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 759ms",
+      "evidence": "200 https://www.esytol.com/tools/emi-calculator \u00b7 58422 bytes \u00b7 2026-07-17T04:33:36+00:00"
+    },
+    {
+      "name": "path /learn",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 797ms",
+      "evidence": "200 https://www.esytol.com/learn \u00b7 80283 bytes \u00b7 2026-07-17T04:33:37+00:00"
+    }
+  ]
+}
