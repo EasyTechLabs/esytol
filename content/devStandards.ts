@@ -78,6 +78,29 @@ export const DEV_STANDARDS: Record<string, DevStandard> = {
     ],
     maintainedBy: MAINTAINER,
   },
+  "csv-json-converter": {
+    processing: "client",
+    dataRetention: CLIENT_ONLY,
+    howItWorks:
+      "CSV → JSON: a single-pass RFC 4180 tokenizer parses your text (auto-detecting the delimiter when asked), handling quoted fields, escaped quotes, delimiters and newlines inside quotes, and Unicode, and reports the row and column of any problem. The header row names the JSON keys (duplicates are made unique) and each row becomes an object; optional type inference converts obvious numbers, booleans, and null. JSON → CSV: nested objects are flattened with dot notation, columns take a stable first-seen order, and every cell is quoted only when it must be. A cell that a spreadsheet could read as a formula is neutralised so it stays plain text. Everything is pure and runs in your browser.",
+    limitations: [
+      "Type inference is off by default (every cell is a string, which is lossless). When on, leading-zero values, very large integers, and anything ambiguous are deliberately kept as strings.",
+      "JSON → CSV flattens objects with dot notation; arrays and remaining structure are written as compact JSON inside a cell so columns stay stable — it is not a full relational normalisation.",
+      "The table preview renders the first rows for responsiveness; the full data is always in the output and download. The JSON tree is limited only for very large documents.",
+    ],
+    references: [
+      {
+        label: "RFC 4180 — Common Format for CSV Files",
+        url: "https://www.rfc-editor.org/rfc/rfc4180",
+      },
+      { label: "RFC 8259 — JSON", url: "https://www.rfc-editor.org/rfc/rfc8259" },
+      {
+        label: "OWASP — CSV Injection",
+        url: "https://owasp.org/www-community/attacks/CSV_Injection",
+      },
+    ],
+    maintainedBy: MAINTAINER,
+  },
   "json-diff-viewer": {
     processing: "client",
     dataRetention: CLIENT_ONLY,

@@ -1,0 +1,26 @@
+import { Suspense } from "react";
+import type { Metadata } from "next";
+import { getToolBySlug } from "@/registry";
+import { buildToolMetadata } from "@/seo/metadata";
+import { ToolLayout } from "@/features/tool/ToolLayout";
+import { ToolMetadata } from "@/features/tool/ToolMetadata";
+import { CsvJsonConverter } from "@/features/tools/csv-json-converter/CsvJsonConverter";
+
+const tool = getToolBySlug("csv-json-converter")!;
+
+export const metadata: Metadata = buildToolMetadata(tool);
+
+export default function CsvJsonConverterPage() {
+  return (
+    <>
+      <ToolMetadata tool={tool} />
+      <ToolLayout tool={tool}>
+        <Suspense
+          fallback={<div className="py-16 text-center text-sm text-gray-400">Loading…</div>}
+        >
+          <CsvJsonConverter />
+        </Suspense>
+      </ToolLayout>
+    </>
+  );
+}

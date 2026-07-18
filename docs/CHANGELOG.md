@@ -6,6 +6,33 @@
 
 ---
 
+## 2026-07-18 — 🧮 CSV ↔ JSON Converter (new tool · Developer category)
+
+Convert between CSV and JSON in your browser, both directions — 100% client-side, nothing uploaded, and
+**CSV-injection safe**. Route: `/tools/csv-json-converter`.
+
+- **CSV → JSON** — header detection (duplicates made unique), **auto** or custom delimiter (comma /
+  semicolon / tab / pipe), quote + escaped-quote + multiline + Unicode handling, empty values, blank-line
+  skipping, and optional **type inference** (numbers / booleans / null; leading-zero and big-int values
+  stay strings — lossless).
+- **JSON → CSV** — array of objects (or a single object), **nested-object flattening** with dot notation,
+  arrays serialised as JSON in a cell, **stable first-seen column order**, missing fields → empty cells,
+  minimal RFC 4180 quoting.
+- **Validation** — friendly errors with **row & column** (unterminated quote, invalid quoting; JSON errors
+  explained), plus notes for inconsistent columns and renamed headers.
+- **Explorer** — a lazy, searchable **table preview**, a reused **JSON tree**, and the raw output; statistics
+  (rows, columns, empty cells, max width, characters, file size).
+- **Security** — formulas are never executed; on JSON → CSV, cells starting with `= + - @` (tab, CR) are
+  neutralised so a spreadsheet can't run them (OWASP CSV-injection guidance; toggleable). `__proto__`
+  column names are guarded against prototype pollution.
+- **New reusable engine** — `lib/dev/csv.ts` (`parseCsvRows` with row/column errors, `detectDelimiter`,
+  `inferCellValue`, `csvToJson`/`jsonToCsv`) is the platform's tabular-data primitive; a future TSV
+  converter or table viewer reuses it. Editor/result/validation/layout + JSON validation + `JsonTree`
+  reused unchanged.
+
+**+42 tests** (35 engine — incl. injection safety, round-trip, and a 5,000-row document — + 7 UI) →
+1,766 total. Docs: `docs/CsvJsonConverter.md`.
+
 ## 2026-07-18 — 📐 XML Formatter & Validator (new tool · Developer category)
 
 Format, minify, validate, and explore XML — 100% client-side, nothing uploaded, and **XXE-safe by

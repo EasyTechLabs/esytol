@@ -336,6 +336,74 @@ export const toolRegistry: Tool[] = [
     popular: true,
   },
 
+  {
+    id: "csv-json-converter",
+    name: "CSV ↔ JSON Converter",
+    slug: "csv-json-converter",
+    isNew: true,
+    description:
+      "Convert between CSV and JSON in your browser, both directions — auto delimiter detection, header + quote handling, optional type inference, nested-object flattening (dot notation), a table preview, a JSON tree view, statistics, and friendly errors with row & column. Spreadsheet formulas are treated as plain text (CSV-injection safe); nothing is ever uploaded.",
+    category: "developer",
+    tags: ["csv", "json", "developer", "formatter"],
+    keywords: [
+      "csv to json",
+      "json to csv",
+      "csv converter",
+      "json csv converter",
+      "csv formatter",
+      "convert csv to json online",
+      "convert json to csv online",
+      "csv parser",
+      "csv to json converter",
+      "json to csv online",
+    ],
+    icon: "🧮",
+    url: "/tools/csv-json-converter",
+    version: "1.0.0",
+    lastUpdated: "Jul 2026",
+    relatedTools: [
+      "json-formatter",
+      "json-yaml-converter",
+      "xml-formatter",
+      "json-diff-viewer",
+      "base64-encoder",
+    ],
+    faq: [
+      {
+        question: "Is my CSV or JSON uploaded anywhere?",
+        answer:
+          "No. All parsing, conversion, validation, statistics, the table preview, and the tree view run entirely in your browser using JavaScript. Your data is never uploaded, logged, or transmitted — there is no account and no server call.",
+      },
+      {
+        question: "Is it safe against CSV injection / spreadsheet formulas?",
+        answer:
+          "Yes. Formulas are never executed — every cell is treated as plain text. When converting JSON → CSV, any cell that begins with =, +, -, @, tab, or carriage return is prefixed with an apostrophe (OWASP CSV-injection guidance) so opening the file in Excel or Google Sheets cannot run it as a formula. You can turn this protection off if you need the raw text.",
+      },
+      {
+        question: "How does delimiter detection work?",
+        answer:
+          "For CSV → JSON the tool auto-detects the delimiter (comma, semicolon, tab, or pipe) by finding the character that separates fields most consistently across lines, ignoring delimiters inside quotes. You can also pick the delimiter yourself, and choose the delimiter for JSON → CSV output.",
+      },
+      {
+        question: "What does “Infer types” do?",
+        answer:
+          "By default every CSV cell becomes a JSON string, which is lossless. Turn on Infer types to convert obvious values — true/false to booleans, null to null, and plain numbers to numbers. Leading-zero values (007), very large integers, and anything ambiguous are kept as strings so no data is corrupted.",
+      },
+      {
+        question: "How is nested JSON converted to CSV?",
+        answer:
+          'Nested objects are flattened using dot notation — {"user":{"id":1}} becomes a user.id column. Arrays and any remaining structure are written as compact JSON inside a single cell, and columns keep a stable, first-seen order so the same JSON always produces the same layout. Missing fields become empty cells.',
+      },
+      {
+        question: "Can it handle large files?",
+        answer:
+          "Yes. Parsing, conversion, and statistics work on large files entirely in your browser. The table preview renders the first rows for responsiveness (the full data is always in the output and download), and the JSON tree is limited only for very large documents.",
+      },
+    ],
+    featured: true,
+    popular: true,
+  },
+
   // ─── Text ─────────────────────────────────────────────────────────────────
   {
     id: "word-counter",
