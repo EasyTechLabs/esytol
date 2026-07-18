@@ -1,0 +1,49 @@
+{
+  "url": "https://www.esytol.com",
+  "verdict": "PASS",
+  "score": 100,
+  "checks": [
+    {
+      "name": "site reachable",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 870ms",
+      "evidence": "200 https://www.esytol.com \u00b7 167108 bytes \u00b7 2026-07-18T04:10:00+00:00"
+    },
+    {
+      "name": "present: Developer",
+      "status": "PASS",
+      "message": "as expected in https://www.esytol.com",
+      "evidence": ""
+    },
+    {
+      "name": "absent: open source",
+      "status": "PASS",
+      "message": "as expected in https://www.esytol.com",
+      "evidence": ""
+    },
+    {
+      "name": "path /tools/json-formatter",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 1033ms",
+      "evidence": "200 https://www.esytol.com/tools/json-formatter \u00b7 56937 bytes \u00b7 2026-07-18T04:10:01+00:00"
+    },
+    {
+      "name": "path /tools/base64-encoder",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 1092ms",
+      "evidence": "200 https://www.esytol.com/tools/base64-encoder \u00b7 55128 bytes \u00b7 2026-07-18T04:10:02+00:00"
+    },
+    {
+      "name": "path /tools/url-encoder",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 1052ms",
+      "evidence": "200 https://www.esytol.com/tools/url-encoder \u00b7 55007 bytes \u00b7 2026-07-18T04:10:03+00:00"
+    },
+    {
+      "name": "path /categories/developer",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 1036ms",
+      "evidence": "200 https://www.esytol.com/categories/developer \u00b7 29144 bytes \u00b7 2026-07-18T04:10:04+00:00"
+    }
+  ]
+}
