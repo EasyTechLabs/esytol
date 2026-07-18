@@ -1,0 +1,31 @@
+{
+  "url": "https://www.esytol.com",
+  "verdict": "PASS",
+  "score": 100,
+  "checks": [
+    {
+      "name": "site reachable",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 1396ms",
+      "evidence": "200 https://www.esytol.com \u00b7 178004 bytes \u00b7 2026-07-18T08:17:49+00:00"
+    },
+    {
+      "name": "present: Income Tax",
+      "status": "PASS",
+      "message": "as expected in https://www.esytol.com",
+      "evidence": ""
+    },
+    {
+      "name": "absent: open source",
+      "status": "PASS",
+      "message": "as expected in https://www.esytol.com",
+      "evidence": ""
+    },
+    {
+      "name": "path /tools/income-tax-calculator",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 901ms",
+      "evidence": "200 https://www.esytol.com/tools/income-tax-calculator \u00b7 71094 bytes \u00b7 2026-07-18T08:17:51+00:00"
+    }
+  ]
+}
