@@ -1,0 +1,43 @@
+{
+  "url": "https://www.esytol.com",
+  "verdict": "PASS",
+  "score": 100,
+  "checks": [
+    {
+      "name": "site reachable",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 1646ms",
+      "evidence": "200 https://www.esytol.com \u00b7 178004 bytes \u00b7 2026-07-18T05:32:32+00:00"
+    },
+    {
+      "name": "present: Everyday",
+      "status": "PASS",
+      "message": "as expected in https://www.esytol.com",
+      "evidence": ""
+    },
+    {
+      "name": "absent: open source",
+      "status": "PASS",
+      "message": "as expected in https://www.esytol.com",
+      "evidence": ""
+    },
+    {
+      "name": "path /tools/word-counter",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 1008ms",
+      "evidence": "200 https://www.esytol.com/tools/word-counter \u00b7 53441 bytes \u00b7 2026-07-18T05:32:34+00:00"
+    },
+    {
+      "name": "path /tools/case-converter",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 1076ms",
+      "evidence": "200 https://www.esytol.com/tools/case-converter \u00b7 57518 bytes \u00b7 2026-07-18T05:32:35+00:00"
+    },
+    {
+      "name": "path /tools/age-calculator",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 816ms",
+      "evidence": "200 https://www.esytol.com/tools/age-calculator \u00b7 60826 bytes \u00b7 2026-07-18T05:32:36+00:00"
+    }
+  ]
+}
