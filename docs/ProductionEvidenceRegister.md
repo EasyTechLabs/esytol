@@ -35,9 +35,9 @@
 
 ## Register
 
-| ID | Date | Source | Observation | Evidence | Impact | Confidence | Action | Follow-up |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| — | — | — | _No production observations recorded yet. First real event opens OBS-001._ | — | — | — | — | — |
+| ID  | Date | Source | Observation                                                                | Evidence | Impact | Confidence | Action | Follow-up |
+| --- | ---- | ------ | -------------------------------------------------------------------------- | -------- | ------ | ---------- | ------ | --------- |
+| —   | —    | —      | _No production observations recorded yet. First real event opens OBS-001._ | —        | —      | —          | —      | —         |
 
 <!--
 ROW TEMPLATE — copy, fill every field, append above nothing (append at the bottom of the table):
