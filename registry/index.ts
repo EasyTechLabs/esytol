@@ -6,32 +6,67 @@ export const toolRegistry: Tool[] = [
   // ─── Developer ───────────────────────────────────────────────────────────
   {
     id: "json-formatter",
-    name: "JSON Formatter",
+    name: "JSON Formatter & Validator",
     slug: "json-formatter",
-    description: "Format, validate, and beautify JSON data with syntax highlighting.",
+    description:
+      "Format, validate, and explore JSON in your browser — pretty-print (2/4/tab) or minify, real-time validation with human-friendly error explanations and line/column, an interactive searchable tree view, live statistics, and duplicate-key and unsafe-integer detection. Nothing is ever uploaded.",
     category: "developer",
-    tags: ["json", "formatter", "validator", "developer"],
-    keywords: ["json formatter online", "json validator", "json beautifier", "json pretty print"],
+    tags: ["json", "formatter", "validator", "beautifier", "developer", "lint", "tree"],
+    keywords: [
+      "json formatter",
+      "json validator",
+      "json beautifier",
+      "json pretty print",
+      "format json online",
+      "json parser",
+      "json lint",
+      "json checker",
+      "json viewer",
+      "json tree viewer",
+      "minify json",
+      "json formatter online",
+    ],
     icon: "📋",
     url: "/tools/json-formatter",
-    version: "1.0.0",
+    version: "2.0.0",
     lastUpdated: "Jul 2026",
-    relatedTools: ["base64-encoder", "url-encoder"],
+    relatedTools: [
+      "jwt-decoder",
+      "base64-encoder",
+      "hash-generator",
+      "uuid-generator",
+      "url-encoder",
+    ],
     faq: [
       {
         question: "Is my JSON data sent to a server?",
         answer:
-          "No. All formatting and validation happens entirely in your browser. Nothing is sent to any server.",
+          "No. All formatting, validation, statistics, and the tree view happen entirely in your browser using JavaScript. Your JSON is never uploaded, logged, or transmitted anywhere — there is no account and no server call.",
       },
       {
-        question: "What is the maximum JSON size I can format?",
+        question: "What do the error messages tell me?",
         answer:
-          "There is no hard limit; however, very large JSON files (10 MB+) may be slower depending on your device.",
+          "When JSON is invalid, the tool shows the line and column of the problem plus a plain-English explanation of the likely cause — a trailing comma, a comment, single quotes instead of double quotes, an unquoted key, or values like NaN/Infinity that JSON does not allow. That turns a cryptic parser error into a fix.",
       },
       {
-        question: "Can I use this to validate JSON syntax errors?",
+        question: "What is the tree view for?",
         answer:
-          "Yes. The formatter highlights syntax errors and shows the exact position of the issue.",
+          "The tree view renders your JSON as a collapsible hierarchy so you can navigate large or deeply-nested documents without scrolling through text. You can expand or collapse everything at once and search across keys and values, with matches highlighted. It renders lazily, so collapsed branches cost nothing.",
+      },
+      {
+        question: "Can it detect duplicate keys?",
+        answer:
+          "Yes. Duplicate object keys are technically valid JSON, but JSON.parse silently keeps only the last value — so bugs hide there. This tool scans the raw text and lists every duplicate key with its line number, something a normal parse cannot show you.",
+      },
+      {
+        question: "Why does it warn about large numbers?",
+        answer:
+          "JavaScript can only represent integers exactly up to ±9,007,199,254,740,991 (Number.MAX_SAFE_INTEGER). A JSON integer larger than that loses precision when parsed. The formatter flags such numbers so you can parse them as strings or with a BigInt reviver if exactness matters.",
+      },
+      {
+        question: "Can it handle large JSON files?",
+        answer:
+          "Yes. Formatting, validation, and statistics work on documents of any size, entirely in your browser. The interactive tree view is limited for very large documents (tens of thousands of values) to keep the page responsive, and the tool tells you when that happens.",
       },
     ],
     featured: true,

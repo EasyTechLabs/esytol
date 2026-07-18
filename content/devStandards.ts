@@ -40,10 +40,10 @@ export const DEV_STANDARDS: Record<string, DevStandard> = {
     processing: "client",
     dataRetention: CLIENT_ONLY,
     howItWorks:
-      "Your input is parsed with the browser's native JSON parser and re-serialised with your chosen indentation (2, 4, tab, or minified). Optional key-sorting produces canonical output. Invalid JSON is reported with the parser's message and, where the engine provides it, the line and column of the error.",
+      "Your input is parsed with the browser's native JSON parser and re-serialised with your chosen indentation (2, 4, tab, or minified); optional key-sorting produces canonical output. Invalid JSON is reported with the line and column plus a plain-English explanation of the likely cause. Beyond parsing, a lightweight tokenizer scans the raw text for duplicate keys and integers outside JavaScript's safe range — signals that JSON.parse erases — and computes statistics (objects, arrays, properties, depth, value types) for the tree view.",
     limitations: [
       "Formatting normalises whitespace and (optionally) key order; it never changes values, so numbers keep their exact JSON representation.",
-      "Extremely large documents (10 MB+) format in-browser and may be slower on low-powered devices.",
+      "The interactive tree view is limited for very large documents (tens of thousands of values) to stay responsive; formatting and validation still work at any size.",
       "Comments and trailing commas are not valid JSON and are reported as errors — this is a strict RFC 8259 parser, not JSON5.",
     ],
     references: [

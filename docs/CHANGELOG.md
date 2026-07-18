@@ -6,6 +6,29 @@
 
 ---
 
+## 2026-07-18 — 📋 JSON Formatter & Validator v2.0.0 (major upgrade · Developer category)
+
+Upgraded the Developer category's flagship formatter from a solid pretty-printer into a
+best-in-class validator + inspector. Still 100% client-side — no JSON is ever uploaded.
+
+- **Human-friendly errors** — real-time validation now shows the line/column **and a plain-English
+  reason**: trailing comma, comment, single quotes, unquoted key, NaN/Infinity, Python `True/False`.
+- **JSON statistics** — characters, lines, objects, arrays, properties, max nesting depth, and value
+  types (strings/numbers/booleans/nulls).
+- **Duplicate-key detection** — finds keys that `JSON.parse` silently drops, with line numbers
+  (compares decoded keys, so unicode-escaped duplicates are caught).
+- **Unsafe-integer warnings** — flags integers beyond `Number.MAX_SAFE_INTEGER` that lose precision.
+- **Interactive tree view** — lazy, collapsible, with Expand all / Collapse all and **search across
+  keys and values** (match count + highlight, auto-expands matches). Capped for very large documents.
+- Retains pretty-print (2/4/tab), minify, sort-keys, syntax-highlighted editor, copy, download,
+  upload, sample — all reused from the shared Developer Experience layer.
+- **Reuse** — the format engine (`lib/dev/jsonFormat`), editor, result viewer, and validation UI are
+  unchanged; the new logic is `lib/dev/jsonInsights.ts` + `JsonTree.tsx`.
+
+Registry bumped to v2.0.0 (name → "JSON Formatter & Validator", 12 keywords, 6 FAQs, related Security
+tools). **+25 tests** (18 engine incl. the duplicate-key/big-int/error-explanation suites + 7 tree UI)
+→ 1,649 total. Docs: `docs/JsonFormatter.md`.
+
 ## 2026-07-18 — 🎫 JWT Decoder & Verifier (new tool · Security category)
 
 The Security category's fourth tool — a **teaching** decoder, not just a decoder. Route:

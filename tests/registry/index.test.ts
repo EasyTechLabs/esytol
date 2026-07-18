@@ -72,7 +72,7 @@ describe("getToolBySlug()", () => {
   it("finds an existing tool", () => {
     const tool = getToolBySlug("json-formatter");
     expect(tool).toBeDefined();
-    expect(tool?.name).toBe("JSON Formatter");
+    expect(tool?.name).toBe("JSON Formatter & Validator");
   });
 
   it("returns undefined for a missing slug", () => {
