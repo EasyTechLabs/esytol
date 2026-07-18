@@ -6,6 +6,29 @@
 
 ---
 
+## 2026-07-18 — 🔀 JSON Diff Viewer (new tool · Developer category)
+
+Compare two JSON documents and see exactly what changed — a structural diff, 100% client-side,
+nothing uploaded. Route: `/tools/json-diff-viewer`.
+
+- **Structural diff** — added / removed / changed / type-changed nodes, recursing objects and arrays
+  and collapsing identical branches (ignores formatting, unlike a line diff).
+- **Two views** — a colour-coded **unified** diff tree (changed shown as left → right) and a
+  **side-by-side** view of both documents; both with a text badge per change (colour-independent).
+- **Navigate** — expand/collapse all, **changed-only** filter, **search + highlight**, and
+  **jump to next/previous difference**.
+- **Statistics** — added, removed, modified, unchanged, total nodes, max depth.
+- **RFC 6902 JSON Patch** — copy or download a standard add/remove/replace patch that transforms the
+  left document into the right one.
+- **Independent validation** of both inputs with line/column + friendly errors.
+- **Safe** — no eval, prototype-pollution-guarded, depth-guarded for deeply nested input.
+- **New reusable engine** — `lib/dev/jsonDiff.ts` works on parsed JS values, so a future **YAML Diff**
+  / XML Diff / config diff reuses it (`parseYaml` → `diffValues`). Statistics + side-by-side reuse
+  `jsonInsights` + `JsonTree` (TOOL-005) unchanged.
+
+**+22 tests** (15 engine — incl. a patch applier proving left → right, array-tail removals, depth &
+prototype-pollution guards — + 7 UI) → 1,697 total. Docs: `docs/JsonDiffViewer.md`.
+
 ## 2026-07-18 — 🔄 JSON ↔ YAML Converter (new tool · Developer category)
 
 A bidirectional, lossless JSON ↔ YAML converter — 100% client-side, nothing uploaded. Route:

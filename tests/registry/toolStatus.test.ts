@@ -42,6 +42,7 @@ const LIVE_SLUGS = [
   // Developer category (PLATFORM-003) — the platform's second first-class category.
   "json-formatter",
   "json-yaml-converter",
+  "json-diff-viewer",
   "base64-encoder",
   "url-encoder",
   // Everyday category foundation (PLATFORM-004).

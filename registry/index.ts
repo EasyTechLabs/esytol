@@ -200,6 +200,74 @@ export const toolRegistry: Tool[] = [
     popular: true,
   },
 
+  {
+    id: "json-diff-viewer",
+    name: "JSON Diff Viewer",
+    slug: "json-diff-viewer",
+    isNew: true,
+    description:
+      "Compare two JSON documents in your browser and see exactly what changed — a structural diff with added, removed, changed, and type-changed nodes, colour-coded unified and side-by-side views, search and jump-to-difference, statistics, and an exportable RFC 6902 JSON Patch. Both documents are validated independently; nothing is ever uploaded.",
+    category: "developer",
+    tags: ["json", "diff", "developer", "formatter"],
+    keywords: [
+      "json diff",
+      "compare json",
+      "json compare",
+      "json difference",
+      "json patch",
+      "json compare online",
+      "diff json online",
+      "json diff viewer",
+      "json diff tool",
+      "rfc 6902 json patch",
+    ],
+    icon: "🔀",
+    url: "/tools/json-diff-viewer",
+    version: "1.0.0",
+    lastUpdated: "Jul 2026",
+    relatedTools: [
+      "json-formatter",
+      "json-yaml-converter",
+      "base64-encoder",
+      "url-encoder",
+      "jwt-decoder",
+    ],
+    faq: [
+      {
+        question: "Are my JSON documents uploaded anywhere?",
+        answer:
+          "No. Both documents are parsed and compared entirely in your browser using JavaScript — nothing is uploaded, logged, or transmitted. There is no account and no server call.",
+      },
+      {
+        question: "How does the comparison work?",
+        answer:
+          "It compares the two documents structurally, key by key and index by index, rather than line by line. Each node is marked added, removed, changed (same type, different value), or type-changed (e.g. a number became a string). Nested objects and arrays are compared recursively, and identical branches are collapsed so you only focus on what differs.",
+      },
+      {
+        question: "What is the JSON Patch output?",
+        answer:
+          "The tool produces an RFC 6902 JSON Patch — a standard list of add / remove / replace operations that transforms the left document into the right one. You can copy or download it and apply it with any JSON Patch library, which makes it useful for building migrations, API updates, or config changes.",
+      },
+      {
+        question: "How are arrays compared?",
+        answer:
+          "Arrays are compared by index: element 0 to element 0, element 1 to element 1, and so on, with any extra elements at the end shown as added or removed. This is fast and predictable; for arrays that were reordered, an index comparison will show the shifted elements as changed.",
+      },
+      {
+        question: "What do the statistics mean?",
+        answer:
+          "Added and Removed count the value nodes introduced or deleted; Modified counts leaf values that changed (including type changes); Unchanged counts nodes present and equal in both; Total is their sum; and Max depth is how deeply the differences reach. They give a quick sense of how big the change is.",
+      },
+      {
+        question: "Can it handle large documents?",
+        answer:
+          "Yes. The comparison is efficient and the diff tree renders lazily — collapsed branches cost nothing, and you can filter to changed-only nodes, search, and jump between differences. Deeply nested input is handled safely without crashing.",
+      },
+    ],
+    featured: true,
+    popular: true,
+  },
+
   // ─── Text ─────────────────────────────────────────────────────────────────
   {
     id: "word-counter",

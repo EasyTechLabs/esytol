@@ -58,6 +58,23 @@ export const DEV_STANDARDS: Record<string, DevStandard> = {
     ],
     maintainedBy: MAINTAINER,
   },
+  "json-diff-viewer": {
+    processing: "client",
+    dataRetention: CLIENT_ONLY,
+    howItWorks:
+      "Both documents are parsed with the browser's native JSON parser and validated independently (with line/column and a plain-English reason on failure). The parsed values are then compared structurally — recursively over object keys and array indices — into a diff tree that marks each node added, removed, changed, or type-changed, collapsing identical branches. The same comparison produces an RFC 6902 JSON Patch (add/remove/replace) that transforms the left document into the right one. Statistics count added/removed/modified/unchanged nodes and the maximum depth of the differences.",
+    limitations: [
+      "Arrays are compared by index (element 0 vs 0, 1 vs 1, …); a reordered array shows the shifted elements as changed rather than moved. This is the standard, predictable behaviour for a JSON diff.",
+      "The interactive diff tree renders lazily and can filter to changed-only nodes; extremely large documents remain responsive, but very deep nesting is compared with a safety cap.",
+      "The RFC 6902 patch is generated for the index-aligned diff (array additions append, removals are emitted highest-index-first) — apply it with any standard JSON Patch library.",
+    ],
+    references: [
+      { label: "RFC 8259 — JSON", url: "https://www.rfc-editor.org/rfc/rfc8259" },
+      { label: "RFC 6902 — JSON Patch", url: "https://www.rfc-editor.org/rfc/rfc6902" },
+      { label: "RFC 6901 — JSON Pointer", url: "https://www.rfc-editor.org/rfc/rfc6901" },
+    ],
+    maintainedBy: MAINTAINER,
+  },
   "json-yaml-converter": {
     processing: "client",
     dataRetention: CLIENT_ONLY,
