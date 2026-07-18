@@ -1,0 +1,43 @@
+{
+  "url": "https://www.esytol.com",
+  "verdict": "PASS",
+  "score": 100,
+  "checks": [
+    {
+      "name": "site reachable",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 781ms",
+      "evidence": "200 https://www.esytol.com \u00b7 178004 bytes \u00b7 2026-07-18T08:40:24+00:00"
+    },
+    {
+      "name": "absent: open source",
+      "status": "PASS",
+      "message": "as expected in https://www.esytol.com",
+      "evidence": ""
+    },
+    {
+      "name": "path /developers/income-tax-api",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 923ms",
+      "evidence": "200 https://www.esytol.com/developers/income-tax-api \u00b7 45806 bytes \u00b7 2026-07-18T08:40:24+00:00"
+    },
+    {
+      "name": "path /api/v1/health",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 461ms",
+      "evidence": "200 https://www.esytol.com/api/v1/health \u00b7 15 bytes \u00b7 2026-07-18T08:40:25+00:00"
+    },
+    {
+      "name": "path /api/v1/version",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 387ms",
+      "evidence": "200 https://www.esytol.com/api/v1/version \u00b7 135 bytes \u00b7 2026-07-18T08:40:26+00:00"
+    },
+    {
+      "name": "path /api/v1/openapi.json",
+      "status": "PASS",
+      "message": "HTTP 200 \u00b7 421ms",
+      "evidence": "200 https://www.esytol.com/api/v1/openapi.json \u00b7 5453 bytes \u00b7 2026-07-18T08:40:26+00:00"
+    }
+  ]
+}
