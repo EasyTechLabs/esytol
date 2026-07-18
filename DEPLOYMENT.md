@@ -12,6 +12,29 @@ statically-generated **Next.js 15 (App Router)** site and is optimised for
 
 ---
 
+## 0. Definition of "Shipped" (release policy)
+
+**A local commit is not a release.** The canonical Release & Deployment Policy lives in the
+ProductFactory (`easytech-workspace/ProductFactory/Knowledge/Workflows/ReleaseWorkflow.md`) and
+governs every sprint. In short, the pipeline is:
+
+```
+Build → Tests → Commit → Push → GitHub → CI → Deployment → Production Verification → Shipped
+```
+
+A change is **SHIPPED** only when **all** of these are true — otherwise it is **NOT SHIPPED**:
+
+1. Working tree clean · commit created · **pushed** · `origin/main` contains it (ahead 0 / behind 0)
+2. CI green · **deployment succeeded** · the **production URL** serves the change
+3. **Production verified** against the live public URL (§9 Post-Deploy Checklist), evidence recorded
+
+`git add` / `git commit` / `git push` are the normal, authorized close of every sprint. **If a
+deployment fails, the work remains INCOMPLETE** — inspect the Vercel status/logs, fix, redeploy,
+and re-verify. A green build + clean push + `ahead 0 / behind 0` are _permission to attempt a
+deploy, never evidence of one_ (see the P0-1 incident, §10).
+
+---
+
 ## 1. Prerequisites
 
 | Requirement | Version                                        |
