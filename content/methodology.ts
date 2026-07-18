@@ -206,18 +206,19 @@ export const methodology: Record<string, Methodology> = {
     formula:
       "Tax = slab tax − §87A rebate + surcharge + 4% cess   ·   Taxable = Gross income − deductions",
     method:
-      "Computes tax under both the Old and New regimes for FY 2025-26 (AY 2026-27). Slab tax is applied to taxable income, the Section 87A rebate and marginal relief are applied, then surcharge (with marginal relief) and a 4% Health & Education Cess. Both regimes are compared to recommend the cheaper one.",
+      "Computes tax under both the Old and New regimes for a selectable assessment year (AY 2024-25, 2025-26, 2026-27 — default AY 2026-27 / FY 2025-26), each a versioned ruleset. Slab tax is applied to taxable income, the Section 87A rebate and marginal relief are applied, then surcharge (with marginal relief) and a 4% Health & Education Cess. Total income (§288A) and total tax (§288B) are rounded to the nearest ₹10, matching the ITD portal. Both regimes are compared to recommend the cheaper one.",
     sources: [ITD, CBDT, FINANCE_ACT, MOF],
     assumptions: [
-      "Resident individual below 60; FY 2025-26 (AY 2026-27), Finance Act 2025",
-      "New Regime: only the ₹75,000 standard deduction (no 80C/80D/HRA/24b)",
+      "Resident individual below 60; each assessment year applies its own Finance Act (2023/2024/2025)",
+      "New Regime: only the standard deduction (₹75,000 for AY 2025-26 & 2026-27; ₹50,000 for AY 2024-25) — no 80C/80D/HRA/24b",
       "Old Regime: standard deduction ₹50,000 plus the deductions you enter (capped per section)",
-      "§87A rebate makes tax nil up to ₹12,00,000 (New) / ₹5,00,000 (Old) taxable income",
+      "§87A rebate (New regime): nil up to ₹12,00,000 taxable (AY 2026-27) / ₹7,00,000 (AY 2024-25 & 2025-26); Old regime nil up to ₹5,00,000",
+      "Total income and total tax are rounded to the nearest ₹10 (§288A/§288B)",
     ],
     limitations: [
       "Does not cover senior/super-senior slabs, capital-gains special rates, or firms/companies",
       "Surcharge marginal relief is applied; verify complex high-income or multiple-source cases with a tax professional",
-      "Update when the next Finance Act changes slabs, rebate, or deductions",
+      "Supports AY 2024-25 to 2026-27; a new Finance Act is added as a new versioned assessment year",
     ],
     reviewedBy: REVIEWER,
   },

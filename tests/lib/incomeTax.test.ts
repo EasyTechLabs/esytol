@@ -3,6 +3,10 @@ import {
   calculateIncomeTax,
   validateIncomeTaxInputs,
   resultToCSV,
+  isSupportedAssessmentYear,
+  SUPPORTED_ASSESSMENT_YEARS,
+  DEFAULT_ASSESSMENT_YEAR,
+  ENGINE_VERSION,
   STANDARD_DEDUCTION,
   type IncomeTaxInput,
 } from "@/lib/incomeTax";
@@ -179,8 +183,12 @@ describe("calculateIncomeTax — 1000 randomized scenarios (seed 0x1ac0me)", () 
         if (s.taxableIncome < 0) fail++;
         // cess = 4% of (taxAfterRebate + surcharge)
         if (Math.abs(s.cess - Math.round((s.taxAfterRebate + s.surcharge) * 0.04)) > 1) fail++;
-        // total = tax + surcharge + cess (rounded)
-        if (Math.abs(s.totalTax - Math.round(s.taxAfterRebate + s.surcharge + s.cess)) > 1) fail++;
+        // total = round-to-₹10 of (tax + surcharge + cess)  [§288B]
+        const roundTo10 = (n: number) => Math.round(n / 10) * 10;
+        if (s.totalTax !== roundTo10(s.taxAfterRebate + s.surcharge + s.cess)) fail++;
+        // §288A/§288B: taxable income and total tax are multiples of ₹10
+        if (s.taxableIncome % 10 !== 0) fail++;
+        if (s.totalTax % 10 !== 0) fail++;
         if (s.effectiveRate < 0 || s.effectiveRate > 60) fail++;
       }
       // rebate thresholds
@@ -236,5 +244,92 @@ describe("resultToCSV", () => {
     expect(csv).toContain("Total Tax");
     expect(csv).toContain("Taxable Income");
     expect(csv.split("\n").length).toBeGreaterThan(10);
+  });
+});
+
+// ── v2: multi-year (BUILD-001) ───────────────────────────────────────────────
+
+describe("assessment-year versioning", () => {
+  it("defaults to AY 2026-27 (backwards compatible)", () => {
+    const withDefault = calculateIncomeTax(withSalary(2000000));
+    const explicit = calculateIncomeTax(withSalary(2000000), { assessmentYear: "2026-27" });
+    expect(withDefault.new.totalTax).toBe(explicit.new.totalTax);
+    expect(withDefault.attribution.assessmentYear).toBe(DEFAULT_ASSESSMENT_YEAR);
+  });
+
+  it("AY 2025-26 (FY 2024-25): ₹7,75,000 → NIL (₹75k std + ₹7L rebate)", () => {
+    const r = calculateIncomeTax(withSalary(775000), { assessmentYear: "2025-26" });
+    expect(r.new.taxableIncome).toBe(700000);
+    expect(r.new.totalTax).toBe(0);
+  });
+
+  it("AY 2024-25 (FY 2023-24): ₹7,50,000 → NIL (₹50k std + ₹7L rebate)", () => {
+    const r = calculateIncomeTax(withSalary(750000), { assessmentYear: "2024-25" });
+    expect(r.new.taxableIncome).toBe(700000);
+    expect(r.new.totalTax).toBe(0);
+  });
+
+  it("the same income yields different tax across years (proves versioning)", () => {
+    const y27 = calculateIncomeTax(withSalary(1500000), { assessmentYear: "2026-27" }).new.totalTax;
+    const y26 = calculateIncomeTax(withSalary(1500000), { assessmentYear: "2025-26" }).new.totalTax;
+    const y25 = calculateIncomeTax(withSalary(1500000), { assessmentYear: "2024-25" }).new.totalTax;
+    expect(new Set([y27, y26, y25]).size).toBe(3);
+    expect(y27).toBeLessThan(y26); // 2025 slabs are the most generous
+    expect(y26).toBeLessThan(y25);
+  });
+
+  it("isSupportedAssessmentYear guards the set", () => {
+    expect(isSupportedAssessmentYear("2026-27")).toBe(true);
+    expect(isSupportedAssessmentYear("2020-21")).toBe(false);
+    expect(SUPPORTED_ASSESSMENT_YEARS).toContain("2024-25");
+  });
+});
+
+describe("§288A/§288B statutory rounding (nearest ₹10)", () => {
+  it("taxable income and total tax are multiples of ₹10", () => {
+    const r = calculateIncomeTax(withSalary(1234567, { otherIncome: 7891 }));
+    for (const s of [r.old, r.new]) {
+      expect(s.taxableIncome % 10).toBe(0);
+      expect(s.totalTax % 10).toBe(0);
+    }
+  });
+  it("the reference values are unchanged (all multiples of ₹10)", () => {
+    expect(calculateIncomeTax(withSalary(2000000)).new.totalTax).toBe(192400);
+    expect(calculateIncomeTax(withSalary(1300000)).new.totalTax).toBe(26000);
+  });
+});
+
+describe("attribution (enterprise reproducibility)", () => {
+  it("stamps engine version, ruleset, and year — deterministic by default", () => {
+    const a = calculateIncomeTax(withSalary(1500000)).attribution;
+    expect(a.engineVersion).toBe(ENGINE_VERSION);
+    expect(a.assessmentYear).toBe("2026-27");
+    expect(a.financialYear).toBe("2025-26");
+    expect(a.rulesetVersion).toBe("AY2026-27.1");
+    expect(a.financeAct).toBe("Finance Act, 2025");
+    expect(a.computedAt).toBeNull(); // pure unless a clock is supplied
+  });
+  it("computedAt is set only when a clock is supplied", () => {
+    const now = new Date("2026-07-18T00:00:00.000Z");
+    const a = calculateIncomeTax(withSalary(1500000), { now }).attribution;
+    expect(a.computedAt).toBe(now.toISOString());
+  });
+});
+
+describe("cited computation trace (explainability / AI citation)", () => {
+  it("traces steps with statutory sections and reconstructs the total", () => {
+    const r = calculateIncomeTax(withSalary(2000000)).new;
+    const labels = r.trace.map((t) => t.label);
+    expect(labels[0]).toBe("Gross total income");
+    expect(labels).toContain("Standard deduction");
+    expect(r.trace.some((t) => t.section === "§288A")).toBe(true);
+    expect(r.trace.some((t) => t.section === "§288B")).toBe(true);
+    expect(r.trace.some((t) => t.section === "§115BAC & Finance Act First Schedule")).toBe(true);
+    // The final trace step equals the reported total tax.
+    expect(r.trace[r.trace.length - 1].amount).toBe(r.totalTax);
+  });
+  it("old regime with deductions cites Chapter VI-A", () => {
+    const r = calculateIncomeTax(withSalary(1000000, { section80C: 150000 })).old;
+    expect(r.trace.some((t) => t.section === "Chapter VI-A / §24(b)")).toBe(true);
   });
 });

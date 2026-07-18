@@ -1,7 +1,7 @@
 # Income Tax Engine — Execution Roadmap
 
 > **Purpose:** The prioritised task list that climbs the [Maturity Model](IncomeTaxMaturityModel.md), sequenced by return-on-hours toward the first payment. Every task carries its KPIs, risk, dependencies, and value (Parts 3–4). Part of [EXECUTION-001](Execution001IncomeTax.md).
-> **Status:** Execution plan · these are planned builds for future execution sprints — **not built this sprint.**
+> **Status:** Execution plan · **T1 (year-versioning), T3 (§288B rounding), T4-partial (trace) and the core of T2 (API contract) + T5 (cited trace) + enterprise attribution shipped in engine v2.0.0 (BUILD-001)** — see docs/IncomeTaxChangelog.md. Remaining: T6-T7 (HTTP API surface + RapidAPI listing → first payment), T8-T12.
 > **Last Updated:** 2026-07-18
 
 ## Sequencing principle
