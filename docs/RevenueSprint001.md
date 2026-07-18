@@ -52,13 +52,13 @@ traffic — we do not invent numbers.
 
 ### B. Web calculators — live, correct, SEO-built, but monetized only via traffic
 
-| Group            | Tools                                  | Problem solved                     | Target user              | Maturity  | Traffic potential           | Revenue model that could fit                  | Time-to-money | Eng effort             |
-| ---------------- | -------------------------------------- | ---------------------------------- | ------------------------ | --------- | --------------------------- | --------------------------------------------- | ------------- | ---------------------- |
-| **Tax & Salary** | Income Tax (web), HRA                  | tax/take-home planning             | salaried Indians, filers | live, SEO | unknown (Gate 0); seasonal  | ads / affiliate (needs traffic + approvals)   | slow          | low tool / high funnel |
-| **Loans**        | EMI, Home Loan, Personal Loan          | repayment planning                 | borrowers                | live, SEO | unknown (Gate 0)            | lender affiliate (needs traffic + deals)      | slow          | medium                 |
-| **Investments**  | SIP, Lumpsum, FD, RD, PPF, CAGR, GST   | returns/tax planning               | investors, SMBs          | live, SEO | unknown (Gate 0)            | ads / affiliate                               | slow          | low                    |
-| **Retirement**   | EPF, Gratuity, NPS                     | corpus/benefit planning            | employees                | live, SEO | ads / affiliate; API bundle | slow (web) / medium (API)                     | low           |
-| **Planning**     | Financial Roadmap, Financial Dashboard | action plan + local net-worth view | DIY planners             | live      | unknown (Gate 0)            | freemium SaaS (needs billing build + traffic) | slow          | high                   |
+| Group            | Tools                                  | Problem solved                     | Target user              | Maturity  | Traffic potential          | Revenue model that could fit                  | Time-to-money             | Eng effort             |
+| ---------------- | -------------------------------------- | ---------------------------------- | ------------------------ | --------- | -------------------------- | --------------------------------------------- | ------------------------- | ---------------------- |
+| **Tax & Salary** | Income Tax (web), HRA                  | tax/take-home planning             | salaried Indians, filers | live, SEO | unknown (Gate 0); seasonal | ads / affiliate (needs traffic + approvals)   | slow                      | low tool / high funnel |
+| **Loans**        | EMI, Home Loan, Personal Loan          | repayment planning                 | borrowers                | live, SEO | unknown (Gate 0)           | lender affiliate (needs traffic + deals)      | slow                      | medium                 |
+| **Investments**  | SIP, Lumpsum, FD, RD, PPF, CAGR, GST   | returns/tax planning               | investors, SMBs          | live, SEO | unknown (Gate 0)           | ads / affiliate                               | slow                      | low                    |
+| **Retirement**   | EPF, Gratuity, NPS                     | corpus/benefit planning            | employees                | live, SEO | unknown (Gate 0)           | ads / affiliate; API bundle                   | slow (web) / medium (API) | low                    |
+| **Planning**     | Financial Roadmap, Financial Dashboard | action plan + local net-worth view | DIY planners             | live      | unknown (Gate 0)           | freemium SaaS (needs billing build + traffic) | slow                      | high                   |
 
 ### C. Developer & Everyday tools — commodity utilities
 
