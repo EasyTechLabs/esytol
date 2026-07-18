@@ -17,7 +17,6 @@ const COMING_SOON_SLUGS = [
   // json-formatter, base64-encoder, url-encoder went live in PLATFORM-003.
   // word-counter, case-converter went live in PLATFORM-004.
   "lorem-ipsum",
-  "uuid-generator",
 ];
 
 // Fully implemented, interactive calculators.
@@ -50,6 +49,7 @@ const LIVE_SLUGS = [
   // Security category.
   "password-generator",
   "hash-generator",
+  "uuid-generator",
 ];
 
 describe("tool status — placeholder handling", () => {

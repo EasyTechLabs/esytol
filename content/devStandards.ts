@@ -95,6 +95,30 @@ export const DEV_STANDARDS: Record<string, DevStandard> = {
     ],
     maintainedBy: MAINTAINER,
   },
+  "uuid-generator": {
+    processing: "client",
+    dataRetention:
+      "Every UUID is generated on your device and is never uploaded, stored, or logged. Names you enter for v3/v5 and UUIDs you paste to validate stay in your browser.",
+    howItWorks:
+      "Random UUIDs (v4, and the random parts of v1/v7) use the Web Crypto API — the same secure source as crypto.randomUUID(), never Math.random. Time-based v1 and v7 embed a timestamp; v1 uses a random node ID with the multicast bit set, so it never leaks your MAC address. Name-based v3 (MD5) and v5 (SHA-1) hash the namespace and name with the shared crypto library, so the same inputs always produce the same UUID. The validator reads the version and variant bits directly and, for v1/v7, reconstructs the embedded timestamp.",
+    limitations: [
+      "v1 here uses a privacy-safe random node instead of a hardware MAC address — the standard permits this, but it means the node field is not tied to a machine.",
+      "v3 uses MD5 and v5 uses SHA-1; both are fine for deriving identifiers but should not be treated as secure hashes. Prefer v5 over v3, and v7 for new time-ordered IDs.",
+      "A UUID is an identifier, not a secret — v4 is unguessable, but do not use any UUID as a security token or password.",
+    ],
+    references: [
+      {
+        label: "RFC 9562 — Universally Unique IDentifiers (UUIDs)",
+        url: "https://www.rfc-editor.org/rfc/rfc9562",
+      },
+      { label: "RFC 4122 — A UUID URN Namespace", url: "https://www.rfc-editor.org/rfc/rfc4122" },
+      {
+        label: "MDN — Crypto.randomUUID()",
+        url: "https://developer.mozilla.org/en-US/docs/Web/API/Crypto/randomUUID",
+      },
+    ],
+    maintainedBy: MAINTAINER,
+  },
   "hash-generator": {
     processing: "client",
     dataRetention:

@@ -6,6 +6,26 @@
 
 ---
 
+## 2026-07-18 — 🆔 UUID Generator (new tool · Security category)
+
+The Security category's third tool, completing the password/hash/UUID cluster. Route:
+`/tools/uuid-generator`.
+
+- **Every practical version** — v1 (time-based, **privacy-safe random node** — never a MAC),
+  v3 (MD5 name-based), v4 (random), v5 (SHA-1 name-based), v7 (time-ordered, RFC 9562).
+- **Bulk** generation (1 / 10 / 50 / 100 / 1000), per-UUID copy, **Copy all**, **Download .txt**,
+  **Download .csv**, uppercase and hyphen toggles, Regenerate, Clear.
+- **Namespaces** for v3/v5 — DNS, URL, OID, X500, or a custom namespace UUID + name input.
+- **Validate mode** — paste any UUID to check the format and see its version, variant, and (for
+  v1/v7) the embedded timestamp; recognises the Nil and Max UUIDs.
+- **Secure & private** — random parts use the Web Crypto API (never Math.random); everything runs
+  in the browser, nothing uploaded. Honest caveats (v1 node, MD5/SHA-1, "not a secret").
+- **Reuse** — the v3/v5 hashing reuses `hashBytes` from `lib/dev/crypto.ts` (added in TOOL-002);
+  no shared lib needed changing. Category moved to **security** to join the cluster.
+
+**+27 tests** (19 engine incl. authoritative Python v3/v5 vectors + timestamp round-trips, 8 UI)
+→ 1,603 total. Docs: `docs/UUIDGenerator.md`.
+
 ## 2026-07-18 — 🔏 Hash Generator (new tool · Security category)
 
 The Security category's second tool, and a showcase of platform reuse — the hash

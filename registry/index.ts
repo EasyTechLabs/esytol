@@ -1605,29 +1605,64 @@ export const toolRegistry: Tool[] = [
     id: "uuid-generator",
     name: "UUID Generator",
     slug: "uuid-generator",
-    status: "coming-soon",
-    description: "Generate RFC-4122 compliant UUIDs (v4) in bulk with one click.",
-    category: "generator",
-    tags: ["uuid", "guid", "generator", "random"],
-    keywords: ["uuid generator online", "guid generator", "random uuid", "uuid v4"],
+    isNew: true,
+    description:
+      "Generate and validate UUIDs (v1, v3, v4, v5, v7) in your browser — single or in bulk up to 1000, with copy, TXT/CSV download, uppercase and hyphen toggles, RFC-4122/9562 namespace support, and a validator that explains the version, variant, and embedded timestamp. Cryptographically secure, nothing uploaded.",
+    category: "security",
+    tags: ["uuid", "guid", "generator", "identifier", "security"],
+    keywords: [
+      "uuid generator",
+      "uuid v4 generator",
+      "guid generator",
+      "uuid online",
+      "generate uuid",
+      "random uuid",
+      "uuid validator",
+      "uuid checker",
+      "uuid v7 generator",
+      "uuid v5 generator",
+      "bulk uuid generator",
+      "nil uuid",
+    ],
     icon: "🆔",
     url: "/tools/uuid-generator",
     version: "1.0.0",
     lastUpdated: "Jul 2026",
-    relatedTools: ["hash-generator", "password-generator"],
+    relatedTools: ["password-generator", "hash-generator", "base64-encoder", "json-formatter"],
     faq: [
       {
         question: "What is a UUID?",
         answer:
-          "A UUID (Universally Unique Identifier) is a 128-bit label used to uniquely identify objects in computer systems without central coordination.",
+          "A UUID (Universally Unique Identifier), also called a GUID, is a 128-bit value used to identify something uniquely without any central authority. Written as 32 hexadecimal digits in five hyphen-separated groups (8-4-4-4-12), it is unique enough that two independently generated UUIDs will, in practice, never collide.",
       },
       {
-        question: "What is the difference between UUID v4 and other versions?",
+        question: "Which UUID version should I use?",
         answer:
-          "UUID v4 is randomly generated. v1 is time-based, v3/v5 are name-based (hashed). v4 is the most common for general-purpose unique IDs.",
+          "Use v4 (random) for general-purpose unique IDs — it is the most common. Use v7 for database keys that should sort by creation time (it embeds a millisecond timestamp). Use v5 (or v3) when you need a deterministic UUID derived from a namespace and a name — the same inputs always produce the same UUID. v1 is the classic time-based UUID; this tool generates it with a privacy-safe random node.",
+      },
+      {
+        question: "Are these UUIDs cryptographically secure?",
+        answer:
+          "The random parts of v4, v1, and v7 come from the Web Crypto API — the same secure source as the browser's built-in crypto.randomUUID(). This tool never uses Math.random(). Note that a UUID is an identifier, not a secret: v4 is unguessable, but you should not use any UUID as a password or security token.",
+      },
+      {
+        question: "What is UUID v7 and why is it useful?",
+        answer:
+          "UUID v7 (RFC 9562) starts with a 48-bit Unix-millisecond timestamp followed by random bits. Because the timestamp comes first, v7 UUIDs sort in creation order, which makes them far better than v4 as database primary keys — inserts stay sequential and indexes stay compact.",
+      },
+      {
+        question: "How does the validator work?",
+        answer:
+          "Paste any UUID into Validate mode and the tool checks the 8-4-4-4-12 format, then reads the version and variant bits directly from the value. For time-based v1 and v7 it also reconstructs the timestamp embedded in the UUID and shows it in ISO format. It recognises the special Nil and Max UUIDs too.",
+      },
+      {
+        question: "Is my data sent to a server?",
+        answer:
+          "No. All generation and validation happens entirely in your browser. The UUIDs, any names you enter for v3/v5, and any UUID you validate never leave your device — there is no upload, no logging, and no account.",
       },
     ],
-    isNew: true,
+    featured: true,
+    popular: true,
   },
 ];
 
