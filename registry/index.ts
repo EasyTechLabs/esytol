@@ -1474,39 +1474,69 @@ export const toolRegistry: Tool[] = [
     id: "password-generator",
     name: "Password Generator",
     slug: "password-generator",
-    status: "coming-soon",
-    description: "Generate strong, cryptographically secure passwords with custom rules.",
+    isNew: true,
+    description:
+      "Generate strong, cryptographically secure passwords and memorable passphrases in your browser. Choose length and character types, exclude look-alike characters, or build a Diceware-style passphrase — with a live entropy-based strength meter and offline crack-time estimate. Nothing is ever uploaded.",
     category: "security",
-    tags: ["password", "generator", "security", "random"],
+    tags: ["password", "generator", "security", "strong-password", "passphrase"],
     keywords: [
+      "password generator",
       "password generator online",
       "strong password generator",
-      "random password",
-      "secure password",
+      "random password generator",
+      "secure password generator",
+      "passphrase generator",
+      "memorable password generator",
+      "diceware generator",
+      "16 character password generator",
+      "password strength checker",
+      "generate password online free",
+      "cryptographically secure password",
     ],
     icon: "🔑",
     url: "/tools/password-generator",
     version: "1.0.0",
     lastUpdated: "Jul 2026",
-    relatedTools: ["hash-generator", "uuid-generator"],
+    relatedTools: ["hash-generator", "uuid-generator", "base64-encoder", "json-formatter"],
     faq: [
       {
-        question: "Are generated passwords stored anywhere?",
+        question: "Are the passwords I generate sent to or stored on any server?",
         answer:
-          "No. Passwords are generated client-side using the Web Crypto API and are never sent to any server.",
+          "No. Every password and passphrase is generated entirely in your browser using the Web Crypto API. Nothing you generate is uploaded, logged, saved, or transmitted — there is no account and no history. Close the tab and it is gone.",
       },
       {
-        question: "What makes a password cryptographically secure?",
+        question: "What makes these passwords cryptographically secure?",
         answer:
-          "The generator uses window.crypto.getRandomValues(), which uses the operating system's entropy source, making it suitable for security-sensitive applications.",
+          "The generator draws randomness from crypto.getRandomValues(), which is backed by your operating system's cryptographically secure random source — never Math.random(), which is predictable. Each character or word is chosen using rejection sampling, so there is no bias toward any character and every possibility is equally likely.",
       },
       {
         question: "How long should my password be?",
         answer:
-          "Security experts recommend at least 16 characters for most accounts and 24+ for high-value accounts.",
+          "For most accounts, 16 characters with a mix of uppercase, lowercase, numbers, and symbols is strong. For high-value accounts (email, banking, password manager), use 20 or more. The strength meter shows the real entropy in bits — aim for 'Strong' (60+ bits) or 'Very strong' (128+ bits).",
+      },
+      {
+        question: "What is a passphrase and why might it be better?",
+        answer:
+          "A passphrase is several random words joined together (for example, brave-lemon-tiger-cloud-nine). It is far easier to remember than a random string of symbols while being just as hard to guess when you use enough words. This tool builds passphrases from a 256-word list, so each word adds 8 bits of entropy — a six-word passphrase has about 48 bits, and more words means more strength.",
+      },
+      {
+        question: "What does 'bits of entropy' mean?",
+        answer:
+          "Entropy measures how unpredictable a password is — how many attempts an attacker would need on average to guess it. Each extra bit doubles the difficulty. It is computed honestly here from the password length and the size of the character pool (or the number of words and the word-list size), not estimated from patterns.",
+      },
+      {
+        question: "How is the 'time to crack' estimated?",
+        answer:
+          "It assumes an offline attacker making 100 billion guesses per second against a weak password hash, and shows the average time to exhaust half the keyspace. It is a deliberately conservative worst case for awareness; a site that stores passwords with a slow, salted hash (bcrypt or Argon2) would take far longer.",
+      },
+      {
+        question: "What are look-alike (ambiguous) characters?",
+        answer:
+          "Characters that are easy to confuse when read or typed, such as the lowercase L, the number 1, the capital I, the capital O, and the number 0. Turn on 'Exclude look-alike characters' when a password may be typed by hand or read aloud.",
       },
     ],
     featured: true,
+    popular: true,
   },
   {
     id: "hash-generator",

@@ -105,9 +105,13 @@ export const DOMAINS: Domain[] = [
   {
     slug: "developer",
     name: "Developer",
-    description: "JSON, encoders, formatters and regex.",
+    description: "JSON, encoders, formatters and security utilities.",
     icon: "⚙️",
-    tags: ["developer", "json", "encoder", "formatter", "regex"],
+    // "security"/"password" route the Security-category generators (password, and
+    // later hash) to the Developer trust surface (client-side, standards-cited),
+    // which fits a crypto tool better than the Everyday one. Kept out of the
+    // Everyday "random"/"generator" bucket so routing is unambiguous.
+    tags: ["developer", "json", "encoder", "formatter", "regex", "security", "password"],
   },
 ];
 

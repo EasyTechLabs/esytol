@@ -95,6 +95,33 @@ export const DEV_STANDARDS: Record<string, DevStandard> = {
     ],
     maintainedBy: MAINTAINER,
   },
+  "password-generator": {
+    processing: "client",
+    dataRetention:
+      "Every password is generated on your own device and is never uploaded, stored, logged, or transmitted. There is no account and no history — close the tab and it is gone.",
+    howItWorks:
+      "Randomness comes from the Web Crypto API (crypto.getRandomValues), your operating system's cryptographically secure source — never Math.random. Each character or word is chosen with rejection sampling, so there is no modulo bias and every option is equally likely. Passphrase mode picks words from a 256-word list (8 bits of entropy per word). Strength is reported as real entropy — the password length times log2 of the character-pool size, or the word count times log2 of the list size — not a guessed score.",
+    limitations: [
+      "The crack-time estimate assumes an offline attacker making 100 billion guesses per second against a weak hash; a well-salted, slow hash (bcrypt/argon2) is far harder, so treat it as a conservative worst case.",
+      "A password is only as safe as where you store it — use a password manager and never reuse a password across sites.",
+      "Entropy measures resistance to guessing the exact output; it does not protect against phishing, keyloggers, or a breached website.",
+    ],
+    references: [
+      {
+        label: "MDN — Crypto.getRandomValues()",
+        url: "https://developer.mozilla.org/en-US/docs/Web/API/Crypto/getRandomValues",
+      },
+      {
+        label: "NIST SP 800-63B — Digital Identity (Authenticator) Guidelines",
+        url: "https://pages.nist.gov/800-63-3/sp800-63b.html",
+      },
+      {
+        label: "EFF — Diceware passphrases",
+        url: "https://www.eff.org/dice",
+      },
+    ],
+    maintainedBy: MAINTAINER,
+  },
 };
 
 export function getDevStandard(slug: string): DevStandard | undefined {
