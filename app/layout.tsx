@@ -6,6 +6,7 @@ import { webSiteSchema, organizationSchema } from "@/seo/jsonld";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Analytics } from "@/analytics/Analytics";
+import { CommandPalette } from "@/features/search/CommandPalette";
 import "./globals.css";
 
 export const metadata: Metadata = buildMetadata();
@@ -46,6 +47,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
         </main>
         <Footer />
+        <CommandPalette />
         <Analytics />
       </body>
     </html>

@@ -92,6 +92,36 @@ export function articleSchema(article: {
   };
 }
 
+/**
+ * CollectionPage + ItemList schema for a listing page (a category, /tools, /popular, /new).
+ * Gives search engines an explicit, ordered inventory of what the page links to — the structured-data
+ * counterpart of the internal-link graph, generated from the registry so every listing page inherits it.
+ */
+export function collectionPageSchema(page: {
+  name: string;
+  description: string;
+  url: string;
+  items: { name: string; url: string }[];
+}) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: page.name,
+    description: page.description,
+    url: page.url,
+    mainEntity: {
+      "@type": "ItemList",
+      numberOfItems: page.items.length,
+      itemListElement: page.items.map((item, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        name: item.name,
+        url: item.url,
+      })),
+    },
+  };
+}
+
 export function faqSchema(faqs: { question: string; answer: string }[]) {
   return {
     "@context": "https://schema.org",

@@ -21,9 +21,22 @@ export interface Tool {
   category: CategorySlug;
   tags: string[];
   keywords?: string[];
+  /**
+   * Alternative names a user might search for (e.g. "beautify", "prettify", "minify").
+   * Optional and indexed by the global search when present — no page renders them directly.
+   */
+  aliases?: string[];
+  /**
+   * Concrete tasks the tool solves (e.g. "debug an API response"). Optional; indexed by search.
+   */
+  useCases?: string[];
   icon: string;
   url: string;
   faq?: FAQ[];
+  /**
+   * Curated related-tool slugs. Optional — when omitted or short, `getRelatedTools` derives
+   * related tools from shared tags/category so no tool is ever an internal-linking orphan.
+   */
   relatedTools?: string[];
   lastUpdated?: string;
   version?: string;

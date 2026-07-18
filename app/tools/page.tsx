@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
 import { buildMetadata } from "@/seo/metadata";
-import { getTools, getLiveTools } from "@/registry";
+import { getLiveTools } from "@/registry";
+import { searchToolList } from "@/lib/search/toolSearch";
+import { collectionPageSchema } from "@/seo/jsonld";
+import { siteConfig } from "@/config/site";
 import { ToolCard } from "@/components/ui/ToolCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 
 export const metadata: Metadata = buildMetadata({
   title: "All Tools",
   description:
-    "Browse every free tool on Esytol — finance calculators for India (EMI, SIP, tax, loans, retirement) and everyday utilities. No signup required.",
+    "Browse every free tool on Esytol — developer utilities (JSON, XML, CSV, encoders), security tools, India finance calculators (EMI, SIP, tax, loans), and everyday utilities. All run in your browser; no signup.",
   path: "/tools",
 });
 
@@ -19,12 +22,30 @@ export default async function ToolsPage({ searchParams }: Props) {
   const { q } = await searchParams;
   const query = q?.trim() ?? "";
 
-  // Only live tools are browsable; apply the search query when present.
-  const tools = getTools(query ? { query } : undefined).filter((t) => t.status !== "coming-soon");
-  const liveCount = getLiveTools().length;
+  // The full catalogue, or a fuzzy-ranked subset when searching — one search engine everywhere.
+  const allLive = getLiveTools();
+  const tools = query ? searchToolList(query, undefined, allLive) : allLive;
+
+  // CollectionPage/ItemList structured data for the canonical (unfiltered) listing.
+  const schema =
+    query === ""
+      ? collectionPageSchema({
+          name: "All Tools — Esytol",
+          description: "Every free developer, security, finance, and everyday tool on Esytol.",
+          url: `${siteConfig.url}/tools`,
+          items: allLive.map((t) => ({ name: t.name, url: `${siteConfig.url}${t.url}` })),
+        })
+      : null;
 
   return (
     <div className="container-page section-gap">
+      {schema && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+        />
+      )}
+
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">
           {query ? "Search Results" : "All Tools"}
@@ -36,7 +57,7 @@ export default async function ToolsPage({ searchParams }: Props) {
               <span className="font-medium text-gray-700">“{query}”</span>
             </>
           ) : (
-            `${liveCount} tools available — more coming soon.`
+            `${allLive.length} free tools — all run entirely in your browser.`
           )}
         </p>
       </div>
@@ -46,7 +67,7 @@ export default async function ToolsPage({ searchParams }: Props) {
           title={query ? `No tools match “${query}”` : "No tools available"}
           description={
             query
-              ? "Try a different keyword — for example “EMI”, “SIP”, “GST”, or “home loan”."
+              ? "Try a different keyword — for example “JSON”, “hash”, “EMI”, or “base64”."
               : "Check back soon."
           }
         />

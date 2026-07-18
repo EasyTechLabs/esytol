@@ -2374,3 +2374,81 @@ export function getLiveCategories(): Category[] {
   const liveCategorySlugs = new Set(getLiveTools().map((t) => t.category));
   return categories.filter((c) => liveCategorySlugs.has(c.slug));
 }
+
+// ─── Related tools & internal-link engine (PLATFORM-006) ─────────────────────
+
+/**
+ * A relatedness score between two tools, derived entirely from metadata: shared tags weigh most
+ * (they encode "same kind of tool"), then same category, then shared keywords. This is what lets a
+ * new tool inherit sensible related links — and appear in others' — with zero hand-maintained lists.
+ */
+function relatednessScore(a: Tool, b: Tool): number {
+  if (a.slug === b.slug) return -1;
+  const tagsA = new Set(a.tags.map((t) => t.toLowerCase()));
+  const sharedTags = b.tags.filter((t) => tagsA.has(t.toLowerCase())).length;
+  const keywordsA = new Set((a.keywords ?? []).map((k) => k.toLowerCase()));
+  const sharedKeywords = (b.keywords ?? []).filter((k) => keywordsA.has(k.toLowerCase())).length;
+  let score = sharedTags * 10 + sharedKeywords * 2;
+  if (a.category === b.category) score += 4;
+  return score;
+}
+
+/**
+ * The related tools for a tool page — **metadata-driven, never hand-maintained end-to-end**.
+ * Curated `relatedTools` slugs come first (author intent wins), then the list is topped up to
+ * `limit` with the highest-scoring live tools by shared tags/category/keywords. Guarantees every
+ * tool has related links, so no page is ever an internal-linking orphan (enforced by a test).
+ */
+export function getRelatedTools(tool: Tool, limit = 5): Tool[] {
+  const result: Tool[] = [];
+  const seen = new Set<string>([tool.slug]);
+
+  for (const slug of tool.relatedTools ?? []) {
+    const related = _slugIndex.get(slug);
+    if (related && isToolLive(related) && !seen.has(related.slug)) {
+      result.push(related);
+      seen.add(related.slug);
+    }
+  }
+
+  if (result.length < limit) {
+    // Rank all remaining live tools so we can always top up to `limit`. Strong metadata matches
+    // (shared tags/keywords/category) sort first; when those run out, same-category then
+    // popular/featured tools fill the rest — so a tool is *never* an internal-linking orphan, even
+    // if it shares no tags with anything.
+    const ranked = getLiveTools()
+      .filter((t) => !seen.has(t.slug))
+      .map((t) => {
+        let score = relatednessScore(tool, t);
+        if (score <= 0) {
+          // Weak fallback tiers, kept below any real tag/keyword match.
+          if (t.category === tool.category) score = 0.5;
+          else if (t.popular) score = 0.2;
+          else if (t.featured) score = 0.1;
+          else score = 0.01;
+        }
+        return { tool: t, score };
+      })
+      .sort((a, b) => b.score - a.score);
+    for (const { tool: t } of ranked) {
+      if (result.length >= limit) break;
+      result.push(t);
+      seen.add(t.slug);
+    }
+  }
+
+  return result.slice(0, limit);
+}
+
+/**
+ * Previous / next tools within the same domain-ish neighbourhood (same category), by registry order,
+ * for sequential "Previous ← → Next" navigation. Wraps around so the ends are never dead links.
+ */
+export function getAdjacentTools(tool: Tool): { previous: Tool | null; next: Tool | null } {
+  const siblings = getLiveTools().filter((t) => t.category === tool.category);
+  const i = siblings.findIndex((t) => t.slug === tool.slug);
+  if (i === -1 || siblings.length < 2) return { previous: null, next: null };
+  const previous = siblings[(i - 1 + siblings.length) % siblings.length];
+  const next = siblings[(i + 1) % siblings.length];
+  return { previous, next };
+}

@@ -6,6 +6,31 @@
 
 ---
 
+## 2026-07-19 — 🔎 SEO, Navigation & Discoverability Platform (PLATFORM-006 · platform)
+
+A platform-engineering sprint (no new tools): make every future page automatically inherit SEO,
+navigation, internal linking, structured data, discovery, and accessibility — and enforce it.
+
+- **Global search (⌘K / Ctrl+K)** — a permanent command palette mounted once in the root layout, on every
+  page. New pure engine `lib/search/toolSearch.ts` auto-indexes the registry (name, keywords, aliases,
+  tags, category, use cases, description) with weighted, typo-tolerant, multi-word ranking; **adding a
+  tool needs zero search code**. Keyboard-navigable, recent/popular/category empty-state, mobile, and
+  screen-reader friendly (dialog/combobox/listbox, focus return).
+- **Metadata-driven related tools & internal links** — `getRelatedTools` (curated first, then derived from
+  shared tags/category, always topped up → never an orphan) and `getAdjacentTools` (Previous/Next). The
+  tool sidebar now links automatically; no hand-maintained lists required.
+- **Structured data for listing pages** — new `collectionPageSchema` (CollectionPage + ItemList) emitted on
+  category pages and `/tools`; category pages gained a visible breadcrumb, BreadcrumbList JSON-LD, an
+  overview, and cross-category links.
+- **Technical-SEO enforcement** — `tests/seo/technicalSeo.test.ts` holds every live tool to one contract
+  (unique title/description, canonical, FAQ, ≥3 related, domain, sitemap, search-findable, schema) and
+  fails CI on duplicates/orphans/thin pages. It already caught real orphans and drove the always-fill fix.
+- **SEO Chief agent** — `AI/Agents/SEOChief.md` (ProductFactory): a standing auditor that runs after every
+  sprint and never relaxes a guardrail.
+
+**+133 tests** (search engine, command palette, related-tools engine, and the 113-assertion
+technical-SEO contract over every live tool) → 1,932 total. Docs: `docs/SeoDiscoverabilityPlatform.md`.
+
 ## 2026-07-19 — 🔣 Encoding & Escape family — 5 tools on one engine (PLATFORM-005 · Developer)
 
 A **platform sprint**: five reversible encoder/decoder tools built on one shared engine, one UI

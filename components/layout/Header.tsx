@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Navigation } from "./Navigation";
 import { Logo } from "./Logo";
+import { SearchTrigger } from "@/features/search/SearchTrigger";
 
 export function Header() {
   return (
@@ -16,6 +17,7 @@ export function Header() {
 
         {/* Actions */}
         <div className="flex items-center gap-3">
+          <SearchTrigger />
           <Link
             href="/tools"
             className="hidden rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700 sm:block"
