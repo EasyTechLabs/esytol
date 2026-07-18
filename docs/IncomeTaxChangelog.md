@@ -5,6 +5,39 @@
 > **Last Updated:** 2026-07-18
 > **Related:** `lib/incomeTax.ts` · `lib/incomeTaxApi.ts` · docs/Execution001IncomeTax.md
 
+## API v1 — 2026-07-18 (EXPOSE-001)
+
+The engine gained its first public **HTTP API** — the website is no longer the only consumer.
+The computation engine (v2.0.0) is unchanged; this adds a stable surface over it.
+
+### Added
+
+- **`POST /api/v1/income-tax/calculate`** — computes both regimes; returns
+  `{ success, apiVersion, engineVersion, assessmentYear, requestId, result }` with the §-level trace
+  and attribution. Wraps the tested `lib/incomeTaxApi` contract.
+- **Operational endpoints:** `GET /api/v1/health` (liveness), `/api/v1/ready` (readiness — engine
+  computes), `/api/v1/version` (versions + supported years), `/api/v1/openapi.json` (OpenAPI 3.1).
+- **URL versioning** (`/api/v1`) — future versions coexist.
+- **Validation** — malformed JSON → 400; validation failures → 422 with `{code, message, field}`;
+  never a stack trace, never an uncaught throw.
+- **Observability** — per-request `X-Request-Id`, privacy-safe structured logs (**no income/PII
+  logged**), health/ready/version probes.
+- **Rate limiting** — configurable sliding-window limiter with a generous public default and
+  `X-RateLimit-*` headers (best-effort per-instance on serverless).
+- **Authentication abstraction** — `authenticate(req)` with a public default and API-key/bearer
+  seams, so auth can be added later without changing routes or the request shape.
+- **CORS** — open (`*`) for browser callers.
+- **Interactive docs** at `/developers/income-tax-api` (self-contained playground; executable) +
+  the machine-readable OpenAPI spec for any Swagger UI / Postman.
+- **Developer guide** — `docs/IncomeTaxApiGuide.md` (quick start + curl/JS/Python/Java).
+
+### Notes
+
+- The **engine is untouched** — the API is a thin, stateless adapter over the pure v2.0.0 engine.
+- Not in scope (EXPOSE-002+): marketplace listing, billing, API-key issuance.
+- Tests: 15 HTTP contract/negative/observability + OpenAPI-structure tests, plus the 45 engine and
+  8 contract tests from BUILD-001.
+
 ## v2.0.0 — 2026-07-18 (BUILD-001)
 
 The engine graduated from a single-year calculator to a multi-year, provably-attributed,
