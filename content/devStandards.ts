@@ -58,6 +58,23 @@ export const DEV_STANDARDS: Record<string, DevStandard> = {
     ],
     maintainedBy: MAINTAINER,
   },
+  "json-yaml-converter": {
+    processing: "client",
+    dataRetention: CLIENT_ONLY,
+    howItWorks:
+      "JSON is parsed with the browser's native parser; YAML with js-yaml. The parsed value is serialised to the other format — JSON with your chosen indentation, YAML with clean 2-space indentation. Conversion is lossless for standard data. YAML constructs JSON cannot represent are resolved to plain values: aliases expand to a copy of their anchored value, merge keys (`<<:`) are merged in (own keys win), and a multi-document stream becomes a JSON array. A raw-text scan surfaces each of these, plus duplicate keys and unsafe integers, so nothing changes silently. Statistics and the tree view reuse the JSON insight engine.",
+    limitations: [
+      "JSON cannot express YAML references, so aliases are expanded (repeated values are duplicated) and merge keys are flattened — the output is self-contained rather than a faithful re-serialisation of the YAML graph.",
+      "Custom/non-standard YAML tags cannot be represented in JSON; the resolved value is kept and the tag is dropped (reported as a warning).",
+      "The interactive tree view is limited for very large documents (tens of thousands of values); conversion and validation are not.",
+    ],
+    references: [
+      { label: "RFC 8259 — JSON", url: "https://www.rfc-editor.org/rfc/rfc8259" },
+      { label: "YAML 1.2 Specification", url: "https://yaml.org/spec/1.2.2/" },
+      { label: "js-yaml", url: "https://github.com/nodeca/js-yaml" },
+    ],
+    maintainedBy: MAINTAINER,
+  },
   "base64-encoder": {
     processing: "client",
     dataRetention: CLIENT_ONLY,

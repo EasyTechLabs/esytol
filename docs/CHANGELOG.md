@@ -6,6 +6,28 @@
 
 ---
 
+## 2026-07-18 — 🔄 JSON ↔ YAML Converter (new tool · Developer category)
+
+A bidirectional, lossless JSON ↔ YAML converter — 100% client-side, nothing uploaded. Route:
+`/tools/json-yaml-converter`.
+
+- **Both directions** — JSON → YAML and YAML → JSON, with a one-click **Swap** that round-trips.
+- **Formatting** — JSON output as 2/4-space or minified; clean 2-space YAML; optional sort-keys.
+- **Real-time validation** — line/column + friendly explanations (JSON: trailing comma, comment,
+  single quotes…; YAML: the parser's reason at the exact mark).
+- **Honest about YAML** — detects and _reports_ multi-document streams (→ JSON array), anchors &
+  aliases (expanded), **merge keys `<<:` (resolved — js-yaml 4 leaves them literal, so the engine
+  flattens them, own keys winning)**, and custom tags — nothing is silently changed.
+- **Warnings** — duplicate keys and unsafe integers on the JSON side (reused `scanJson`).
+- **Explorer + stats** — the reused searchable **tree view** and JSON statistics (objects, arrays,
+  scalars, properties, depth, output size).
+- **Reuse** — statistics + tree come from `lib/dev/jsonInsights` + `JsonTree` (TOOL-005) unchanged.
+  New shared libs: `lib/dev/jsonYaml.ts` (converter), `lib/dev/yamlInsights.ts` (feature scan), and
+  `lib/dev/yaml.ts` extended (line/column, multi-document).
+
+**+26 tests** (18 engine incl. round-trips/anchors/merge/multi-doc + circular-ref & prototype-
+pollution guards + 8 UI) → 1,675 total. Docs: `docs/JsonYamlConverter.md`.
+
 ## 2026-07-18 — 📋 JSON Formatter & Validator v2.0.0 (major upgrade · Developer category)
 
 Upgraded the Developer category's flagship formatter from a solid pretty-printer into a

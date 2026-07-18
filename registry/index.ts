@@ -132,6 +132,74 @@ export const toolRegistry: Tool[] = [
     isNew: true,
   },
 
+  {
+    id: "json-yaml-converter",
+    name: "JSON ↔ YAML Converter",
+    slug: "json-yaml-converter",
+    isNew: true,
+    description:
+      "Convert between JSON and YAML in your browser, both directions, with real-time validation and human-friendly errors (line & column), a searchable tree view, statistics, and warnings for duplicate keys, unsafe integers, multi-document streams, anchors, aliases, and merge keys. Lossless round-trips; nothing is ever uploaded.",
+    category: "developer",
+    tags: ["json", "yaml", "developer", "formatter"],
+    keywords: [
+      "json to yaml",
+      "yaml to json",
+      "yaml converter",
+      "json yaml converter",
+      "yaml formatter",
+      "yaml validator",
+      "convert json to yaml online",
+      "convert yaml to json online",
+      "yaml parser",
+      "json yaml online",
+    ],
+    icon: "🔄",
+    url: "/tools/json-yaml-converter",
+    version: "1.0.0",
+    lastUpdated: "Jul 2026",
+    relatedTools: [
+      "json-formatter",
+      "base64-encoder",
+      "url-encoder",
+      "jwt-decoder",
+      "hash-generator",
+    ],
+    faq: [
+      {
+        question: "Is my JSON or YAML uploaded anywhere?",
+        answer:
+          "No. All parsing, conversion, validation, statistics, and the tree view run entirely in your browser using JavaScript. Your documents are never uploaded, logged, or transmitted — there is no account and no server call.",
+      },
+      {
+        question: "Is the conversion lossless?",
+        answer:
+          "For standard data it is exact: JSON → YAML → JSON returns the original value, and YAML → JSON → YAML preserves the resolved value. YAML features that JSON cannot represent (anchors, aliases, merge keys, multiple documents, custom tags) are resolved to plain values — and the tool tells you when that happens, so nothing is silently changed.",
+      },
+      {
+        question: "How are YAML anchors, aliases, and merge keys handled?",
+        answer:
+          "Aliases are expanded to a self-contained copy of their anchored value (JSON has no references). Merge keys (<<:) are resolved — the referenced maps are merged into the object, with the object's own keys taking precedence. Each of these is reported as a note so you know the output was expanded, not copied verbatim.",
+      },
+      {
+        question: "What happens with a multi-document YAML stream?",
+        answer:
+          "A YAML stream with several documents separated by --- is converted to a JSON array — one element per document, in order — because JSON has no multi-document concept. The tool shows how many documents it found.",
+      },
+      {
+        question: "What do the error messages tell me?",
+        answer:
+          "Invalid input is reported with the line and column of the problem plus a plain-English explanation — for JSON, common causes like trailing commas, comments, or single quotes; for YAML, the parser's reason at the exact mark. That turns a cryptic parse error into a fix.",
+      },
+      {
+        question: "Can it handle large documents?",
+        answer:
+          "Yes. Conversion, validation, and statistics work on documents of any size, in your browser. The interactive tree view is limited for very large documents (tens of thousands of values) to keep the page responsive; the converted output is never limited.",
+      },
+    ],
+    featured: true,
+    popular: true,
+  },
+
   // ─── Text ─────────────────────────────────────────────────────────────────
   {
     id: "word-counter",

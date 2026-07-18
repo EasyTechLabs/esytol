@@ -41,6 +41,7 @@ const LIVE_SLUGS = [
   "financial-dashboard",
   // Developer category (PLATFORM-003) — the platform's second first-class category.
   "json-formatter",
+  "json-yaml-converter",
   "base64-encoder",
   "url-encoder",
   // Everyday category foundation (PLATFORM-004).
