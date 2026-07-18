@@ -95,6 +95,37 @@ export const DEV_STANDARDS: Record<string, DevStandard> = {
     ],
     maintainedBy: MAINTAINER,
   },
+  "hash-generator": {
+    processing: "client",
+    dataRetention:
+      "Your text and files are hashed entirely on your device — nothing is uploaded, stored, or logged. Files are read into memory only to compute the digest and are never sent anywhere.",
+    howItWorks:
+      "SHA-1, SHA-256, and SHA-512 are computed with the Web Crypto API (SubtleCrypto), your platform's native, audited implementation. MD5 uses a small pure-JavaScript implementation (Web Crypto does not offer it). Files are hashed as raw bytes, so a checksum matches the one published by the file's author. HMAC mode combines your message and a secret key into a keyed hash for authentication. Paste an expected hash into the verify box to confirm a download's integrity.",
+    limitations: [
+      "MD5 and SHA-1 are broken against collision attacks — use them only for non-security checksums and legacy compatibility. For integrity and security, use SHA-256 or SHA-512.",
+      "A hash proves integrity, not confidentiality: it is not encryption and cannot be reversed to recover the input.",
+      "In-browser file hashing is capped at 5 MB so a large file cannot hang the tab; larger files are best hashed with a native tool.",
+    ],
+    references: [
+      {
+        label: "FIPS 180-4 — Secure Hash Standard (SHA-1/2)",
+        url: "https://csrc.nist.gov/pubs/fips/180-4/upd1/final",
+      },
+      {
+        label: "RFC 1321 — The MD5 Message-Digest Algorithm",
+        url: "https://www.rfc-editor.org/rfc/rfc1321",
+      },
+      {
+        label: "RFC 2104 — HMAC: Keyed-Hashing for Message Authentication",
+        url: "https://www.rfc-editor.org/rfc/rfc2104",
+      },
+      {
+        label: "MDN — SubtleCrypto.digest()",
+        url: "https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/digest",
+      },
+    ],
+    maintainedBy: MAINTAINER,
+  },
   "password-generator": {
     processing: "client",
     dataRetention:

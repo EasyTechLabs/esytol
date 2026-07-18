@@ -45,6 +45,48 @@ export async function readTextFile(
   }
 }
 
+export interface BinaryReadResult {
+  ok: boolean;
+  bytes: Uint8Array;
+  name: string;
+  size: number;
+  error?: string;
+}
+
+/**
+ * Read a File as raw bytes, enforcing a size cap. Used where the exact bytes matter
+ * (e.g. file checksums), so nothing is decoded to text. Client-side only.
+ */
+export async function readBinaryFile(
+  file: File,
+  maxBytes: number = DEFAULT_MAX_FILE_BYTES
+): Promise<BinaryReadResult> {
+  if (file.size > maxBytes) {
+    return {
+      ok: false,
+      bytes: new Uint8Array(),
+      name: file.name,
+      size: file.size,
+      error: `File is ${(file.size / (1024 * 1024)).toFixed(1)} MB — over the ${(
+        maxBytes /
+        (1024 * 1024)
+      ).toFixed(0)} MB limit for in-browser processing.`,
+    };
+  }
+  try {
+    const buffer = await file.arrayBuffer();
+    return { ok: true, bytes: new Uint8Array(buffer), name: file.name, size: file.size };
+  } catch (e) {
+    return {
+      ok: false,
+      bytes: new Uint8Array(),
+      name: file.name,
+      size: file.size,
+      error: e instanceof Error ? e.message : "Could not read file.",
+    };
+  }
+}
+
 /** Download a string as a file (client-side blob). */
 export function downloadText(filename: string, text: string, mime = "text/plain;charset=utf-8") {
   const blob = new Blob([text], { type: mime });

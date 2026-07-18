@@ -1542,28 +1542,63 @@ export const toolRegistry: Tool[] = [
     id: "hash-generator",
     name: "Hash Generator",
     slug: "hash-generator",
-    status: "coming-soon",
-    description: "Compute MD5, SHA-1, SHA-256, and SHA-512 hashes for any string.",
+    isNew: true,
+    description:
+      "Generate MD5, SHA-1, SHA-256, and SHA-512 hashes of any text or file, right in your browser. Compute an HMAC with a secret key, verify a downloaded file's checksum, and copy any digest — all client-side, nothing uploaded.",
     category: "security",
-    tags: ["hash", "md5", "sha256", "sha512", "security"],
-    keywords: ["hash generator", "sha256 online", "md5 generator", "sha512 hash", "checksum"],
+    tags: ["hash", "md5", "sha256", "sha512", "security", "checksum", "hmac"],
+    keywords: [
+      "hash generator",
+      "sha256 generator online",
+      "sha256 hash",
+      "md5 generator",
+      "md5 hash online",
+      "sha512 hash generator",
+      "sha1 hash",
+      "checksum calculator",
+      "file checksum verify",
+      "hmac generator",
+      "online hash calculator",
+      "generate hash from text",
+    ],
     icon: "🔏",
     url: "/tools/hash-generator",
     version: "1.0.0",
     lastUpdated: "Jul 2026",
-    relatedTools: ["password-generator", "uuid-generator"],
+    relatedTools: ["password-generator", "uuid-generator", "base64-encoder", "json-formatter"],
     faq: [
       {
         question: "What is a hash function?",
         answer:
-          "A hash function maps arbitrary-length input to a fixed-length output. The same input always produces the same hash, and it is computationally infeasible to reverse.",
+          "A hash function maps input of any length to a fixed-length fingerprint (the digest). The same input always produces the same hash, the smallest change produces a completely different one, and it is computationally infeasible to reverse the digest back to the input. Hashes are used for integrity checks, checksums, and storing password verifiers.",
       },
       {
-        question: "Is MD5 still safe to use?",
+        question: "Which hash should I use — MD5, SHA-1, SHA-256, or SHA-512?",
         answer:
-          "MD5 is broken for security purposes (collision attacks exist). Use SHA-256 or SHA-512 for integrity verification.",
+          "Use SHA-256 (or SHA-512) for anything security-related — verifying downloads, integrity checks, or signatures. MD5 and SHA-1 are cryptographically broken (practical collision attacks exist) and should only be used for non-security legacy checksums. This tool shows all four so you can match whatever a file's author published.",
+      },
+      {
+        question: "How do I verify a file's checksum?",
+        answer:
+          "Switch to File mode, drop the downloaded file in, and paste the checksum the author published into the 'Verify a checksum' box. If it matches one of the computed digests, the row turns green and the file is intact and unaltered. Everything happens in your browser — the file is never uploaded.",
+      },
+      {
+        question: "What is HMAC?",
+        answer:
+          "HMAC (Hash-based Message Authentication Code) combines your message with a secret key to produce a keyed hash. Unlike a plain hash, it proves both that a message is intact and that it came from someone who knows the secret — it is widely used to sign API requests and webhooks. Choose HMAC mode, enter a message and a secret, and pick SHA-256, SHA-1, or SHA-512.",
+      },
+      {
+        question: "Are my text and files sent to a server?",
+        answer:
+          "No. All hashing runs entirely in your browser using the Web Crypto API (SubtleCrypto) and a pure MD5 implementation. Your text, files, and secret keys never leave your device — there is no upload, no logging, and no account.",
+      },
+      {
+        question: "Can a hash be reversed to get the original text?",
+        answer:
+          "No. Hashing is one-way by design. Attackers instead guess inputs and compare hashes (a dictionary or brute-force attack), which is why a strong, salted, slow hash is used for passwords. A hash provides integrity, not confidentiality — it is not encryption.",
       },
     ],
+    featured: true,
     popular: true,
   },
   {

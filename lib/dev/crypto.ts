@@ -22,23 +22,36 @@ function subtle(): SubtleCrypto {
   return c.subtle;
 }
 
+/**
+ * Hash raw bytes and return a lowercase hex digest. This is the primitive both the
+ * string and file paths delegate to, so there is a single implementation per
+ * algorithm (file checksums hash the raw bytes, never a decoded-text round trip).
+ */
+export async function hashBytes(bytes: Uint8Array, algorithm: HashAlgorithm): Promise<string> {
+  if (algorithm === "MD5") return md5Bytes(bytes);
+  const digest = await subtle().digest(algorithm, bytes as BufferSource);
+  return toHex(digest);
+}
+
+/** Compute all supported digests of raw bytes at once (e.g. a file checksum set). */
+export async function hashAllBytes(bytes: Uint8Array): Promise<Record<HashAlgorithm, string>> {
+  const [md, s1, s256, s512] = await Promise.all([
+    hashBytes(bytes, "MD5"),
+    hashBytes(bytes, "SHA-1"),
+    hashBytes(bytes, "SHA-256"),
+    hashBytes(bytes, "SHA-512"),
+  ]);
+  return { MD5: md, "SHA-1": s1, "SHA-256": s256, "SHA-512": s512 };
+}
+
 /** Hash UTF-8 text and return a lowercase hex digest. */
 export async function hash(text: string, algorithm: HashAlgorithm): Promise<string> {
-  if (algorithm === "MD5") return md5(text);
-  const data = new TextEncoder().encode(text);
-  const digest = await subtle().digest(algorithm, data);
-  return toHex(digest);
+  return hashBytes(new TextEncoder().encode(text), algorithm);
 }
 
 /** Compute all supported digests of a string at once. */
 export async function hashAll(text: string): Promise<Record<HashAlgorithm, string>> {
-  const [md, s1, s256, s512] = await Promise.all([
-    hash(text, "MD5"),
-    hash(text, "SHA-1"),
-    hash(text, "SHA-256"),
-    hash(text, "SHA-512"),
-  ]);
-  return { MD5: md, "SHA-1": s1, "SHA-256": s256, "SHA-512": s512 };
+  return hashAllBytes(new TextEncoder().encode(text));
 }
 
 /** HMAC of a message with a secret, hex-encoded. */
@@ -109,8 +122,7 @@ export async function verifyJwtHs256(token: string, secret: string): Promise<Jwt
 // ── Pure MD5 (checksums/legacy only) ──────────────────────────────────────────
 // Compact, well-known implementation (RFC 1321). Not for security use.
 
-function md5(input: string): string {
-  const bytes = new TextEncoder().encode(input);
+function md5Bytes(bytes: Uint8Array): string {
   return rhex(md5cycle(bytes));
 }
 
