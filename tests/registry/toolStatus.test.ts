@@ -43,6 +43,7 @@ const LIVE_SLUGS = [
   "json-formatter",
   "json-yaml-converter",
   "json-diff-viewer",
+  "xml-formatter",
   "base64-encoder",
   "url-encoder",
   // Everyday category foundation (PLATFORM-004).

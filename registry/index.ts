@@ -268,6 +268,74 @@ export const toolRegistry: Tool[] = [
     popular: true,
   },
 
+  {
+    id: "xml-formatter",
+    name: "XML Formatter & Validator",
+    slug: "xml-formatter",
+    isNew: true,
+    description:
+      "Format, minify, and validate XML in your browser — pretty-print with 2/4/tab indentation, real-time well-formedness validation with line & column, an interactive searchable tree view, statistics, and a namespace/DOCTYPE/entity summary. External entities and DTDs are never resolved (XXE-safe); nothing is ever uploaded.",
+    category: "developer",
+    tags: ["xml", "formatter", "validator", "developer", "beautifier"],
+    keywords: [
+      "xml formatter",
+      "xml validator",
+      "format xml",
+      "pretty print xml",
+      "xml beautifier",
+      "xml parser",
+      "xml formatter online",
+      "minify xml",
+      "xml viewer",
+      "validate xml online",
+    ],
+    icon: "📐",
+    url: "/tools/xml-formatter",
+    version: "1.0.0",
+    lastUpdated: "Jul 2026",
+    relatedTools: [
+      "json-formatter",
+      "json-yaml-converter",
+      "json-diff-viewer",
+      "base64-encoder",
+      "url-encoder",
+    ],
+    faq: [
+      {
+        question: "Is my XML uploaded anywhere?",
+        answer:
+          "No. All parsing, formatting, validation, statistics, and the tree view run entirely in your browser using JavaScript. Your XML is never uploaded, logged, or transmitted — there is no account and no server call.",
+      },
+      {
+        question: "Is this safe against XXE and entity-expansion attacks?",
+        answer:
+          "Yes, by design. Instead of a DOM parser (which can expand internal entities and, in some environments, fetch external ones), this tool uses a controlled tokenizer that never resolves external entities, never evaluates a DTD, and never expands entities — an &entity; reference is kept as literal text. There is also no network access at all, so an XXE payload cannot read files or make requests.",
+      },
+      {
+        question: "What does the validator check?",
+        answer:
+          "Well-formedness: tags are balanced and correctly nested, attributes are quoted and unique, there is exactly one root element, and comments, CDATA, processing instructions, and the DOCTYPE are properly terminated. When something is wrong it shows the line and column plus a plain-English reason. (It checks well-formedness, not validity against a schema/DTD.)",
+      },
+      {
+        question: "What is in the tree view and the summary?",
+        answer:
+          "The tree view shows the element hierarchy with attributes, text, comments, CDATA, and processing instructions — collapsible and searchable. The summary reports the XML declaration and DOCTYPE, a namespace list (xmlns), any processing instructions, entity references (kept literal), and duplicate attributes, plus counts of elements, attributes, text nodes, and depth.",
+      },
+      {
+        question: "Can it handle large XML files?",
+        answer:
+          "Yes. Formatting, validation, and statistics work on documents of any size, in your browser. The interactive tree view is limited for very large documents (many thousands of elements) to keep the page responsive; the formatted output is never limited.",
+      },
+      {
+        question: "Does it change my data when formatting?",
+        answer:
+          "No. Formatting only adjusts whitespace and indentation between elements — element names, attributes, text, CDATA, comments, and entity references are preserved exactly. Minify removes the indentation to produce the most compact valid form.",
+      },
+    ],
+    featured: true,
+    popular: true,
+  },
+
   // ─── Text ─────────────────────────────────────────────────────────────────
   {
     id: "word-counter",

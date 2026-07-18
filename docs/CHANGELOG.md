@@ -6,6 +6,29 @@
 
 ---
 
+## 2026-07-18 — 📐 XML Formatter & Validator (new tool · Developer category)
+
+Format, minify, validate, and explore XML — 100% client-side, nothing uploaded, and **XXE-safe by
+construction**. Route: `/tools/xml-formatter`.
+
+- **Formatting** — pretty-print (2-space / 4-space / tab) or **minify**; all content preserved exactly.
+- **Validation** — real-time well-formedness with **line & column** and a friendly reason (mismatched/
+  unclosed tag, unquoted or duplicate attribute, multiple roots, unterminated comment/CDATA/PI/DOCTYPE).
+- **Explorer** — a lazy, searchable **tree view** of the element hierarchy (attributes, text, comments,
+  CDATA, PIs) with expand/collapse all and match highlighting.
+- **Statistics** — elements, attributes, text nodes, max depth, characters, lines.
+- **Summary / warnings** — XML declaration, DOCTYPE (with the XXE-safe note), namespace list, entity
+  references (kept literal), processing instructions, and duplicate attributes.
+- **Security** — a new controlled tokenizer, **not DOMParser**: never resolves external entities (XXE),
+  never evaluates a DTD, never expands entities (billion-laughs stays literal), never touches the
+  network. Proven by tests, not just claimed.
+- **New reusable engine** — `lib/dev/xml.ts` (`parseXmlDocument` → node tree + metadata, `formatXml`,
+  `analyzeXml`) is the platform's XML primitive; a future **XML Diff** / **XPath tester** reuses it.
+  Editor/result/validation/layout + the lazy-tree-with-search pattern reused unchanged.
+
+**+26 tests** (20 engine — incl. XXE & billion-laughs safety and a 5,000-element document — + 6 UI) →
+1,723 total. Docs: `docs/XmlFormatter.md`.
+
 ## 2026-07-18 — 🔀 JSON Diff Viewer (new tool · Developer category)
 
 Compare two JSON documents and see exactly what changed — a structural diff, 100% client-side,

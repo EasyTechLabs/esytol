@@ -58,6 +58,26 @@ export const DEV_STANDARDS: Record<string, DevStandard> = {
     ],
     maintainedBy: MAINTAINER,
   },
+  "xml-formatter": {
+    processing: "client",
+    dataRetention: CLIENT_ONLY,
+    howItWorks:
+      "A controlled, single-pass tokenizer parses your XML into a node tree, checks well-formedness (balanced/nested tags, quoted and unique attributes, a single root, terminated comments/CDATA/PIs/DOCTYPE) and reports the line and column of any problem. Formatting re-serialises the tree with your chosen indentation (or minified), preserving names, attributes, text, CDATA, comments, and entity references exactly. A summary collects the declaration, DOCTYPE, namespaces, processing instructions, entity references, and duplicate attributes. The tokenizer is used deliberately instead of a DOM parser.",
+    limitations: [
+      "This validates *well-formedness*, not *validity* against a DTD or XML Schema — schema validation is out of scope.",
+      "Formatting normalises inter-element whitespace and attribute quoting; it never changes element names, attribute values, text, or entity references.",
+      "The interactive tree view is limited for very large documents (many thousands of elements); formatting and validation are not.",
+    ],
+    references: [
+      { label: "XML 1.0 (Fifth Edition)", url: "https://www.w3.org/TR/xml/" },
+      { label: "XML Namespaces 1.0", url: "https://www.w3.org/TR/xml-names/" },
+      {
+        label: "OWASP — XML External Entity (XXE) Prevention",
+        url: "https://cheatsheetseries.owasp.org/cheatsheets/XML_External_Entity_Prevention_Cheat_Sheet.html",
+      },
+    ],
+    maintainedBy: MAINTAINER,
+  },
   "json-diff-viewer": {
     processing: "client",
     dataRetention: CLIENT_ONLY,
