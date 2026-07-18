@@ -50,6 +50,7 @@ const LIVE_SLUGS = [
   "password-generator",
   "hash-generator",
   "uuid-generator",
+  "jwt-decoder",
 ];
 
 describe("tool status — placeholder handling", () => {

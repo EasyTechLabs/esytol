@@ -95,6 +95,34 @@ export const DEV_STANDARDS: Record<string, DevStandard> = {
     ],
     maintainedBy: MAINTAINER,
   },
+  "jwt-decoder": {
+    processing: "client",
+    dataRetention:
+      "Your token and any secret you enter to verify it are processed entirely in your browser and are never uploaded, stored, or logged. A JWT often contains identity data — decoding it here keeps it on your device.",
+    howItWorks:
+      "The token's three Base64url segments (header.payload.signature) are decoded to JSON in your browser. Each registered claim is explained, and the exp/nbf/iat timestamps are shown as human-readable dates with a live expiry countdown. For HS256 tokens you can paste the shared secret to verify the signature locally with the Web Crypto API (HMAC-SHA256). Decoding never verifies a signature — the tool states this plainly, flags alg:\"none\" as unsigned, and explains why RS256/ES256 tokens need the issuer's public key.",
+    limitations: [
+      "Decoding is not verification, and a JWT is Base64url-encoded, not encrypted — anyone with the token can read the payload. Never store secrets in it.",
+      "Only HS256 signatures can be verified here; asymmetric algorithms (RS/PS/ES/EdDSA) require the issuer's public key, which is not in the token.",
+      'A token with alg:"none" is unsigned — it carries no signature to check and must never be trusted as authenticated.',
+    ],
+    references: [
+      { label: "RFC 7519 — JSON Web Token (JWT)", url: "https://www.rfc-editor.org/rfc/rfc7519" },
+      {
+        label: "RFC 7515 — JSON Web Signature (JWS)",
+        url: "https://www.rfc-editor.org/rfc/rfc7515",
+      },
+      {
+        label: "RFC 7518 — JSON Web Algorithms (JWA)",
+        url: "https://www.rfc-editor.org/rfc/rfc7518",
+      },
+      {
+        label: "OWASP — JWT security cheat sheet",
+        url: "https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_for_Java_Cheat_Sheet.html",
+      },
+    ],
+    maintainedBy: MAINTAINER,
+  },
   "uuid-generator": {
     processing: "client",
     dataRetention:

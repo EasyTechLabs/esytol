@@ -6,6 +6,27 @@
 
 ---
 
+## 2026-07-18 — 🎫 JWT Decoder & Verifier (new tool · Security category)
+
+The Security category's fourth tool — a **teaching** decoder, not just a decoder. Route:
+`/tools/jwt-decoder`.
+
+- **Decodes** the header and payload and **explains every field** (RFC 7515/7519 claims labelled;
+  custom claims marked as such).
+- **Human-readable timestamps** for `iat`/`nbf`/`exp` and a **live expiry countdown**.
+- **HS256 signature verification** — paste the shared secret to verify locally via Web Crypto.
+- **Technically-correct security analysis** — flags `alg:"none"` as unsigned (critical), explains why
+  RS256/ES256/EdDSA can't be verified without the issuer's public key, warns on expiry, and always
+  notes that a JWT is encoded, **not encrypted**. **Never implies verification that did not happen.**
+- **Playground** sample, copy/download decoded JSON, malformed-token detection.
+- **Private** — the token and any secret never leave the browser.
+- **Reuse** — decode reuses `parseJwt` (`lib/dev/parse`) and verification reuses `verifyJwtHs256`
+  (`lib/dev/crypto`); no decode/verify logic was re-implemented. The new teaching layer is
+  `lib/security/jwtInsights.ts`.
+
+**+21 tests** (15 engine — including the security-note correctness suite — + 6 UI) → 1,624 total.
+Docs: `docs/JwtDecoder.md`.
+
 ## 2026-07-18 — 🆔 UUID Generator (new tool · Security category)
 
 The Security category's third tool, completing the password/hash/UUID cluster. Route:

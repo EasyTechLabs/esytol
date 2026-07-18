@@ -1628,7 +1628,13 @@ export const toolRegistry: Tool[] = [
     url: "/tools/uuid-generator",
     version: "1.0.0",
     lastUpdated: "Jul 2026",
-    relatedTools: ["password-generator", "hash-generator", "base64-encoder", "json-formatter"],
+    relatedTools: [
+      "password-generator",
+      "hash-generator",
+      "jwt-decoder",
+      "base64-encoder",
+      "json-formatter",
+    ],
     faq: [
       {
         question: "What is a UUID?",
@@ -1659,6 +1665,75 @@ export const toolRegistry: Tool[] = [
         question: "Is my data sent to a server?",
         answer:
           "No. All generation and validation happens entirely in your browser. The UUIDs, any names you enter for v3/v5, and any UUID you validate never leave your device — there is no upload, no logging, and no account.",
+      },
+    ],
+    featured: true,
+    popular: true,
+  },
+  {
+    id: "jwt-decoder",
+    name: "JWT Decoder & Verifier",
+    slug: "jwt-decoder",
+    isNew: true,
+    description:
+      "Decode and understand any JSON Web Token in your browser — every header and claim explained, human-readable timestamps with a live expiry countdown, HS256 signature verification, and a plain-English security analysis (alg:none, RS256, expiry). A teaching tool, not just a decoder. Nothing is ever uploaded.",
+    category: "security",
+    tags: ["jwt", "token", "decoder", "verifier", "security", "authentication"],
+    keywords: [
+      "jwt decoder",
+      "jwt decode online",
+      "decode jwt token",
+      "jwt verifier",
+      "jwt validator",
+      "json web token decoder",
+      "jwt signature verify",
+      "hs256 verify online",
+      "jwt expiry checker",
+      "read jwt payload",
+      "jwt debugger",
+      "decode json web token online",
+    ],
+    icon: "🎫",
+    url: "/tools/jwt-decoder",
+    version: "1.0.0",
+    lastUpdated: "Jul 2026",
+    relatedTools: [
+      "hash-generator",
+      "uuid-generator",
+      "password-generator",
+      "base64-encoder",
+      "json-formatter",
+    ],
+    faq: [
+      {
+        question: "What is a JWT?",
+        answer:
+          "A JWT (JSON Web Token) is a compact, URL-safe token used to carry claims between two parties — most often for authentication and authorization. It has three Base64url-encoded parts separated by dots: a header (the algorithm and type), a payload (the claims, such as who the user is and when the token expires), and a signature that lets the recipient check the token has not been tampered with.",
+      },
+      {
+        question: "Does decoding a JWT verify it?",
+        answer:
+          "No — and this is the most important thing to understand. Decoding only Base64url-decodes the header and payload so you can read them; it does nothing to prove the token is authentic. A token is only trustworthy once its signature has been verified with the correct key. This tool makes that distinction explicit and lets you verify HS256 signatures separately.",
+      },
+      {
+        question: "Can I verify the signature here?",
+        answer:
+          "Yes, for HS256 tokens: paste the shared secret and the tool verifies the HMAC-SHA256 signature entirely in your browser. Tokens signed with asymmetric algorithms (RS256, ES256, PS256, EdDSA) are verified with the issuer's public key, which is not contained in the token — so they cannot be verified in the browser, and the tool says so rather than pretending otherwise.",
+      },
+      {
+        question: 'What does alg:"none" mean?',
+        answer:
+          'A JWT header with "alg": "none" declares that the token is unsigned — there is no signature to check. Historically, servers that trusted the header\'s algorithm could be tricked into accepting forged "none" tokens (the classic JWT vulnerability). Never accept an alg:none token as authenticated. This tool flags it as a critical warning.',
+      },
+      {
+        question: "Is it safe to paste my token here?",
+        answer:
+          "Your token and any secret you enter never leave your browser — there is no upload, no logging, and no server call. That said, a JWT often contains identity information, and decoding it reveals that payload to anyone who can see your screen. Treat production tokens with care, and remember a JWT payload is encoded, not encrypted.",
+      },
+      {
+        question: "How is the expiry countdown calculated?",
+        answer:
+          "The exp (expiration), nbf (not-before), and iat (issued-at) claims are Unix timestamps in seconds. The tool converts them to your local human-readable time and shows a live countdown to (or since) expiry, updating every second, so you can see at a glance whether a token is still valid.",
       },
     ],
     featured: true,
