@@ -78,6 +78,100 @@ export const DEV_STANDARDS: Record<string, DevStandard> = {
     ],
     maintainedBy: MAINTAINER,
   },
+  // ─── Encoding & Escape family (PLATFORM-005) — one trust model, one engine ───
+  "html-entity-encoder": {
+    processing: "client",
+    dataRetention: CLIENT_ONLY,
+    howItWorks:
+      "Encoding replaces the five HTML-significant characters (& < > \" ') with their named entities so text renders literally instead of being parsed as markup. Decoding resolves named, decimal (&#38;), and hexadecimal (&#x26;) entities back to characters. Both directions are pure string transforms that run in your browser.",
+    limitations: [
+      "Encoding covers the HTML-significant characters; it does not convert every character to a named entity (that is unnecessary and less readable).",
+      "HTML-encoding is context-sensitive: it protects HTML body and attribute contexts, but URL and JavaScript contexts need their own encoding. Use it with framework auto-escaping and a CSP.",
+    ],
+    references: [
+      {
+        label: "WHATWG HTML — Named character references",
+        url: "https://html.spec.whatwg.org/multipage/named-characters.html",
+      },
+      {
+        label: "OWASP — Cross Site Scripting Prevention",
+        url: "https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html",
+      },
+    ],
+    maintainedBy: MAINTAINER,
+  },
+  "hex-converter": {
+    processing: "client",
+    dataRetention: CLIENT_ONLY,
+    howItWorks:
+      "Encoding converts text to UTF-8 bytes and writes each byte as two lowercase hexadecimal digits (space-separated for readability). Decoding accepts spaced, continuous, or 0x-prefixed hex, validates the digits, and reconstructs the UTF-8 bytes back to text. Pure and byte-accurate.",
+    limitations: [
+      "Hexadecimal is a representation, not encryption — it provides no confidentiality.",
+      "Decoding requires an even number of hex digits (two per byte) and only 0–9 / a–f; anything else is reported as an error rather than producing garbage.",
+    ],
+    references: [
+      { label: "RFC 4648 — Base16 (hex) encoding", url: "https://www.rfc-editor.org/rfc/rfc4648" },
+      {
+        label: "MDN — TextEncoder",
+        url: "https://developer.mozilla.org/en-US/docs/Web/API/TextEncoder",
+      },
+    ],
+    maintainedBy: MAINTAINER,
+  },
+  "binary-converter": {
+    processing: "client",
+    dataRetention: CLIENT_ONLY,
+    howItWorks:
+      "Encoding converts text to UTF-8 bytes and writes each byte as an 8-bit binary group (space-separated). Decoding accepts spaced or continuous bits, validates that the length is a multiple of 8, and reconstructs the bytes back to text. Pure and byte-accurate.",
+    limitations: [
+      "This converts text characters to their binary byte representation, not decimal numbers to binary.",
+      "Decoding requires a multiple of 8 bits and only 0/1; anything else is reported as an error.",
+    ],
+    references: [
+      {
+        label: "MDN — TextEncoder",
+        url: "https://developer.mozilla.org/en-US/docs/Web/API/TextEncoder",
+      },
+      { label: "The Unicode Standard — UTF-8", url: "https://www.unicode.org/versions/latest/" },
+    ],
+    maintainedBy: MAINTAINER,
+  },
+  "unicode-escape-converter": {
+    processing: "client",
+    dataRetention: CLIENT_ONLY,
+    howItWorks:
+      "Encoding writes every character as a \\uXXXX escape using its UTF-16 code units, so an astral character such as an emoji becomes a surrogate pair (two escapes). Decoding resolves \\uXXXX and \\xXX escapes back to characters and reassembles surrogate pairs. Pure string transforms.",
+    limitations: [
+      "Emoji and other characters above U+FFFF are represented as a surrogate pair (two \\uXXXX escapes) — this is how JavaScript string literals work.",
+      "Only \\uXXXX and \\xXX escapes are interpreted on decode; other backslash escapes are handled by the Backslash String Escaper.",
+    ],
+    references: [
+      {
+        label: "ECMAScript — String literals & escape sequences",
+        url: "https://tc39.es/ecma262/#sec-literals-string-literals",
+      },
+      { label: "The Unicode Standard", url: "https://www.unicode.org/versions/latest/" },
+    ],
+    maintainedBy: MAINTAINER,
+  },
+  "string-escaper": {
+    processing: "client",
+    dataRetention: CLIENT_ONLY,
+    howItWorks:
+      "Escaping turns raw text into a safe string-literal body: a backslash becomes \\\\, then newlines, carriage returns, tabs, null bytes, and double quotes become their \\-escapes. Unescaping interprets those sequences plus \\b \\f \\v \\' \\/ and \\uXXXX / \\xXX; an unknown escape is kept literal. Pure string transforms.",
+    limitations: [
+      "This escapes a single string value, not a whole document — for JSON use the JSON Formatter.",
+      "An unrecognised escape sequence is preserved exactly rather than dropped, so no information is lost.",
+    ],
+    references: [
+      {
+        label: "ECMAScript — String literals & escape sequences",
+        url: "https://tc39.es/ecma262/#sec-literals-string-literals",
+      },
+      { label: "RFC 8259 — JSON (string escapes)", url: "https://www.rfc-editor.org/rfc/rfc8259" },
+    ],
+    maintainedBy: MAINTAINER,
+  },
   "csv-json-converter": {
     processing: "client",
     dataRetention: CLIENT_ONLY,

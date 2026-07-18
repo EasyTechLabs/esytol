@@ -6,6 +6,30 @@
 
 ---
 
+## 2026-07-19 — 🔣 Encoding & Escape family — 5 tools on one engine (PLATFORM-005 · Developer)
+
+A **platform sprint**: five reversible encoder/decoder tools built on one shared engine, one UI
+component, and one test harness. The reusable platform is the deliverable — each tool is a 3-line page.
+
+- **New tools** — HTML Entity Encoder / Decoder (`/tools/html-entity-encoder`), Hex Converter
+  (`/tools/hex-converter`), Binary Converter (`/tools/binary-converter`), Unicode Escape Converter
+  (`/tools/unicode-escape-converter`), Backslash String Escaper (`/tools/string-escaper`).
+- **Shared engine** — `lib/dev/codec.ts`: a `Codec` registry that composes the audited primitives in
+  `lib/dev/encode.ts` (extended with `encodeBinary`/`decodeBinary` + `encodeBackslash`/`decodeBackslash`;
+  nothing reimplemented). A tool is one registry id.
+- **Shared UI** — `features/dev/EncoderDecoderTool.tsx` renders the whole tool (encode/decode tablist,
+  reused editor/result/validation, live processing, examples, privacy note) from a codec id. Every tool
+  reuses ~95% of the infrastructure.
+- **Shared tests** — one engine round-trip suite over every codec + one `describe.each` UI suite over
+  every codec. Adding a codec adds a loop row, not a file.
+- **Safe & accessible** — pure, no network, no eval; hex/binary decoders validate and error clearly;
+  proper `role="tablist"`/`tab` + `role="alert"`; every tool ships full SEO (schema/FAQ/OG/Twitter).
+- **ROI** — the next encoder (ROT13, Base32, Morse, quoted-printable, …) is one registry entry + one
+  3-line page + one test row.
+
+**+33 tests** (16 engine — round-trip over all codecs + per-codec exactness/errors — + 17 UI across the
+family via `describe.each`) → 1,799 total. Docs: `docs/EncodingEscapeFamily.md`.
+
 ## 2026-07-18 — 🧮 CSV ↔ JSON Converter (new tool · Developer category)
 
 Convert between CSV and JSON in your browser, both directions — 100% client-side, nothing uploaded, and

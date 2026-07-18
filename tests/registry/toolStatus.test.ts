@@ -45,6 +45,12 @@ const LIVE_SLUGS = [
   "json-diff-viewer",
   "xml-formatter",
   "csv-json-converter",
+  // Encoding & Escape family (PLATFORM-005) — all share lib/dev/codec + EncoderDecoderTool.
+  "html-entity-encoder",
+  "hex-converter",
+  "binary-converter",
+  "unicode-escape-converter",
+  "string-escaper",
   "base64-encoder",
   "url-encoder",
   // Everyday category foundation (PLATFORM-004).

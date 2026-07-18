@@ -66,6 +66,70 @@ export function decodeUnicode(text: string): CodecResult {
   }
 }
 
+// ── Binary (8-bit) ────────────────────────────────────────────────────────────
+
+/** Encode UTF-8 text to space-separated 8-bit binary (one group per byte). */
+export function encodeBinary(text: string): CodecResult {
+  const bytes = new TextEncoder().encode(text);
+  const parts = Array.from(bytes, (b) => b.toString(2).padStart(8, "0"));
+  return { ok: true, output: parts.join(" ") };
+}
+
+/** Decode binary (space-separated or continuous, 8 bits per byte) back to UTF-8. */
+export function decodeBinary(binary: string): CodecResult {
+  const cleaned = binary.replace(/\s+/g, "");
+  if (cleaned === "") return { ok: false, output: "", error: "Input is empty." };
+  if (!/^[01]+$/.test(cleaned))
+    return { ok: false, output: "", error: "Input must contain only 0 and 1." };
+  if (cleaned.length % 8 !== 0)
+    return {
+      ok: false,
+      output: "",
+      error: "Binary length must be a multiple of 8 (one 8-bit group per byte).",
+    };
+  const bytes = new Uint8Array(cleaned.length / 8);
+  for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(cleaned.slice(i * 8, i * 8 + 8), 2);
+  return { ok: true, output: new TextDecoder().decode(bytes) };
+}
+
+// ── Backslash / string-literal escapes ────────────────────────────────────────
+
+/** Escape text into a safe string-literal body (\\, \n, \r, \t, \", \0). */
+export function encodeBackslash(text: string): CodecResult {
+  const output = text
+    .replace(/\\/g, "\\\\")
+    .replace(/\n/g, "\\n")
+    .replace(/\r/g, "\\r")
+    .replace(/\t/g, "\\t")
+    .replace(/\0/g, "\\0")
+    .replace(/"/g, '\\"');
+  return { ok: true, output };
+}
+
+const BACKSLASH_MAP: Record<string, string> = {
+  n: "\n",
+  r: "\r",
+  t: "\t",
+  b: "\b",
+  f: "\f",
+  v: "\v",
+  "0": "\0",
+  "\\": "\\",
+  '"': '"',
+  "'": "'",
+  "/": "/",
+};
+
+/** Interpret common backslash escapes (\n \r \t \" \\ \0 \uXXXX \xXX) back to text. */
+export function decodeBackslash(text: string): CodecResult {
+  const output = text.replace(/\\(u[0-9a-fA-F]{4}|x[0-9a-fA-F]{2}|.)/g, (match, seq: string) => {
+    if (seq[0] === "u") return String.fromCharCode(parseInt(seq.slice(1), 16));
+    if (seq[0] === "x") return String.fromCharCode(parseInt(seq.slice(1), 16));
+    return BACKSLASH_MAP[seq] ?? match; // unknown escape kept literal
+  });
+  return { ok: true, output };
+}
+
 // ── HTML entities ─────────────────────────────────────────────────────────────
 
 const HTML_ENCODE: Record<string, string> = {

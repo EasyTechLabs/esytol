@@ -404,6 +404,258 @@ export const toolRegistry: Tool[] = [
     popular: true,
   },
 
+  // ─── Encoding & Escape family (PLATFORM-005) ───────────────────────────────
+  {
+    id: "html-entity-encoder",
+    name: "HTML Entity Encoder / Decoder",
+    slug: "html-entity-encoder",
+    isNew: true,
+    description:
+      "Encode text to HTML entities and decode entities back to text, in your browser. Escapes the HTML-significant characters (& < > \" ') so content renders literally instead of as markup, and decodes named, decimal (&#38;), and hex (&#x26;) entities. Nothing is ever uploaded.",
+    category: "encoder",
+    tags: ["html", "entities", "encoder", "decoder", "developer"],
+    keywords: [
+      "html entity encoder",
+      "html entity decoder",
+      "html encode",
+      "html decode",
+      "escape html",
+      "html special characters",
+      "encode html online",
+      "html entities converter",
+    ],
+    icon: "🔣",
+    url: "/tools/html-entity-encoder",
+    version: "1.0.0",
+    lastUpdated: "Jul 2026",
+    relatedTools: ["url-encoder", "base64-encoder", "string-escaper", "unicode-escape-converter"],
+    faq: [
+      {
+        question: "Is my text uploaded anywhere?",
+        answer:
+          "No. Encoding and decoding run entirely in your browser using JavaScript. Your text is never uploaded, logged, or transmitted — there is no account and no server call.",
+      },
+      {
+        question: "Which characters get encoded?",
+        answer:
+          "The five HTML-significant characters — & < > \" and ' — are escaped to their named entities (&amp; &lt; &gt; &quot; &#39;). That is exactly what is needed to make text render literally and to prevent it from being interpreted as HTML tags or attributes.",
+      },
+      {
+        question: "Does decoding handle numeric entities?",
+        answer:
+          "Yes. Decoding resolves named entities (&amp;, &nbsp;, …), decimal numeric entities (&#38;), and hexadecimal numeric entities (&#x26;) back to the original characters.",
+      },
+      {
+        question: "Does HTML encoding make my page secure?",
+        answer:
+          "HTML-encoding untrusted text before inserting it into a page is a key defence against HTML injection and reflected XSS, but it is one layer, not a complete solution — the correct encoding also depends on context (HTML body, attribute, URL, JavaScript). Use it together with framework auto-escaping and a content security policy.",
+      },
+    ],
+    popular: true,
+  },
+  {
+    id: "hex-converter",
+    name: "Hex Converter",
+    slug: "hex-converter",
+    isNew: true,
+    description:
+      "Convert text to hexadecimal and hex back to text, in your browser. Text is encoded as its UTF-8 bytes in lowercase hex, and decoding accepts spaced, continuous, or 0x-prefixed input. Nothing is ever uploaded.",
+    category: "encoder",
+    tags: ["hex", "hexadecimal", "encoder", "decoder", "developer"],
+    keywords: [
+      "hex to text",
+      "text to hex",
+      "hex converter",
+      "hexadecimal converter",
+      "ascii to hex",
+      "hex to ascii",
+      "hex encode online",
+      "hex decode online",
+    ],
+    icon: "🔠",
+    url: "/tools/hex-converter",
+    version: "1.0.0",
+    lastUpdated: "Jul 2026",
+    relatedTools: [
+      "binary-converter",
+      "base64-encoder",
+      "unicode-escape-converter",
+      "string-escaper",
+    ],
+    faq: [
+      {
+        question: "Is my text uploaded anywhere?",
+        answer:
+          "No. Conversion runs entirely in your browser using JavaScript. Your text is never uploaded, logged, or transmitted — there is no account and no server call.",
+      },
+      {
+        question: "How is non-ASCII text handled?",
+        answer:
+          "Text is first encoded to UTF-8 bytes, then each byte is written as two lowercase hex digits. So characters like ₹ or emoji become their multi-byte UTF-8 representation, and decoding reverses it exactly — no data is lost.",
+      },
+      {
+        question: "What hex input can I decode?",
+        answer:
+          "Spaced (48 65 6c), continuous (48656c), and 0x-prefixed input are all accepted; whitespace and 0x prefixes are ignored. The digit count must be even (two per byte) and only 0–9 / a–f are allowed, otherwise a clear error is shown.",
+      },
+      {
+        question: "Is hex the same as encryption?",
+        answer:
+          "No. Hexadecimal is a representation of bytes, not encryption — anyone can convert it straight back to text. It provides no confidentiality.",
+      },
+    ],
+    popular: true,
+  },
+  {
+    id: "binary-converter",
+    name: "Binary Converter",
+    slug: "binary-converter",
+    isNew: true,
+    description:
+      "Convert text to binary and binary back to text, in your browser. Text is encoded as its UTF-8 bytes in 8-bit binary, and decoding accepts spaced or continuous bits. Nothing is ever uploaded.",
+    category: "encoder",
+    tags: ["binary", "encoder", "decoder", "developer"],
+    keywords: [
+      "text to binary",
+      "binary to text",
+      "binary translator",
+      "binary code translator",
+      "ascii to binary",
+      "binary to ascii",
+      "convert text to binary",
+      "binary decoder",
+    ],
+    icon: "🔟",
+    url: "/tools/binary-converter",
+    version: "1.0.0",
+    lastUpdated: "Jul 2026",
+    relatedTools: ["hex-converter", "base64-encoder", "unicode-escape-converter", "string-escaper"],
+    faq: [
+      {
+        question: "Is my text uploaded anywhere?",
+        answer:
+          "No. Conversion runs entirely in your browser using JavaScript. Your text is never uploaded, logged, or transmitted — there is no account and no server call.",
+      },
+      {
+        question: "How does the binary encoding work?",
+        answer:
+          "Text is encoded to UTF-8 bytes, and each byte becomes an 8-bit group (for example 'H' → 01001000). Groups are separated by spaces for readability. Non-ASCII characters span multiple bytes and therefore multiple groups.",
+      },
+      {
+        question: "What binary input can I decode?",
+        answer:
+          "Both space-separated (01001000 01101001) and continuous (0100100001101001) bits are accepted; whitespace is ignored. The total number of bits must be a multiple of 8 and contain only 0 and 1, otherwise a clear error is shown.",
+      },
+      {
+        question: "Can it convert numbers to binary?",
+        answer:
+          "This tool converts text (characters) to their binary byte representation, not decimal numbers to binary. To translate a sentence to and from binary — a common exercise and encoding task — paste it and choose the direction.",
+      },
+    ],
+    popular: true,
+  },
+  {
+    id: "unicode-escape-converter",
+    name: "Unicode Escape Converter",
+    slug: "unicode-escape-converter",
+    isNew: true,
+    description:
+      "Convert text to \\uXXXX Unicode escape sequences and back, in your browser. Every character becomes a \\uXXXX escape (emoji become a surrogate pair), and decoding also resolves \\xXX escapes. Nothing is ever uploaded.",
+    category: "encoder",
+    tags: ["unicode", "escape", "encoder", "decoder", "developer"],
+    keywords: [
+      "unicode escape",
+      "unicode converter",
+      "text to unicode",
+      "unicode to text",
+      "\\u escape",
+      "javascript unicode escape",
+      "unicode encoder",
+      "decode unicode escapes",
+    ],
+    icon: "🌐",
+    url: "/tools/unicode-escape-converter",
+    version: "1.0.0",
+    lastUpdated: "Jul 2026",
+    relatedTools: ["string-escaper", "hex-converter", "html-entity-encoder", "base64-encoder"],
+    faq: [
+      {
+        question: "Is my text uploaded anywhere?",
+        answer:
+          "No. Conversion runs entirely in your browser using JavaScript. Your text is never uploaded, logged, or transmitted — there is no account and no server call.",
+      },
+      {
+        question: "How are emoji and other astral characters handled?",
+        answer:
+          "Characters outside the Basic Multilingual Plane (such as emoji) are represented in JavaScript as a surrogate pair, so they become two \\uXXXX escapes (for example 😀 → \\ud83d\\ude00). Decoding reassembles the pair back into the original character.",
+      },
+      {
+        question: "What escapes can I decode?",
+        answer:
+          "Both \\uXXXX (four hex digits) and \\xXX (two hex digits) escapes are resolved back to characters. Text that is not an escape sequence is left unchanged.",
+      },
+      {
+        question: "Where is this useful?",
+        answer:
+          "\\uXXXX escapes let you embed any character safely in source code, JSON, or config that must stay ASCII-only, and are handy for revealing invisible or look-alike characters. Paste code and decode it to see exactly which characters the escapes represent.",
+      },
+    ],
+    popular: true,
+  },
+  {
+    id: "string-escaper",
+    name: "Backslash String Escaper",
+    slug: "string-escaper",
+    isNew: true,
+    description:
+      'Escape raw text into a safe string-literal body (\\\\, \\n, \\r, \\t, \\", \\0) for pasting into code, and unescape it back, in your browser. Unescaping also interprets \\uXXXX and \\xXX. Nothing is ever uploaded.',
+    category: "encoder",
+    tags: ["escape", "string", "backslash", "encoder", "developer"],
+    keywords: [
+      "string escape",
+      "escape string online",
+      "backslash escape",
+      "unescape string",
+      "escape newline tab",
+      "json string escape",
+      "javascript string escape",
+      "escape special characters",
+    ],
+    icon: "⌨️",
+    url: "/tools/string-escaper",
+    version: "1.0.0",
+    lastUpdated: "Jul 2026",
+    relatedTools: [
+      "unicode-escape-converter",
+      "html-entity-encoder",
+      "hex-converter",
+      "json-formatter",
+    ],
+    faq: [
+      {
+        question: "Is my text uploaded anywhere?",
+        answer:
+          "No. Escaping and unescaping run entirely in your browser using JavaScript. Your text is never uploaded, logged, or transmitted — there is no account and no server call.",
+      },
+      {
+        question: "What does escaping do?",
+        answer:
+          'It turns raw text into the body of a safe string literal: a backslash becomes \\\\, a newline becomes \\n, a tab \\t, a carriage return \\r, a double quote \\", and a null byte \\0. You can paste the result directly inside quotes in most programming languages or in JSON.',
+      },
+      {
+        question: "What does unescaping interpret?",
+        answer:
+          "Unescaping resolves \\\\, \\n, \\r, \\t, \\b, \\f, \\v, \\0, \\\", \\', \\/, and both \\uXXXX and \\xXX character escapes. An unknown escape is kept exactly as written rather than silently dropped.",
+      },
+      {
+        question: "Is this the same as JSON string encoding?",
+        answer:
+          "It covers the common backslash escapes shared by JSON and most C-style languages. For a full JSON document, use the JSON Formatter; this tool is for escaping or unescaping a single string value quickly.",
+      },
+    ],
+    popular: true,
+  },
+
   // ─── Text ─────────────────────────────────────────────────────────────────
   {
     id: "word-counter",
