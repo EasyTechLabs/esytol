@@ -6,6 +6,7 @@ import { ToolSidebar } from "./ToolSidebar";
 import { FAQSection } from "./FAQSection";
 import { CalculatorTrust } from "./CalculatorTrust";
 import { DeveloperTrust } from "./DeveloperTrust";
+import { EverydayTrust } from "./EverydayTrust";
 import { RecentToolTracker } from "./RecentToolTracker";
 import { ToolIntelligence } from "./ToolIntelligence";
 import { domainForTool } from "@/registry/domains";
@@ -16,11 +17,15 @@ interface ToolLayoutProps {
 }
 
 export function ToolLayout({ tool, children }: ToolLayoutProps) {
-  // `category === "calculator"` gates the finance E-E-A-T surface (unchanged).
-  // Developer tools carry their own category (developer/encoder/…) and get the
-  // developer trust surface instead — one additive branch, no fork.
-  const isCalculator = tool.category === "calculator";
-  const isDeveloper = domainForTool(tool)?.slug === "developer";
+  // Each domain gets its own trust surface. Finance keeps the E-E-A-T surface on
+  // its `category: "calculator"` tools exactly as before; Developer and Everyday
+  // get theirs by domain. Age is a calculator by format but an Everyday tool by
+  // domain, so it is excluded from the finance surface — no Finance tool is ever
+  // in the Everyday domain, so finance rendering is unchanged.
+  const domain = domainForTool(tool)?.slug;
+  const isEveryday = domain === "everyday";
+  const isDeveloper = domain === "developer";
+  const isFinanceCalculator = tool.category === "calculator" && !isEveryday;
 
   return (
     <div className="container-page section-gap">
@@ -30,9 +35,10 @@ export function ToolLayout({ tool, children }: ToolLayoutProps) {
       <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-[1fr_280px]">
         <main className="flex flex-col gap-8">
           <ToolContainer>{children}</ToolContainer>
-          {isCalculator && <ToolIntelligence slug={tool.slug} />}
-          {isCalculator && <CalculatorTrust tool={tool} />}
+          {isFinanceCalculator && <ToolIntelligence slug={tool.slug} />}
+          {isFinanceCalculator && <CalculatorTrust tool={tool} />}
           {isDeveloper && <DeveloperTrust tool={tool} />}
+          {isEveryday && <EverydayTrust tool={tool} />}
           {tool.faq && tool.faq.length > 0 && <FAQSection items={tool.faq} />}
         </main>
 

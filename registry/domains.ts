@@ -77,9 +77,30 @@ export const DOMAINS: Domain[] = [
   {
     slug: "everyday",
     name: "Everyday",
-    description: "Dates, ages and everyday utilities.",
+    description: "Text, dates, converters and everyday utilities.",
     icon: "🗓️",
-    tags: ["everyday", "utility", "date", "age"],
+    // Broad by design (PLATFORM-004): Everyday is the umbrella for general-user
+    // utilities, including the former standalone "Text" domain (folded in here
+    // per STRATEGY-004's category-merge rule — same trust model, same audience).
+    // Deliberately excludes developer tokens (json/encoder/formatter/regex) and
+    // "generator" so dev generators (uuid/hash) never land here.
+    tags: [
+      "everyday",
+      "utility",
+      "date",
+      "age",
+      "text",
+      "word",
+      "case",
+      "counter",
+      "converter",
+      "unit",
+      "color",
+      "random",
+      "qr",
+      "barcode",
+      "placeholder",
+    ],
   },
   {
     slug: "developer",
@@ -87,13 +108,6 @@ export const DOMAINS: Domain[] = [
     description: "JSON, encoders, formatters and regex.",
     icon: "⚙️",
     tags: ["developer", "json", "encoder", "formatter", "regex"],
-  },
-  {
-    slug: "text",
-    name: "Text",
-    description: "Counters, converters and text utilities.",
-    icon: "📝",
-    tags: ["text", "case", "word"],
   },
 ];
 

@@ -14,9 +14,8 @@ import sitemap from "@/app/sitemap";
 
 // Tools that are registered/listed but not yet implemented.
 const COMING_SOON_SLUGS = [
-  // json-formatter, base64-encoder and url-encoder went live in PLATFORM-003.
-  "word-counter",
-  "case-converter",
+  // json-formatter, base64-encoder, url-encoder went live in PLATFORM-003.
+  // word-counter, case-converter went live in PLATFORM-004.
   "lorem-ipsum",
   "password-generator",
   "hash-generator",
@@ -47,6 +46,9 @@ const LIVE_SLUGS = [
   "json-formatter",
   "base64-encoder",
   "url-encoder",
+  // Everyday category foundation (PLATFORM-004).
+  "word-counter",
+  "case-converter",
 ];
 
 describe("tool status — placeholder handling", () => {
