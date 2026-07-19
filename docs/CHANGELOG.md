@@ -6,6 +6,31 @@
 
 ---
 
+## 2026-07-19 — 🧠 AIOS Chief Orchestrator (AIOS-004 · infrastructure, not a tool)
+
+The first **executable** component of the Esytol AI Operating System — the runtime coordinator ("brain")
+that receives work, resolves it by capability, dispatches it through a provider abstraction, and drives
+it through the approved state machine to completion. **Not a website tool** — a standalone, zero-runtime-
+dependency TypeScript module at [`aios/`](../aios/), inert to the site, portable by design.
+
+- **Coordinates only** — never builds tools, writes content, does SEO, or generates video. Implements the
+  task flow exactly: receive → validate → load workflow → resolve capability → agent → provider → load
+  memory → execute → validate → persist knowledge/memory → generate events → determine next → complete.
+- **Engine-agnostic** — depends only on a `Provider` interface with failover; Claude/GPT/Gemini/local
+  adapters plug in with zero orchestrator change. Ships a deterministic reference provider (no network/LLM).
+- **Faithful to the architecture** — 14-state machine (legal + forbidden transitions), Task Contract,
+  Execution Contract (enumerated outcomes + declared side-effects), Capability Registry routing, Event
+  Bus + dead-letter, versioned Memory, Approval Matrix, and Failure Recovery (retry / rollback /
+  checkpoint / DLQ / escalation / provider failover).
+- **Deterministic** — injected clock + id generator; golden-task replay is byte-identical.
+- **Events** — ToolRequested / BugReported / ContentRequested / SEOAuditRequested / VideoRequested /
+  AnalyticsRequested / ReleaseRequested / Daily·Weekly·Monthly Maintenance; new event types need only a
+  registered workflow, no orchestrator change.
+
+**+41 AIOS tests** (state machine, contracts, events/memory/registries, provider/resolver, end-to-end
+workflow, failure recovery, config, golden replay) → 1,973 total. Docs: `docs/ChiefOrchestrator.md`,
+`aios/README.md`. No product code changed; the site is unaffected.
+
 ## 2026-07-19 — 🔎 SEO, Navigation & Discoverability Platform (PLATFORM-006 · platform)
 
 A platform-engineering sprint (no new tools): make every future page automatically inherit SEO,
