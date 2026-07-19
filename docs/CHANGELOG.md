@@ -6,6 +6,22 @@
 
 ---
 
+## 2026-07-19 — 📦 AIOS extracted to the platform layer (AIOS-005 · refactor, no behavior change)
+
+Per CTO placement review, **AIOS is platform infrastructure and must not live inside a product**. All of
+AIOS (the Chief Orchestrator, its 16 modules, 41 tests, and developer docs) was **moved out of
+`esytol/aios/`** into the platform monorepo as the package **`@easytech/aios`**
+(`easytech-platform/packages/aios`) — **byte-for-byte identical code**, no functional / behavioral /
+interface / contract / registry / workflow / provider / state-machine change.
+
+- **Dependency direction corrected:** `easytech-platform → @easytech/aios → esytol` (products consume
+  AIOS; AIOS never depends on a product). Previously AIOS was vendored inside this product repo.
+- **Esytol is now a consumer** — `esytol/aios/` removed; runtime `import` from `@easytech/aios` is a future
+  integration sprint (this is refactoring only). The site is unaffected (AIOS was already inert here).
+- **Tests remain green** — the 41 AIOS tests now run in `@easytech/aios` (platform), type-check + tests
+  green there; the esytol product suite (1,932) is unchanged.
+- Details: `docs/ChiefOrchestrator.md` (pointer) · `easytech-platform/packages/aios/{README,MIGRATION}.md`.
+
 ## 2026-07-19 — 🧠 AIOS Chief Orchestrator (AIOS-004 · infrastructure, not a tool)
 
 The first **executable** component of the Esytol AI Operating System — the runtime coordinator ("brain")

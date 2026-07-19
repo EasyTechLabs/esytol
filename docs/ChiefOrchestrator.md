@@ -1,102 +1,41 @@
-# Chief Orchestrator — Implementation Record (AIOS-004)
+# Chief Orchestrator / AIOS — moved to the platform (AIOS-005)
 
-> **Type:** AIOS implementation sprint (the first executable component) · **Status:** ✅ Implemented,
-> tested (41 tests), deterministic · **Last Updated:** 2026-07-19
-> **Code:** [`aios/`](../aios/) · **Developer docs:** [`aios/README.md`](../aios/README.md)
-> **Architecture (immutable, not redesigned):** `easytech-workspace/ProductFactory/Knowledge/AI/`
-> (AIOS.md, AgentSDK.md, WorkflowEngine.md, CapabilityRegistry.md, TaskContract.md, ExecutionContract.md,
-> StateMachine.md, EventBus.md, MemoryArchitecture.md, ApprovalMatrix.md, FailureRecovery.md,
-> ProviderIntegration.md, ImplementationRoadmap.md).
+> **This document is a pointer.** The Chief Orchestrator (and all of AIOS) was **extracted out of this
+> product repo** into the platform layer, per the CTO placement rule: _AIOS is platform infrastructure and
+> must not live inside a product._
 
----
+## Where AIOS lives now
 
-## 1. What was built
+`easytech-platform/packages/aios` — the package **`@easytech/aios`**.
 
-The **Chief Orchestrator** — the runtime coordinator ("brain") of AIOS. It receives tasks and events,
-validates the Task Contract, loads workflows, resolves capabilities → agents → providers, loads memory,
-dispatches through an execution coordinator, tracks execution via the approved state machine, validates
-outputs, persists memory/knowledge, generates events, drives workflow DAGs (dependencies, gates,
-approvals), and completes workflows. **It never performs domain work.**
+- Developer docs: `easytech-platform/packages/aios/README.md`
+- Design corpus (unchanged): `easytech-workspace/ProductFactory/Knowledge/AI/` (AIOS.md, AgentSDK.md,
+  WorkflowEngine.md, CapabilityRegistry.md, TaskContract.md, ExecutionContract.md, StateMachine.md,
+  EventBus.md, MemoryArchitecture.md, ApprovalMatrix.md, FailureRecovery.md, ProviderIntegration.md,
+  ImplementationRoadmap.md).
+- Migration record: `easytech-platform/packages/aios/MIGRATION.md` + ProductFactory sprint `AIOS-005`.
 
-## 2. Where it lives (implementation decision)
+## Dependency direction (now correct)
 
-A standalone, **zero-runtime-dependency** TypeScript module at [`aios/`](../aios/), co-located in the
-product repo during bootstrap to reuse the proven toolchain (type-check / lint / test / build). It
-imports nothing from the product and is not in the Next.js build graph — inert to the website, portable
-by design (extraction later is a documented migration, not a rewrite). Determinism is guaranteed by an
-injected `Clock` + `IdGenerator` (no `Date.now`, no `Math.random`).
+```
+easytech-platform (packages/aios = @easytech/aios)
+        │  products consume AIOS; AIOS never depends on a product
+        ▼
+esytol (a consumer)
+```
 
-## 3. Components (16 modules)
+Previously AIOS was vendored inside `esytol/aios/`; that inverted the platform-first rule and is fixed.
 
-`kernel` (deterministic time/id) · `types` (all contracts) · `stateMachine` (14 states + legal/forbidden
-transitions) · `taskContract` (validate + construct) · `events` (mediated bus + DLQ) · `memory`
-(versioned store + snapshot loader) · `registries` (Capability/Agent/Workflow) · `provider` (engine
-adapter interface + registry + deterministic reference provider + failover) · `resolver`
-(capability→agent→provider) · `config` (layered precedence + safety ratchet) · `approvals` (gateways) ·
-`coordinator` (execute/retry/failover/checkpoint/approval/commit/rollback/DLQ/escalation) ·
-`orchestrator` (the Chief Orchestrator + workflow DAG driver) · `index` (factory + public API).
+## What changed in esytol (this sprint)
 
-## 4. Task flow (implemented exactly)
+- `esytol/aios/` was **removed** (code, tests, developer README all relocated identically to the platform
+  package — no functional, behavioral, interface, contract, registry, workflow, provider, or state-machine
+  change).
+- Esytol is now an **AIOS consumer**: it will `import { … } from "@easytech/aios"` when it wires the
+  orchestrator into its runtime. That runtime integration is a **future** functional sprint — this
+  extraction is refactoring only, so esytol carries no functional AIOS use today (exactly as before, when
+  AIOS was inert to the site).
+- The original implementation record for the Chief Orchestrator (AIOS-004) remains in the ProductFactory
+  sprint history; its build details now live with the package at `packages/aios/README.md`.
 
-Receive → Validate Task Contract → Load Workflow → Resolve Capabilities → Resolve Agents → Load Memory →
-Execute → Validate Result → Persist Knowledge → Persist Memory → Generate Events → Determine Next Step →
-Complete. Every transition uses the approved state machine; every step is audited.
-
-## 5. Engine abstraction
-
-The orchestrator depends only on the `Provider` interface — **no Claude dependency**. Providers are
-selected by required engine capabilities with automatic failover. A real Claude/GPT/Gemini/local adapter
-implements the same interface with **zero orchestrator change**; this sprint ships a deterministic
-reference provider so the runtime is reproducible without a network/LLM.
-
-## 6. Events supported
-
-`ToolRequested`, `BugReported`, `ContentRequested`, `SEOAuditRequested`, `VideoRequested`,
-`AnalyticsRequested`, `ReleaseRequested`, `DailyMaintenance`, `WeeklyMaintenance`, `MonthlyMaintenance`
-(constants in `events.constants.ts`) — and **any future event type** by registering a workflow for it,
-with no orchestrator code change (routing is generic).
-
-## 7. Error handling
-
-Retry (bounded, deterministic backoff, retryable-class-gated) · rollback (provisional side-effects
-discarded — committed only on success/approval) · checkpoint recovery (pause/resume via the Checkpoint
-state) · dead-letter queue (never silently dropped) · failure escalation (`Task.Escalated` + `Incident.Raised`) ·
-approval requests (`Approval.Requested` → pause in Review → resume on decision) · provider failover hooks.
-
-## 8. Audit
-
-Append-only, deterministic audit log with full provenance (`{aiosVersion, capability@version,
-agent@version, provider, taskId, correlationId}`) recording: receive, transition, execute, failover,
-retry, checkpoint, approval, complete, rejected, rollback, failed, workflow-start/completed/failed.
-
-## 9. Tests (41)
-
-State machine (legal + forbidden) · task-contract validation + determinism · event bus + DLQ · memory
-versioning + frozen snapshot + write-permission · registries + kill-switch · provider selection/failover +
-reference provider · capability resolution + fallback · end-to-end New Tool workflow (event-driven, gate
-loop-back, new-event registration) · standalone tasks + unresolved-capability escalation · failure
-recovery (retry, exhaustion→DLQ+escalation, failover, approve/reject, async approval resume, checkpoint
-recovery) · configuration precedence + ratchet · **golden-task replay (byte-identical determinism)**.
-
-## 10. Validation
-
-`type-check` ✅ · `lint` ✅ · `format` ✅ · `test` ✅ (product + AIOS) · `build` ✅ (AIOS is inert to the
-site). The orchestrator is deterministic (golden replay).
-
-## 11. Architecture defects discovered
-
-None. The approved architecture (AIOS-001/002/003) implemented cleanly with no redesign required. One
-implementation note (not a defect): recording a checkpoint mid-execution does not require entering the
-`Checkpoint` state; the `Checkpoint` state is used for an explicit pause/resume (recovery), while
-in-flight checkpoints are recorded as data — consistent with StateMachine.md.
-
-## 12. What this is NOT
-
-Not a tool, not a website route, not a Claude integration, not domain logic. It is the permanent runtime
-coordinator that future agents/capabilities/workflows plug into.
-
-## 13. Next (per the roadmap)
-
-File/git-backed stores behind the interfaces; real provider adapters (Claude first) + cross-provider
-eval suite; the Scheduler (cadences/priority/backoff); registering the Engineering-department agents to
-run the New Tool workflow against the real product pipeline (Milestone M3).
+_No behavioral change. Tests remain green (the 41 AIOS tests now run in `@easytech/aios`)._
