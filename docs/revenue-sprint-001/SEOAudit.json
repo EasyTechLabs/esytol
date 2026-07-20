@@ -1,0 +1,376 @@
+{
+  "meta": {
+    "artifact": "SEOAudit",
+    "sprint": "Revenue Sprint 001",
+    "asOf": "2026-07-20",
+    "site": "https://esytol.com",
+    "verdict": "On-page SEO is strong and generated uniformly for every live tool; the gaps are content depth, FAQ SSR visibility, duplicate boilerplate, and (unknown) live indexation.",
+    "unknownLiveOnly": [
+      "actual Google/Bing index status & coverage",
+      "real duplicate-content clustering outcome",
+      "live Core Web Vitals",
+      "whether deployed NEXT_PUBLIC_SITE_URL == https://esytol.com"
+    ]
+  },
+  "dimensions": [
+    {
+      "dimension": "Title",
+      "mechanism": "seo/metadata.ts:22 buildToolMetadata",
+      "coverage": "all-tools",
+      "notes": "'<name> — Esytol', uniform",
+      "grade": "strong"
+    },
+    {
+      "dimension": "Meta Description",
+      "mechanism": "seo/metadata.ts:23 ← tool.description",
+      "coverage": "all-tools",
+      "notes": "every tool has a description; no fallback used",
+      "grade": "strong"
+    },
+    {
+      "dimension": "Canonical",
+      "mechanism": "seo/metadata.ts:34-35 metadataBase+alternates.canonical",
+      "coverage": "all-tools",
+      "notes": "absolute https://esytol.com/tools/<slug>",
+      "grade": "strong"
+    },
+    {
+      "dimension": "JSON-LD Schema",
+      "mechanism": "seo/tool-seo.ts:5-20 + seo/jsonld.ts",
+      "coverage": "all-tools",
+      "notes": "SoftwareApplication + BreadcrumbList always; FAQPage (all have FAQ). Site: WebSite+Organization",
+      "grade": "strong"
+    },
+    {
+      "dimension": "OpenGraph",
+      "mechanism": "seo/metadata.ts:37-45 + app/og/[slug]/route.tsx",
+      "coverage": "all-tools",
+      "notes": "per-tool dynamic OG image 1200x630",
+      "grade": "strong"
+    },
+    {
+      "dimension": "Twitter Cards",
+      "mechanism": "seo/metadata.ts:46-51",
+      "coverage": "all-tools",
+      "notes": "summary_large_image + per-tool image",
+      "grade": "strong"
+    },
+    {
+      "dimension": "Internal Links",
+      "mechanism": "ToolSidebar related + getRelatedTools (registry:2402)",
+      "coverage": "all-tools",
+      "notes": "tops up from tags/category — no orphan tool",
+      "grade": "strong"
+    },
+    {
+      "dimension": "Heading Structure",
+      "mechanism": "ToolHeader.tsx:17 single H1 + H2/H3 in FAQ/methodology/trust",
+      "coverage": "all-tools",
+      "notes": "exactly one H1; clean hierarchy",
+      "grade": "strong"
+    },
+    {
+      "dimension": "Content Length",
+      "mechanism": "ToolLayout FAQ + methodology(18)/devStandards(16)/everyday(3)",
+      "coverage": "most-all",
+      "notes": "thin: base64-encoder, url-encoder; 22 tools lack a dedicated article",
+      "grade": "medium"
+    },
+    {
+      "dimension": "Duplicate Content",
+      "mechanism": "boilerplate FAQ answers repeated (registry evidence)",
+      "coverage": "risk",
+      "notes": "near-identical privacy/upload FAQ across finance & dev tools; live outcome unknown",
+      "grade": "weak"
+    },
+    {
+      "dimension": "Indexability",
+      "mechanism": "seo/metadata.ts:36 + app/robots.ts + app/sitemap.ts",
+      "coverage": "all-tools",
+      "notes": "index:true,follow:true; only lorem-ipsum noindex+sitemap-excluded; /api,/admin,/_next disallowed",
+      "grade": "strong"
+    }
+  ],
+  "defects": [
+    {
+      "id": "SEO-D1",
+      "severity": "high",
+      "title": "FAQ answers absent from server-rendered HTML",
+      "evidence": "features/tool/FAQSection.tsx:12,47 — answer <dd> renders only when expanded; SSR emits questions only. Answers survive only in FAQPage JSON-LD.",
+      "affects": "all 37 tools",
+      "fix": "Render answers server-side (details/summary or SSR-open), keep client toggle for UX."
+    },
+    {
+      "id": "SEO-D2",
+      "severity": "medium",
+      "title": "Boilerplate FAQ answers duplicated across tools",
+      "evidence": "registry/index.ts privacy/upload answers near-identical across emi/gst/sip/fd/rd/ppf/cagr and dev tools.",
+      "affects": "finance + developer clusters",
+      "fix": "Rewrite each FAQ answer tool-specifically; remove shared sentences."
+    },
+    {
+      "id": "SEO-D3",
+      "severity": "medium",
+      "title": "Thin pages: base64-encoder, url-encoder",
+      "evidence": "1-line description + 2-3 FAQ (registry:79-131).",
+      "affects": "base64-encoder, url-encoder",
+      "fix": "Expand description + add worked examples + how-it-works content."
+    },
+    {
+      "id": "SEO-D4",
+      "severity": "low",
+      "title": "Dead/buggy OG helper seo/og.ts",
+      "evidence": "toolOg hardcodes siteConfig.url (homepage) + static image; referenced nowhere.",
+      "affects": "none (latent)",
+      "fix": "Delete or fix."
+    },
+    {
+      "id": "SEO-D5",
+      "severity": "low",
+      "title": "noindex guard only in catch-all, not buildToolMetadata",
+      "evidence": "app/tools/[slug]/page.tsx:27-29 vs dedicated pages call buildToolMetadata directly.",
+      "affects": "latent (future coming-soon dedicated pages)",
+      "fix": "Move isToolLive→noindex into buildToolMetadata."
+    },
+    {
+      "id": "SEO-D6",
+      "severity": "low",
+      "title": "Low-value keywords meta + site-wide keyword dilution",
+      "evidence": "seo/metadata.ts:33 merges 10 site-wide keywords into every tool.",
+      "affects": "all tools",
+      "fix": "Drop keywords meta or make per-tool unique."
+    },
+    {
+      "id": "SEO-D7",
+      "severity": "medium",
+      "title": "No google-site-verification / GSC coverage confirmation",
+      "evidence": "grep found no verification meta; OBSERVATION.md Gate 0 pending.",
+      "affects": "whole site",
+      "fix": "Add verification, confirm indexation of 58 sitemap URLs."
+    }
+  ],
+  "perToolContentDepth": [
+    {
+      "id": "json-formatter",
+      "seoContentDepth": "medium-low",
+      "dedicatedArticle": false,
+      "hasMethodology": false
+    },
+    {
+      "id": "json-yaml-converter",
+      "seoContentDepth": "medium-low",
+      "dedicatedArticle": false,
+      "hasMethodology": false
+    },
+    {
+      "id": "json-diff-viewer",
+      "seoContentDepth": "medium-low",
+      "dedicatedArticle": false,
+      "hasMethodology": false
+    },
+    {
+      "id": "xml-formatter",
+      "seoContentDepth": "medium-low",
+      "dedicatedArticle": false,
+      "hasMethodology": false
+    },
+    {
+      "id": "csv-json-converter",
+      "seoContentDepth": "medium-low",
+      "dedicatedArticle": false,
+      "hasMethodology": false
+    },
+    {
+      "id": "base64-encoder",
+      "seoContentDepth": "thin",
+      "dedicatedArticle": false,
+      "hasMethodology": false
+    },
+    {
+      "id": "url-encoder",
+      "seoContentDepth": "thin",
+      "dedicatedArticle": false,
+      "hasMethodology": false
+    },
+    {
+      "id": "html-entity-encoder",
+      "seoContentDepth": "medium-low",
+      "dedicatedArticle": false,
+      "hasMethodology": false
+    },
+    {
+      "id": "hex-converter",
+      "seoContentDepth": "medium-low",
+      "dedicatedArticle": false,
+      "hasMethodology": false
+    },
+    {
+      "id": "binary-converter",
+      "seoContentDepth": "medium-low",
+      "dedicatedArticle": false,
+      "hasMethodology": false
+    },
+    {
+      "id": "unicode-escape-converter",
+      "seoContentDepth": "medium-low",
+      "dedicatedArticle": false,
+      "hasMethodology": false
+    },
+    {
+      "id": "string-escaper",
+      "seoContentDepth": "medium-low",
+      "dedicatedArticle": false,
+      "hasMethodology": false
+    },
+    {
+      "id": "word-counter",
+      "seoContentDepth": "medium-low",
+      "dedicatedArticle": false,
+      "hasMethodology": false
+    },
+    {
+      "id": "case-converter",
+      "seoContentDepth": "medium-low",
+      "dedicatedArticle": false,
+      "hasMethodology": false
+    },
+    {
+      "id": "lorem-ipsum",
+      "seoContentDepth": "coming-soon",
+      "dedicatedArticle": false,
+      "hasMethodology": false
+    },
+    {
+      "id": "emi-calculator",
+      "seoContentDepth": "strong",
+      "dedicatedArticle": true,
+      "hasMethodology": true
+    },
+    {
+      "id": "gst-calculator",
+      "seoContentDepth": "medium-low",
+      "dedicatedArticle": false,
+      "hasMethodology": true
+    },
+    {
+      "id": "sip-calculator",
+      "seoContentDepth": "strong",
+      "dedicatedArticle": true,
+      "hasMethodology": true
+    },
+    {
+      "id": "fd-calculator",
+      "seoContentDepth": "strong",
+      "dedicatedArticle": true,
+      "hasMethodology": true
+    },
+    {
+      "id": "rd-calculator",
+      "seoContentDepth": "medium",
+      "dedicatedArticle": false,
+      "hasMethodology": true
+    },
+    {
+      "id": "ppf-calculator",
+      "seoContentDepth": "medium",
+      "dedicatedArticle": false,
+      "hasMethodology": true
+    },
+    {
+      "id": "cagr-calculator",
+      "seoContentDepth": "medium",
+      "dedicatedArticle": false,
+      "hasMethodology": true
+    },
+    {
+      "id": "lumpsum-calculator",
+      "seoContentDepth": "medium",
+      "dedicatedArticle": false,
+      "hasMethodology": true
+    },
+    {
+      "id": "home-loan-calculator",
+      "seoContentDepth": "strong",
+      "dedicatedArticle": true,
+      "hasMethodology": true
+    },
+    {
+      "id": "personal-loan-calculator",
+      "seoContentDepth": "medium",
+      "dedicatedArticle": false,
+      "hasMethodology": true
+    },
+    {
+      "id": "income-tax-calculator",
+      "seoContentDepth": "strong",
+      "dedicatedArticle": true,
+      "hasMethodology": true
+    },
+    {
+      "id": "hra-calculator",
+      "seoContentDepth": "strong",
+      "dedicatedArticle": true,
+      "hasMethodology": true
+    },
+    {
+      "id": "epf-calculator",
+      "seoContentDepth": "strong",
+      "dedicatedArticle": true,
+      "hasMethodology": true
+    },
+    {
+      "id": "gratuity-calculator",
+      "seoContentDepth": "strong",
+      "dedicatedArticle": true,
+      "hasMethodology": true
+    },
+    {
+      "id": "nps-calculator",
+      "seoContentDepth": "strong",
+      "dedicatedArticle": true,
+      "hasMethodology": true
+    },
+    {
+      "id": "financial-dashboard",
+      "seoContentDepth": "medium-low",
+      "dedicatedArticle": false,
+      "hasMethodology": true
+    },
+    {
+      "id": "financial-roadmap",
+      "seoContentDepth": "medium-low",
+      "dedicatedArticle": false,
+      "hasMethodology": true
+    },
+    {
+      "id": "age-calculator",
+      "seoContentDepth": "strong",
+      "dedicatedArticle": true,
+      "hasMethodology": true
+    },
+    {
+      "id": "password-generator",
+      "seoContentDepth": "medium-low",
+      "dedicatedArticle": false,
+      "hasMethodology": false
+    },
+    {
+      "id": "hash-generator",
+      "seoContentDepth": "medium-low",
+      "dedicatedArticle": false,
+      "hasMethodology": false
+    },
+    {
+      "id": "uuid-generator",
+      "seoContentDepth": "medium-low",
+      "dedicatedArticle": false,
+      "hasMethodology": false
+    },
+    {
+      "id": "jwt-decoder",
+      "seoContentDepth": "medium-low",
+      "dedicatedArticle": false,
+      "hasMethodology": false
+    }
+  ]
+}

@@ -1,0 +1,426 @@
+{
+  "meta": {
+    "artifact": "ContentGap",
+    "sprint": "Revenue Sprint 001",
+    "asOf": "2026-07-20",
+    "universalPresent": [
+      "FAQ (all 37, rendered)",
+      "dynamic OG image (all 37)",
+      "trust/methodology data (finance 18 + dev 16 + everyday 3)"
+    ],
+    "absentRepoWide": [
+      "videos",
+      "shorts",
+      "tutorials",
+      "blog posts (noindex placeholder)",
+      "standalone comparison pages",
+      "static screenshots/bespoke images"
+    ],
+    "articleCoverage": {
+      "dedicated": 10,
+      "secondaryOnly": 5,
+      "none": 22
+    },
+    "intentTierNote": "intentTier is a deterministic 1-5 heuristic of organic search intent (NOT measured volume — GSC read access is Gate-0 pending). Used only for ranking, never presented as measured."
+  },
+  "toolsRankedByGap": [
+    {
+      "id": "emi-calculator",
+      "category": "calculator",
+      "intentTier": 5,
+      "missing": ["standalone-comparison-page", "video", "short", "tutorial", "static-screenshot"]
+    },
+    {
+      "id": "gst-calculator",
+      "category": "calculator",
+      "intentTier": 5,
+      "missing": [
+        "long-form-article",
+        "standalone-comparison-page",
+        "video",
+        "short",
+        "tutorial",
+        "static-screenshot"
+      ]
+    },
+    {
+      "id": "income-tax-calculator",
+      "category": "calculator",
+      "intentTier": 5,
+      "missing": ["standalone-comparison-page", "video", "short", "tutorial", "static-screenshot"]
+    },
+    {
+      "id": "sip-calculator",
+      "category": "calculator",
+      "intentTier": 5,
+      "missing": ["standalone-comparison-page", "video", "short", "tutorial", "static-screenshot"]
+    },
+    {
+      "id": "age-calculator",
+      "category": "calculator",
+      "intentTier": 4,
+      "missing": ["standalone-comparison-page", "video", "short", "tutorial", "static-screenshot"]
+    },
+    {
+      "id": "epf-calculator",
+      "category": "calculator",
+      "intentTier": 4,
+      "missing": ["standalone-comparison-page", "video", "short", "tutorial", "static-screenshot"]
+    },
+    {
+      "id": "fd-calculator",
+      "category": "calculator",
+      "intentTier": 4,
+      "missing": ["standalone-comparison-page", "video", "short", "tutorial", "static-screenshot"]
+    },
+    {
+      "id": "home-loan-calculator",
+      "category": "calculator",
+      "intentTier": 4,
+      "missing": ["standalone-comparison-page", "video", "short", "tutorial", "static-screenshot"]
+    },
+    {
+      "id": "hra-calculator",
+      "category": "calculator",
+      "intentTier": 4,
+      "missing": ["standalone-comparison-page", "video", "short", "tutorial", "static-screenshot"]
+    },
+    {
+      "id": "json-formatter",
+      "category": "developer",
+      "intentTier": 4,
+      "missing": [
+        "long-form-article",
+        "standalone-comparison-page",
+        "video",
+        "short",
+        "tutorial",
+        "static-screenshot"
+      ]
+    },
+    {
+      "id": "password-generator",
+      "category": "security",
+      "intentTier": 4,
+      "missing": [
+        "long-form-article",
+        "standalone-comparison-page",
+        "video",
+        "short",
+        "tutorial",
+        "static-screenshot"
+      ]
+    },
+    {
+      "id": "personal-loan-calculator",
+      "category": "calculator",
+      "intentTier": 4,
+      "missing": [
+        "dedicated-article (only secondary links today)",
+        "standalone-comparison-page",
+        "video",
+        "short",
+        "tutorial",
+        "static-screenshot"
+      ]
+    },
+    {
+      "id": "ppf-calculator",
+      "category": "calculator",
+      "intentTier": 4,
+      "missing": [
+        "dedicated-article (only secondary links today)",
+        "standalone-comparison-page",
+        "video",
+        "short",
+        "tutorial",
+        "static-screenshot"
+      ]
+    },
+    {
+      "id": "base64-encoder",
+      "category": "encoder",
+      "intentTier": 3,
+      "missing": [
+        "long-form-article",
+        "standalone-comparison-page",
+        "video",
+        "short",
+        "tutorial",
+        "static-screenshot"
+      ]
+    },
+    {
+      "id": "cagr-calculator",
+      "category": "calculator",
+      "intentTier": 3,
+      "missing": [
+        "dedicated-article (only secondary links today)",
+        "standalone-comparison-page",
+        "video",
+        "short",
+        "tutorial",
+        "static-screenshot"
+      ]
+    },
+    {
+      "id": "csv-json-converter",
+      "category": "developer",
+      "intentTier": 3,
+      "missing": [
+        "long-form-article",
+        "standalone-comparison-page",
+        "video",
+        "short",
+        "tutorial",
+        "static-screenshot"
+      ]
+    },
+    {
+      "id": "gratuity-calculator",
+      "category": "calculator",
+      "intentTier": 3,
+      "missing": ["standalone-comparison-page", "video", "short", "tutorial", "static-screenshot"]
+    },
+    {
+      "id": "hash-generator",
+      "category": "security",
+      "intentTier": 3,
+      "missing": [
+        "long-form-article",
+        "standalone-comparison-page",
+        "video",
+        "short",
+        "tutorial",
+        "static-screenshot"
+      ]
+    },
+    {
+      "id": "json-diff-viewer",
+      "category": "developer",
+      "intentTier": 3,
+      "missing": [
+        "long-form-article",
+        "standalone-comparison-page",
+        "video",
+        "short",
+        "tutorial",
+        "static-screenshot"
+      ]
+    },
+    {
+      "id": "json-yaml-converter",
+      "category": "developer",
+      "intentTier": 3,
+      "missing": [
+        "long-form-article",
+        "standalone-comparison-page",
+        "video",
+        "short",
+        "tutorial",
+        "static-screenshot"
+      ]
+    },
+    {
+      "id": "jwt-decoder",
+      "category": "security",
+      "intentTier": 3,
+      "missing": [
+        "long-form-article",
+        "standalone-comparison-page",
+        "video",
+        "short",
+        "tutorial",
+        "static-screenshot"
+      ]
+    },
+    {
+      "id": "lumpsum-calculator",
+      "category": "calculator",
+      "intentTier": 3,
+      "missing": [
+        "dedicated-article (only secondary links today)",
+        "standalone-comparison-page",
+        "video",
+        "short",
+        "tutorial",
+        "static-screenshot"
+      ]
+    },
+    {
+      "id": "nps-calculator",
+      "category": "calculator",
+      "intentTier": 3,
+      "missing": ["standalone-comparison-page", "video", "short", "tutorial", "static-screenshot"]
+    },
+    {
+      "id": "rd-calculator",
+      "category": "calculator",
+      "intentTier": 3,
+      "missing": [
+        "dedicated-article (only secondary links today)",
+        "standalone-comparison-page",
+        "video",
+        "short",
+        "tutorial",
+        "static-screenshot"
+      ]
+    },
+    {
+      "id": "url-encoder",
+      "category": "encoder",
+      "intentTier": 3,
+      "missing": [
+        "long-form-article",
+        "standalone-comparison-page",
+        "video",
+        "short",
+        "tutorial",
+        "static-screenshot"
+      ]
+    },
+    {
+      "id": "uuid-generator",
+      "category": "security",
+      "intentTier": 3,
+      "missing": [
+        "long-form-article",
+        "standalone-comparison-page",
+        "video",
+        "short",
+        "tutorial",
+        "static-screenshot"
+      ]
+    },
+    {
+      "id": "word-counter",
+      "category": "text",
+      "intentTier": 3,
+      "missing": [
+        "long-form-article",
+        "standalone-comparison-page",
+        "video",
+        "short",
+        "tutorial",
+        "static-screenshot"
+      ]
+    },
+    {
+      "id": "xml-formatter",
+      "category": "developer",
+      "intentTier": 3,
+      "missing": [
+        "long-form-article",
+        "standalone-comparison-page",
+        "video",
+        "short",
+        "tutorial",
+        "static-screenshot"
+      ]
+    },
+    {
+      "id": "binary-converter",
+      "category": "encoder",
+      "intentTier": 2,
+      "missing": [
+        "long-form-article",
+        "standalone-comparison-page",
+        "video",
+        "short",
+        "tutorial",
+        "static-screenshot"
+      ]
+    },
+    {
+      "id": "case-converter",
+      "category": "text",
+      "intentTier": 2,
+      "missing": [
+        "long-form-article",
+        "standalone-comparison-page",
+        "video",
+        "short",
+        "tutorial",
+        "static-screenshot"
+      ]
+    },
+    {
+      "id": "financial-dashboard",
+      "category": "calculator",
+      "intentTier": 2,
+      "missing": [
+        "long-form-article",
+        "standalone-comparison-page",
+        "video",
+        "short",
+        "tutorial",
+        "static-screenshot"
+      ]
+    },
+    {
+      "id": "financial-roadmap",
+      "category": "calculator",
+      "intentTier": 2,
+      "missing": [
+        "long-form-article",
+        "standalone-comparison-page",
+        "video",
+        "short",
+        "tutorial",
+        "static-screenshot"
+      ]
+    },
+    {
+      "id": "hex-converter",
+      "category": "encoder",
+      "intentTier": 2,
+      "missing": [
+        "long-form-article",
+        "standalone-comparison-page",
+        "video",
+        "short",
+        "tutorial",
+        "static-screenshot"
+      ]
+    },
+    {
+      "id": "html-entity-encoder",
+      "category": "encoder",
+      "intentTier": 2,
+      "missing": [
+        "long-form-article",
+        "standalone-comparison-page",
+        "video",
+        "short",
+        "tutorial",
+        "static-screenshot"
+      ]
+    },
+    {
+      "id": "string-escaper",
+      "category": "encoder",
+      "intentTier": 2,
+      "missing": [
+        "long-form-article",
+        "standalone-comparison-page",
+        "video",
+        "short",
+        "tutorial",
+        "static-screenshot"
+      ]
+    },
+    {
+      "id": "unicode-escape-converter",
+      "category": "encoder",
+      "intentTier": 2,
+      "missing": [
+        "long-form-article",
+        "standalone-comparison-page",
+        "video",
+        "short",
+        "tutorial",
+        "static-screenshot"
+      ]
+    }
+  ]
+}

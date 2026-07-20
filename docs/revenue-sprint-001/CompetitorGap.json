@@ -1,0 +1,143 @@
+{
+  "meta": {
+    "artifact": "CompetitorGap",
+    "sprint": "Revenue Sprint 001",
+    "asOf": "2026-07-20",
+    "sourceOfTruth": "Competitors are named ONLY where the repo cites them (esytol/docs/*SEO.md, *BusinessImpact.md, IncomeTaxBusinessCase.md). content/comparisons.ts deliberately names NO brands.",
+    "measurementCaveat": "All comparative MEASURED metrics (competitor traffic, DA/DR, rankings, revenue, CWV) are UNKNOWN — not discoverable from the repo and not fetched. Never invented. Fields set null. Verification is a backlog task.",
+    "dimensionsCompared": ["features", "ux", "seo", "performance", "content", "monetization"]
+  },
+  "finance": {
+    "competitors": [
+      {
+        "name": "Groww",
+        "url": "https://groww.in/calculators",
+        "type": "broker + calculator suite",
+        "evidence": "esytol/docs/{EPF,Gratuity,NPS,HRA}{SEO,BusinessImpact}.md"
+      },
+      {
+        "name": "ClearTax",
+        "url": "https://cleartax.in",
+        "type": "tax filing + calculators",
+        "evidence": "esytol/docs/IncomeTaxSEO.md, *BusinessImpact.md"
+      },
+      {
+        "name": "ET Money",
+        "url": "https://www.etmoney.com/tools-and-calculators",
+        "type": "investment app + calculators",
+        "evidence": "esytol/docs/*BusinessImpact.md"
+      },
+      {
+        "name": "BankBazaar",
+        "url": "https://www.bankbazaar.com/calculator.html",
+        "type": "financial marketplace",
+        "evidence": "esytol/docs/*SEO.md"
+      },
+      {
+        "name": "Paisabazaar",
+        "url": "https://www.paisabazaar.com",
+        "type": "credit + loan marketplace",
+        "evidence": "esytol/docs/*SEO.md"
+      },
+      {
+        "name": "Scripbox",
+        "url": "https://scripbox.com/calculators",
+        "type": "wealth mgmt + calculators",
+        "evidence": "esytol/docs/*BusinessImpact.md"
+      }
+    ],
+    "qualitativeGap": {
+      "features": {
+        "esytol": "single-purpose, deterministic, privacy-first (client-side, no login), full amortization/schedules, CSV export, methodology + reviewer cited",
+        "competitorsTypicallyHave": [
+          "brand/bank-specific variants (SBI/HDFC FD, etc.)",
+          "mobile apps",
+          "lead-capture + product cross-sell",
+          "account-linked portfolios"
+        ],
+        "esytolAdvantage": "no signup, no tracking, transparent methodology",
+        "esytolGap": "no brand-specific landing variants, no app, no email capture",
+        "measured": null
+      },
+      "ux": {
+        "esytol": "fast, focused, chart+schedule, mobile-responsive",
+        "measured": null,
+        "note": "live UX comparison not performed"
+      },
+      "seo": {
+        "esytol": "strong uniform on-page schema (SoftwareApplication/FAQ/Breadcrumb), 31 supporting articles, INR schema",
+        "competitorGap": "competitors have far higher domain authority + backlinks (UNKNOWN, not measured)",
+        "measured": null
+      },
+      "performance": {
+        "esytol": "Next 15 SSG, client-side compute",
+        "measured": null,
+        "note": "live CWV unknown"
+      },
+      "content": {
+        "esytol": "31 articles (finance/retirement), 7 route comparisons, methodology per tool",
+        "competitorGap": "competitors publish larger content libraries + videos; Esytol has ZERO video/tutorial content",
+        "measured": null
+      },
+      "monetization": {
+        "esytol": "none live (privacy-first; AdSense stub disabled; affiliate fields empty by guard test)",
+        "competitors": "lead-gen, product cross-sell, ads, affiliate, paid advisory",
+        "esytolChoice": "deliberately unmonetized to date (STRATEGY-005: ₹0 validated revenue)",
+        "measured": null
+      }
+    },
+    "brandKeywordNote": "Esytol tool keywords already target brand queries (e.g., 'sbi fd calculator','hdfc home loan emi calculator') — see registry keywords. Dedicated brand-variant landing pages are a content/SEO opportunity (backlog)."
+  },
+  "incomeTaxApi": {
+    "competitors": [
+      {
+        "name": "Sandbox by Quicko",
+        "url": "https://sandbox.co.in/income-tax",
+        "type": "tax compliance API",
+        "evidence": "esytol/docs/IncomeTaxBusinessCase.md"
+      },
+      {
+        "name": "ClearTax (compliance suite)",
+        "url": "https://cleartax.in",
+        "type": "full filing/compliance suite (not a lean API)",
+        "evidence": "esytol/docs/IncomeTaxBusinessCase.md"
+      },
+      {
+        "name": "income-tax-india-e-filing (RapidAPI, deprecated)",
+        "url": "rapidapi (delisted)",
+        "type": "prior RapidAPI incumbent — gap in market",
+        "evidence": "esytol/docs/IncomeTaxBusinessCase.md"
+      }
+    ],
+    "qualitativeGap": {
+      "features": {
+        "esytol": "public REST API — Old vs New regime, §-level trace, OpenAPI 3.1, health/ready/version, AY 2024-27",
+        "competitorGap": "Sandbox/ClearTax cover full compliance/filing; Esytol covers calculation only (resident individuals <60; excludes capital gains, firms)",
+        "opportunity": "a lean, cheap, well-documented calculation API is a positioned gap (deprecated RapidAPI incumbent)",
+        "measured": null
+      },
+      "monetization": {
+        "esytol": "unpriced public seam (lib/api/auth.ts) — no keys/metering today",
+        "competitors": "paid API tiers / enterprise",
+        "opportunity": "RapidAPI free+paid tiers (the recorded REVENUE-SPRINT-001 decision)",
+        "measured": null
+      },
+      "distribution": {
+        "esytol": "self-hosted docs + live playground at /developers/income-tax-api",
+        "competitorGap": "marketplace presence (RapidAPI) supplies billing+buyers; Esytol not yet listed",
+        "measured": null
+      }
+    }
+  },
+  "everyday": {
+    "competitors": [
+      {
+        "name": "generic utility sites (unnamed)",
+        "url": null,
+        "type": "age/date/text utilities",
+        "evidence": "esytol/docs/AgeSEO.md (unnamed table)"
+      }
+    ],
+    "note": "repo does not name everyday-tool competitors; developer-tool competitors (jsonformatter.org, jwt.io, etc.) are NOT cited in the repo — left UNKNOWN rather than invented."
+  }
+}

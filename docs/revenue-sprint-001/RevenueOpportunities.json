@@ -1,0 +1,121 @@
+{
+  "meta": {
+    "artifact": "RevenueOpportunities",
+    "sprint": "Revenue Sprint 001",
+    "asOf": "2026-07-20",
+    "context": "STRATEGY-005: '23 excellent, tested, deployed tools and Rs.0 validated revenue.' Recorded REVENUE-SPRINT-001 decision = publish the Income-Tax API on RapidAPI. Founder note adds NEW directions (sell AI-agent packages, rent AI employees, automated YouTube) — unreconciled with the recorded decision.",
+    "scoring": "priorityScore = round(impact^2 * confidence / difficulty *10)/10; impact/difficulty 1-5, confidence 0.5-1.0 — deterministic estimate, not measured."
+  },
+  "opportunities": [
+    {
+      "category": "API",
+      "title": "Income-Tax API on RapidAPI (subscription/usage) — the recorded first-customer path",
+      "impact": 5,
+      "difficulty": 3,
+      "confidence": 0.7,
+      "priorityScore": 5.8,
+      "status": "decided (REVENUE-SPRINT-001)",
+      "evidence": "API live + documented; public auth seam ready; deprecated RapidAPI incumbent = market gap",
+      "notes": "Fastest ethical path to first paid subscriber; expand coverage to raise WTP."
+    },
+    {
+      "category": "API",
+      "title": "Additional calculation APIs (EMI/SIP/GST) reusing the v1 pattern",
+      "impact": 4,
+      "difficulty": 3,
+      "confidence": 0.55,
+      "priorityScore": 2.9,
+      "status": "candidate",
+      "evidence": "deterministic engines exist; v1 API is a reusable template",
+      "notes": "Widen the API product line after income-tax proves the model."
+    },
+    {
+      "category": "Affiliate",
+      "title": "Comparison-surface affiliate/sponsored partnerships (loans/demat/insurance)",
+      "impact": 3,
+      "difficulty": 2,
+      "confidence": 0.4,
+      "priorityScore": 1.8,
+      "status": "infra-ready, blocked",
+      "evidence": "comparisons.ts sponsored field + disclosure + GA events wired; guard test blocks until a real partner",
+      "notes": "Privacy-first: must keep disclosure + fair comparisons; competitors monetise this intent."
+    },
+    {
+      "category": "Ads",
+      "title": "AdSense on high-traffic pages",
+      "impact": 3,
+      "difficulty": 1,
+      "confidence": 0.45,
+      "priorityScore": 4.1,
+      "status": "stub-ready, gated",
+      "evidence": "ads/index.ts disabled stub; CSP allows it",
+      "notes": "Only enable after Gate-0 traffic validates; risk to UX/SEO if premature."
+    },
+    {
+      "category": "Premium/SaaS",
+      "title": "Premium calculator features (PDF reports, saved profiles, ad-free)",
+      "impact": 3,
+      "difficulty": 4,
+      "confidence": 0.4,
+      "priorityScore": 0.9,
+      "status": "candidate",
+      "evidence": "financial-dashboard/roadmap persist a profile + CSV export already",
+      "notes": "Low-price, no-login upgrade fits privacy-first positioning."
+    },
+    {
+      "category": "SaaS/Agents",
+      "title": "Downloadable AI-agent packages (local LLM / own API key; code not shared)",
+      "impact": 4,
+      "difficulty": 5,
+      "confidence": 0.4,
+      "priorityScore": 1.3,
+      "status": "founder-note, ungated",
+      "evidence": "founder note item 1",
+      "notes": "NEW revenue line; must pass STRATEGY-005/006 gate before build; largest upside, least validated."
+    },
+    {
+      "category": "SaaS/Agents",
+      "title": "'Rent an AI employee' subscription",
+      "impact": 3,
+      "difficulty": 4,
+      "confidence": 0.35,
+      "priorityScore": 0.8,
+      "status": "founder-note, open question",
+      "evidence": "founder note item 2",
+      "notes": "Validate demand + pricing before build."
+    },
+    {
+      "category": "Distribution",
+      "title": "Automated YouTube Shorts channel (traffic + brand, feeds all levers)",
+      "impact": 3,
+      "difficulty": 4,
+      "confidence": 0.45,
+      "priorityScore": 1,
+      "status": "founder-note",
+      "evidence": "founder note items 3&5; grow-esytol Publisher supports youtube/shorts",
+      "notes": "Not direct revenue but the missing top-of-funnel; zero video content today."
+    },
+    {
+      "category": "Enterprise",
+      "title": "White-label / enterprise calculator embeds",
+      "impact": 2,
+      "difficulty": 5,
+      "confidence": 0.3,
+      "priorityScore": 0.2,
+      "status": "rejected (prior)",
+      "evidence": "REVENUE-SPRINT-001 documented rejection",
+      "notes": "Keep parked until inbound demand appears."
+    }
+  ],
+  "reconciliation": {
+    "recordedDecision": "Income-Tax API on RapidAPI (REVENUE-SPRINT-001, 'Decided').",
+    "founderNoteAdds": [
+      "sell AI-agent packages",
+      "rent AI employees",
+      "automated YouTube Shorts",
+      "train dedicated per-function agents (SEO first)"
+    ],
+    "discrepancy": "The recorded decision is API-first and does NOT include the founder-note directions. These are additive new bets, not yet run through STRATEGY-005 (revenue-first selection) or STRATEGY-006 (capital allocation).",
+    "recommendation": "Keep the API launch as the near-term direct-revenue spearhead (highest confidence, infra-ready); run the AI-agent/YouTube directions through the capital-allocation gate as parallel bets; unblock Gate-0 analytics FIRST so every choice becomes evidence-driven instead of blind."
+  }
+}
