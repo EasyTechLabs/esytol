@@ -27,7 +27,7 @@ export function buildOpenApiSpec(): Record<string, unknown> {
       contact: { name: "EasyTechLabs", url: "https://www.esytol.com" },
       license: { name: "Proprietary" },
     },
-    servers: [{ url: "/api/v1", description: "v1" }],
+    servers: [{ url: "https://www.esytol.com/api/v1", description: "Production v1" }],
     tags: [
       { name: "Income Tax", description: "Tax computation" },
       { name: "Operational", description: "Health, readiness, and version" },
