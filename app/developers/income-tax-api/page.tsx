@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { buildMetadata } from "@/seo/metadata";
 import { ApiPlayground } from "@/features/dev-api/ApiPlayground";
+import { GetApiKeyButton, GetStartedButton } from "@/features/dev-api/ApiCtas";
 
 export const metadata: Metadata = buildMetadata({
   title: "Income Tax API — Developer Documentation",
@@ -65,9 +67,23 @@ export default function IncomeTaxApiPage() {
           >
             /version ↗
           </a>
+          <Link
+            href="/pricing"
+            className="rounded-lg bg-gray-100 px-3 py-1.5 font-medium text-gray-700 hover:bg-gray-200"
+          >
+            Pricing →
+          </Link>
           <span className="rounded-lg bg-gray-100 px-3 py-1.5 text-gray-600">
             AY 2024-25 · 2025-26 · 2026-27
           </span>
+        </div>
+        <div className="mt-5 flex flex-wrap gap-3">
+          <GetStartedButton source="apidocs_header" variant="primary" />
+          <GetApiKeyButton
+            source="apidocs_header"
+            label="Get API key on RapidAPI"
+            variant="secondary"
+          />
         </div>
       </header>
 
@@ -75,14 +91,30 @@ export default function IncomeTaxApiPage() {
       <section className="mt-10">
         <h2 className="text-xl font-semibold text-gray-900">Quick start</h2>
         <ol className="mt-3 list-inside list-decimal space-y-1 text-sm text-gray-700">
-          <li>No signup or key required — the API is public.</li>
+          <li>
+            <strong>Free, no signup:</strong> call the public endpoint directly (rate-limited Basic
+            tier).
+          </li>
           <li>
             <code>POST /api/v1/income-tax/calculate</code> with a JSON body containing your income.
           </li>
           <li>
             Read <code>result.recommended</code> and each regime&rsquo;s <code>totalTax</code>.
           </li>
-          <li>The full request/response schema lives in the OpenAPI spec above.</li>
+          <li>
+            <strong>Higher volume:</strong> subscribe on RapidAPI for a key + quota, or{" "}
+            <Link href="/pricing" className="text-brand-700 underline">
+              see pricing
+            </Link>
+            . Check your usage anytime at <code>GET /api/v1/usage</code>.
+          </li>
+          <li>
+            <strong>Enterprise / off-marketplace:</strong> direct keys, SLAs, and invoicing —{" "}
+            <Link href="/enterprise" className="text-brand-700 underline">
+              contact us
+            </Link>
+            .
+          </li>
         </ol>
       </section>
 
@@ -115,6 +147,7 @@ export default function IncomeTaxApiPage() {
               <Row m="GET" p="/api/v1/health" d="Liveness probe" />
               <Row m="GET" p="/api/v1/ready" d="Readiness probe" />
               <Row m="GET" p="/api/v1/version" d="Engine + API version, supported years" />
+              <Row m="GET" p="/api/v1/usage" d="Your current-month usage for the resolved plan" />
               <Row m="GET" p="/api/v1/openapi.json" d="OpenAPI 3.1 document" />
             </tbody>
           </table>

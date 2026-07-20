@@ -30,9 +30,12 @@ export const footerNav = {
     { label: "Learn", href: "/learn" },
     { label: "New", href: "/new" },
     { label: "Popular", href: "/popular" },
+    { label: "Income Tax API", href: "/developers/income-tax-api" },
+    { label: "API Pricing", href: "/pricing" },
   ],
   company: [
     { label: "About", href: "/about" },
+    { label: "Enterprise", href: "/enterprise" },
     { label: "Contact", href: "/contact" },
     { label: "Privacy", href: "/privacy" },
     { label: "Terms", href: "/terms" },

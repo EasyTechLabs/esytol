@@ -64,7 +64,7 @@ describe("route integrity", () => {
   });
 
   it("all footer company links reference known routes", () => {
-    const knownRoutes = new Set(["/about", "/contact", "/privacy", "/terms"]);
+    const knownRoutes = new Set(["/about", "/enterprise", "/contact", "/privacy", "/terms"]);
     for (const item of footerNav.company) {
       expect(knownRoutes.has(item.href), `Unknown company link: ${item.href}`).toBe(true);
     }

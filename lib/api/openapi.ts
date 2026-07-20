@@ -118,6 +118,21 @@ export function buildOpenApiSpec(): Record<string, unknown> {
           responses: { "200": { description: "Version metadata" } },
         },
       },
+      "/usage": {
+        get: {
+          tags: ["Operational"],
+          summary: "Your current-month usage for the resolved plan",
+          description:
+            "Returns the caller's real usage this month for their plan (anonymous → Free tier). " +
+            "Marketplace customers should read RapidAPI for authoritative, global usage + billing.",
+          operationId: "usage",
+          responses: {
+            "200": { description: "Usage snapshot (plan, used, included, remaining, overage)" },
+            "401": { description: "Invalid X-Api-Key" },
+            "403": { description: "Invalid RapidAPI proxy secret" },
+          },
+        },
+      },
     },
     components: {
       // Defined for forward compatibility; NOT required today (public API).

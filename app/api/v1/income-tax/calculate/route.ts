@@ -1,7 +1,8 @@
 import { computeIncomeTax, type TaxApiRequest } from "@/lib/incomeTaxApi";
 import { newRequestId, jsonResponse, preflight, readJson, logRequest } from "@/lib/api/http";
-import { authenticate } from "@/lib/api/auth";
-import { checkRateLimit, rateLimitHeaders, clientKey } from "@/lib/api/rateLimit";
+import { resolveIdentity } from "@/lib/api/identity";
+import { checkRateLimit, rateLimitHeaders } from "@/lib/api/rateLimit";
+import { recordUsage, usageHeaders } from "@/lib/api/metering";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,18 +31,20 @@ export async function POST(req: Request): Promise<Response> {
       assessmentYear,
     });
 
-  // 1. Authentication (public today; the seam for keys/bearer later).
-  const auth = authenticate(req);
-  if (!auth.authenticated) {
-    done(401, "error");
+  // 1. Identity + plan. Anonymous callers resolve to the Free tier (no key required),
+  //    so existing public users keep working. Only a bad key / spoofed gateway is rejected.
+  const id = resolveIdentity(req);
+  if (!id.ok) {
+    done(id.status, "error");
     return jsonResponse(
-      { success: false, apiVersion: "1", requestId, errors: [auth.error] },
-      { status: 401, requestId }
+      { success: false, apiVersion: "1", requestId, errors: [id.error] },
+      { status: id.status, requestId }
     );
   }
+  const { principal, plan, source } = id.identity;
 
-  // 2. Rate limiting (configurable; generous default).
-  const rl = checkRateLimit(clientKey(req));
+  // 2. Plan-aware rate limiting (limit from the caller's plan).
+  const rl = checkRateLimit(principal, plan.rateLimit);
   const rlHeaders = rateLimitHeaders(rl);
   if (!rl.allowed) {
     done(429, "rate_limited");
@@ -58,7 +61,12 @@ export async function POST(req: Request): Promise<Response> {
     );
   }
 
-  // 3. Parse the body — malformed JSON is a clean 400, never a stack trace.
+  // 3. Meter this request (real count; emits billing hooks). Never blocks the public path —
+  //    monthly quota enforcement for paid tiers is handled by RapidAPI's gateway.
+  const usage = recordUsage(principal, plan, PATH, source);
+  Object.assign(rlHeaders, usageHeaders(usage));
+
+  // 4. Parse the body — malformed JSON is a clean 400, never a stack trace.
   const parsed = await readJson(req);
   if (!parsed.ok) {
     done(400, "bad_request");
@@ -68,7 +76,7 @@ export async function POST(req: Request): Promise<Response> {
     );
   }
 
-  // 4. Validate + compute (the tested engine contract; never throws).
+  // 5. Validate + compute (the tested engine contract; never throws).
   const result = computeIncomeTax(parsed.value as TaxApiRequest, { now: new Date() });
 
   if (!result.ok) {

@@ -1,0 +1,490 @@
+{
+  "meta": {
+    "artifact": "RevenueMatrix",
+    "sprint": "Growth Sprint 002",
+    "asOf": "2026-07-20",
+    "principle": "The calculator UIs stay FREE forever (privacy-first positioning + SEO reach). Revenue comes from (1) the API as a product, (2) ads/affiliate on high-traffic pages once measured, (3) premium add-ons, (4) enterprise. No metric is invented; prices are labelled hypotheses.",
+    "source": "Reuses docs/revenue-sprint-001/ToolInventory.json + RevenueOpportunities.json."
+  },
+  "tools": {
+    "verdict": "None are paywalled. All 36 live tools remain free-forever; each carries adjacent revenue levers.",
+    "entries": [
+      {
+        "id": "json-formatter",
+        "name": "JSON Formatter & Validator",
+        "domain": "developer",
+        "toolAccess": "free-forever",
+        "revenueLevers": ["ads"],
+        "premiumAddOnCandidate": false
+      },
+      {
+        "id": "json-yaml-converter",
+        "name": "JSON ↔ YAML Converter",
+        "domain": "developer",
+        "toolAccess": "free-forever",
+        "revenueLevers": ["ads"],
+        "premiumAddOnCandidate": false
+      },
+      {
+        "id": "json-diff-viewer",
+        "name": "JSON Diff Viewer",
+        "domain": "developer",
+        "toolAccess": "free-forever",
+        "revenueLevers": ["ads"],
+        "premiumAddOnCandidate": false
+      },
+      {
+        "id": "xml-formatter",
+        "name": "XML Formatter & Validator",
+        "domain": "developer",
+        "toolAccess": "free-forever",
+        "revenueLevers": ["ads"],
+        "premiumAddOnCandidate": false
+      },
+      {
+        "id": "csv-json-converter",
+        "name": "CSV ↔ JSON Converter",
+        "domain": "developer",
+        "toolAccess": "free-forever",
+        "revenueLevers": ["ads"],
+        "premiumAddOnCandidate": false
+      },
+      {
+        "id": "base64-encoder",
+        "name": "Base64 Encoder / Decoder",
+        "domain": "developer",
+        "toolAccess": "free-forever",
+        "revenueLevers": ["ads"],
+        "premiumAddOnCandidate": false
+      },
+      {
+        "id": "url-encoder",
+        "name": "URL Encoder / Decoder",
+        "domain": "developer",
+        "toolAccess": "free-forever",
+        "revenueLevers": ["ads"],
+        "premiumAddOnCandidate": false
+      },
+      {
+        "id": "html-entity-encoder",
+        "name": "HTML Entity Encoder / Decoder",
+        "domain": "developer",
+        "toolAccess": "free-forever",
+        "revenueLevers": ["ads"],
+        "premiumAddOnCandidate": false
+      },
+      {
+        "id": "hex-converter",
+        "name": "Hex Converter",
+        "domain": "developer",
+        "toolAccess": "free-forever",
+        "revenueLevers": ["ads"],
+        "premiumAddOnCandidate": false
+      },
+      {
+        "id": "binary-converter",
+        "name": "Binary Converter",
+        "domain": "developer",
+        "toolAccess": "free-forever",
+        "revenueLevers": ["ads"],
+        "premiumAddOnCandidate": false
+      },
+      {
+        "id": "unicode-escape-converter",
+        "name": "Unicode Escape Converter",
+        "domain": "developer",
+        "toolAccess": "free-forever",
+        "revenueLevers": ["ads"],
+        "premiumAddOnCandidate": false
+      },
+      {
+        "id": "string-escaper",
+        "name": "Backslash String Escaper",
+        "domain": "developer",
+        "toolAccess": "free-forever",
+        "revenueLevers": ["ads"],
+        "premiumAddOnCandidate": false
+      },
+      {
+        "id": "word-counter",
+        "name": "Word Counter",
+        "domain": "everyday",
+        "toolAccess": "free-forever",
+        "revenueLevers": ["ads"],
+        "premiumAddOnCandidate": false
+      },
+      {
+        "id": "case-converter",
+        "name": "Case Converter",
+        "domain": "everyday",
+        "toolAccess": "free-forever",
+        "revenueLevers": ["ads"],
+        "premiumAddOnCandidate": false
+      },
+      {
+        "id": "lorem-ipsum",
+        "name": "Lorem Ipsum Generator",
+        "domain": "everyday",
+        "toolAccess": "free-forever",
+        "revenueLevers": ["ads"],
+        "premiumAddOnCandidate": false
+      },
+      {
+        "id": "emi-calculator",
+        "name": "EMI Calculator",
+        "domain": "finance",
+        "toolAccess": "free-forever",
+        "revenueLevers": ["ads", "affiliate", "premium-export", "api-candidate"],
+        "premiumAddOnCandidate": true
+      },
+      {
+        "id": "gst-calculator",
+        "name": "GST Calculator",
+        "domain": "finance",
+        "toolAccess": "free-forever",
+        "revenueLevers": ["ads", "affiliate", "premium-export", "api-candidate"],
+        "premiumAddOnCandidate": true
+      },
+      {
+        "id": "sip-calculator",
+        "name": "SIP Calculator",
+        "domain": "finance",
+        "toolAccess": "free-forever",
+        "revenueLevers": ["ads", "affiliate", "premium-export", "api-candidate"],
+        "premiumAddOnCandidate": true
+      },
+      {
+        "id": "fd-calculator",
+        "name": "FD Calculator",
+        "domain": "finance",
+        "toolAccess": "free-forever",
+        "revenueLevers": ["ads", "affiliate", "premium-export", "api-candidate"],
+        "premiumAddOnCandidate": true
+      },
+      {
+        "id": "rd-calculator",
+        "name": "RD Calculator",
+        "domain": "finance",
+        "toolAccess": "free-forever",
+        "revenueLevers": ["ads", "affiliate", "premium-export", "api-candidate"],
+        "premiumAddOnCandidate": true
+      },
+      {
+        "id": "ppf-calculator",
+        "name": "PPF Calculator",
+        "domain": "finance",
+        "toolAccess": "free-forever",
+        "revenueLevers": ["ads", "affiliate", "premium-export", "api-candidate"],
+        "premiumAddOnCandidate": true
+      },
+      {
+        "id": "cagr-calculator",
+        "name": "CAGR Calculator",
+        "domain": "finance",
+        "toolAccess": "free-forever",
+        "revenueLevers": ["ads", "affiliate", "premium-export", "api-candidate"],
+        "premiumAddOnCandidate": true
+      },
+      {
+        "id": "lumpsum-calculator",
+        "name": "Lumpsum Calculator",
+        "domain": "finance",
+        "toolAccess": "free-forever",
+        "revenueLevers": ["ads", "affiliate", "premium-export", "api-candidate"],
+        "premiumAddOnCandidate": true
+      },
+      {
+        "id": "home-loan-calculator",
+        "name": "Home Loan Calculator",
+        "domain": "finance",
+        "toolAccess": "free-forever",
+        "revenueLevers": ["ads", "affiliate", "premium-export", "api-candidate"],
+        "premiumAddOnCandidate": true
+      },
+      {
+        "id": "personal-loan-calculator",
+        "name": "Personal Loan Calculator",
+        "domain": "finance",
+        "toolAccess": "free-forever",
+        "revenueLevers": ["ads", "affiliate", "premium-export", "api-candidate"],
+        "premiumAddOnCandidate": true
+      },
+      {
+        "id": "income-tax-calculator",
+        "name": "Income Tax Calculator",
+        "domain": "finance",
+        "toolAccess": "free-forever",
+        "revenueLevers": ["ads", "affiliate", "premium-export", "api-live"],
+        "premiumAddOnCandidate": true
+      },
+      {
+        "id": "hra-calculator",
+        "name": "HRA Calculator",
+        "domain": "finance",
+        "toolAccess": "free-forever",
+        "revenueLevers": ["ads", "affiliate", "premium-export", "api-candidate"],
+        "premiumAddOnCandidate": true
+      },
+      {
+        "id": "epf-calculator",
+        "name": "EPF Calculator",
+        "domain": "finance",
+        "toolAccess": "free-forever",
+        "revenueLevers": ["ads", "affiliate", "premium-export", "api-candidate"],
+        "premiumAddOnCandidate": true
+      },
+      {
+        "id": "gratuity-calculator",
+        "name": "Gratuity Calculator",
+        "domain": "finance",
+        "toolAccess": "free-forever",
+        "revenueLevers": ["ads", "affiliate", "premium-export", "api-candidate"],
+        "premiumAddOnCandidate": true
+      },
+      {
+        "id": "nps-calculator",
+        "name": "NPS Calculator",
+        "domain": "finance",
+        "toolAccess": "free-forever",
+        "revenueLevers": ["ads", "affiliate", "premium-export", "api-candidate"],
+        "premiumAddOnCandidate": true
+      },
+      {
+        "id": "financial-dashboard",
+        "name": "Financial Dashboard",
+        "domain": "finance",
+        "toolAccess": "free-forever",
+        "revenueLevers": ["ads", "affiliate", "premium-export"],
+        "premiumAddOnCandidate": true
+      },
+      {
+        "id": "financial-roadmap",
+        "name": "Financial Roadmap",
+        "domain": "finance",
+        "toolAccess": "free-forever",
+        "revenueLevers": ["ads", "affiliate", "premium-export"],
+        "premiumAddOnCandidate": true
+      },
+      {
+        "id": "age-calculator",
+        "name": "Age Calculator",
+        "domain": "everyday",
+        "toolAccess": "free-forever",
+        "revenueLevers": ["ads"],
+        "premiumAddOnCandidate": false
+      },
+      {
+        "id": "password-generator",
+        "name": "Password Generator",
+        "domain": "developer",
+        "toolAccess": "free-forever",
+        "revenueLevers": ["ads"],
+        "premiumAddOnCandidate": false
+      },
+      {
+        "id": "hash-generator",
+        "name": "Hash Generator",
+        "domain": "developer",
+        "toolAccess": "free-forever",
+        "revenueLevers": ["ads"],
+        "premiumAddOnCandidate": false
+      },
+      {
+        "id": "uuid-generator",
+        "name": "UUID Generator",
+        "domain": "developer",
+        "toolAccess": "free-forever",
+        "revenueLevers": ["ads"],
+        "premiumAddOnCandidate": false
+      },
+      {
+        "id": "jwt-decoder",
+        "name": "JWT Decoder & Verifier",
+        "domain": "developer",
+        "toolAccess": "free-forever",
+        "revenueLevers": ["ads"],
+        "premiumAddOnCandidate": false
+      }
+    ]
+  },
+  "apis": {
+    "live": [
+      {
+        "id": "income-tax",
+        "path": "/api/v1/income-tax/calculate",
+        "status": "paid-live (this sprint)",
+        "billing": "RapidAPI marketplace (keys + metering + billing) + direct keys for enterprise",
+        "tiers": ["free", "pro", "ultra", "mega", "enterprise"],
+        "evidence": "lib/api/plans.ts + wired route"
+      }
+    ],
+    "candidates": [
+      {
+        "id": "emi",
+        "fromTool": "emi-calculator",
+        "status": "api-candidate",
+        "rationale": "deterministic engine already exists; reuse the v1 API pattern (openapi/health/ready/version) after income-tax proves the model."
+      },
+      {
+        "id": "gst",
+        "fromTool": "gst-calculator",
+        "status": "api-candidate",
+        "rationale": "deterministic engine already exists; reuse the v1 API pattern (openapi/health/ready/version) after income-tax proves the model."
+      },
+      {
+        "id": "sip",
+        "fromTool": "sip-calculator",
+        "status": "api-candidate",
+        "rationale": "deterministic engine already exists; reuse the v1 API pattern (openapi/health/ready/version) after income-tax proves the model."
+      },
+      {
+        "id": "fd",
+        "fromTool": "fd-calculator",
+        "status": "api-candidate",
+        "rationale": "deterministic engine already exists; reuse the v1 API pattern (openapi/health/ready/version) after income-tax proves the model."
+      },
+      {
+        "id": "rd",
+        "fromTool": "rd-calculator",
+        "status": "api-candidate",
+        "rationale": "deterministic engine already exists; reuse the v1 API pattern (openapi/health/ready/version) after income-tax proves the model."
+      },
+      {
+        "id": "ppf",
+        "fromTool": "ppf-calculator",
+        "status": "api-candidate",
+        "rationale": "deterministic engine already exists; reuse the v1 API pattern (openapi/health/ready/version) after income-tax proves the model."
+      },
+      {
+        "id": "cagr",
+        "fromTool": "cagr-calculator",
+        "status": "api-candidate",
+        "rationale": "deterministic engine already exists; reuse the v1 API pattern (openapi/health/ready/version) after income-tax proves the model."
+      },
+      {
+        "id": "lumpsum",
+        "fromTool": "lumpsum-calculator",
+        "status": "api-candidate",
+        "rationale": "deterministic engine already exists; reuse the v1 API pattern (openapi/health/ready/version) after income-tax proves the model."
+      },
+      {
+        "id": "home-loan",
+        "fromTool": "home-loan-calculator",
+        "status": "api-candidate",
+        "rationale": "deterministic engine already exists; reuse the v1 API pattern (openapi/health/ready/version) after income-tax proves the model."
+      },
+      {
+        "id": "personal-loan",
+        "fromTool": "personal-loan-calculator",
+        "status": "api-candidate",
+        "rationale": "deterministic engine already exists; reuse the v1 API pattern (openapi/health/ready/version) after income-tax proves the model."
+      },
+      {
+        "id": "hra",
+        "fromTool": "hra-calculator",
+        "status": "api-candidate",
+        "rationale": "deterministic engine already exists; reuse the v1 API pattern (openapi/health/ready/version) after income-tax proves the model."
+      },
+      {
+        "id": "epf",
+        "fromTool": "epf-calculator",
+        "status": "api-candidate",
+        "rationale": "deterministic engine already exists; reuse the v1 API pattern (openapi/health/ready/version) after income-tax proves the model."
+      },
+      {
+        "id": "gratuity",
+        "fromTool": "gratuity-calculator",
+        "status": "api-candidate",
+        "rationale": "deterministic engine already exists; reuse the v1 API pattern (openapi/health/ready/version) after income-tax proves the model."
+      },
+      {
+        "id": "nps",
+        "fromTool": "nps-calculator",
+        "status": "api-candidate",
+        "rationale": "deterministic engine already exists; reuse the v1 API pattern (openapi/health/ready/version) after income-tax proves the model."
+      }
+    ],
+    "free": [
+      {
+        "path": "/api/v1/health",
+        "reason": "operational"
+      },
+      {
+        "path": "/api/v1/ready",
+        "reason": "operational"
+      },
+      {
+        "path": "/api/v1/version",
+        "reason": "operational"
+      },
+      {
+        "path": "/api/v1/openapi.json",
+        "reason": "discovery"
+      },
+      {
+        "path": "/api/v1/income-tax/calculate",
+        "reason": "Basic free tier — 500 req/mo, keeps the funnel open"
+      }
+    ]
+  },
+  "enterprise": {
+    "paid": [
+      {
+        "feature": "Direct off-marketplace API keys",
+        "evidence": "lib/api/apiKeys.ts (hashed, env-provisioned)"
+      },
+      {
+        "feature": "Negotiated volume + SLA",
+        "evidence": "lib/api/plans.ts enterprise tier"
+      },
+      {
+        "feature": "Custom regimes / additional payer categories (60+, capital gains, firms)",
+        "evidence": "engine scope note in route"
+      },
+      {
+        "feature": "Self-host / on-prem",
+        "evidence": "enterprise plan feature"
+      },
+      {
+        "feature": "Invoicing (not card)",
+        "evidence": "billing hooks seam (lib/api/billing.ts)"
+      },
+      {
+        "feature": "White-label calculators/embeds",
+        "evidence": "RevenueOpportunities enterprise row (parked→now optional)"
+      }
+    ],
+    "route": "Contact Sales → /enterprise → POST /api/v1/contact (lead capture)"
+  },
+  "free": {
+    "forever": [
+      "Every calculator UI + its result + §-level trace",
+      "The public API Basic tier (500 req/mo)",
+      "FAQ, methodology, and Learn articles",
+      "Health/ready/version/openapi endpoints",
+      "OG images, sitemap, SEO"
+    ]
+  },
+  "premiumAddOns": {
+    "candidates": [
+      {
+        "feature": "PDF / Excel report export",
+        "appliesTo": "finance calculators",
+        "status": "candidate",
+        "note": "financial-dashboard/roadmap already export CSV"
+      },
+      {
+        "feature": "Saved profiles / portfolios (cloud sync)",
+        "appliesTo": "financial-dashboard, financial-roadmap",
+        "status": "candidate",
+        "note": "must preserve privacy-first (opt-in, encrypted)"
+      },
+      {
+        "feature": "Ad-free experience",
+        "appliesTo": "all",
+        "status": "candidate",
+        "note": "only meaningful once ads exist"
+      }
+    ]
+  }
+}
