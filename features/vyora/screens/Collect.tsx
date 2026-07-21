@@ -8,6 +8,7 @@
  * no WhatsApp API, no backend).
  */
 
+import { useMemo } from "react";
 import Link from "next/link";
 import { useVyora } from "../VyoraProvider";
 import { useToast } from "../Toast";
@@ -29,10 +30,11 @@ export function Collect() {
   const { ready, data } = useVyora();
   const toast = useToast();
   const { overdue, open } = useCollect(data);
+  const nameById = useMemo(() => new Map(data.parties.map((p) => [p.id, p.name])), [data.parties]);
 
   if (!ready) return <LoadingList />;
 
-  const nameOf = (id: string) => data.parties.find((p) => p.id === id)?.name ?? "Contact";
+  const nameOf = (id: string) => nameById.get(id) ?? "Contact";
 
   // Share a reminder via the OS share sheet. The app transmits nothing itself.
   const share = async (partyId: string, amount: number) => {

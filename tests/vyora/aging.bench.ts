@@ -73,3 +73,37 @@ describe("aging performance", () => {
     portfolioAging(large, TODAY);
   });
 });
+
+// Global search (ENG-004): index build (one-time, on open) + per-keystroke filter.
+// Mirrors GlobalSearch — a name Map (O(1) lookups) instead of O(entries × parties) find.
+function buildSearchIndex(data: VyoraData): string[] {
+  const nameById = new Map(data.parties.map((p) => [p.id, p.name]));
+  const items: string[] = [];
+  for (const p of data.parties)
+    items.push([p.name, p.phone, p.note].filter(Boolean).join(" ").toLowerCase());
+  for (const t of data.transactions)
+    items.push(
+      [nameById.get(t.partyId), t.reference, t.description, String(t.amount)]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+    );
+  for (const p of data.payments)
+    items.push(
+      [nameById.get(p.partyId), p.reference, p.note, String(p.amount)]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+    );
+  return items;
+}
+const searchIndex = buildSearchIndex(large); // ~21,000 items
+
+describe("search performance", () => {
+  bench("index build · ~21,000 items (once, on open)", () => {
+    buildSearchIndex(large);
+  });
+  bench("filter · ~21,000 items (per keystroke)", () => {
+    searchIndex.filter((t) => t.includes("500"));
+  });
+});

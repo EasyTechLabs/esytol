@@ -57,7 +57,9 @@ export function GlobalSearch({ showBar }: { showBar: boolean }) {
 
   // Build the index ONCE per data change (fast local indexing).
   const index = useMemo<SearchItem[]>(() => {
-    const nameOf = (id: string) => data.parties.find((p) => p.id === id)?.name ?? "Contact";
+    if (!open) return []; // only build the index while the overlay is open — no cost during data entry
+    const nameById = new Map(data.parties.map((p) => [p.id, p.name]));
+    const nameOf = (id: string) => nameById.get(id) ?? "Contact";
     const items: SearchItem[] = [];
     for (const p of data.parties) {
       const net = partyNet(data, p.id);
@@ -104,7 +106,7 @@ export function GlobalSearch({ showBar }: { showBar: boolean }) {
       });
     }
     return items;
-  }, [data]);
+  }, [data, open]);
 
   const results = useMemo(() => {
     const needle = q.trim().toLowerCase();
