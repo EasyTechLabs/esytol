@@ -280,3 +280,62 @@ export function recoverySummary(data: VyoraData, today: string): RecoverySummary
     highestPriority: overdue[0] ?? null,
   };
 }
+
+/** A contact owed money whose debt is open but NOT overdue (undated or not yet due). */
+export interface OpenRow {
+  partyId: string;
+  openReceivable: number;
+  /** Age (days) of the oldest open lot; negative if the due date is still in the future. */
+  oldestOpenDays: number;
+  net: number;
+}
+
+/** The two honest lists behind the Collect screen. */
+export interface CollectLists {
+  /** Overdue receivables (a real due date has passed), ranked overdueAmount × daysOverdue. */
+  overdue: OverdueRow[];
+  /** Open receivables that are NOT overdue — shown separately so nothing is mislabelled. */
+  open: OpenRow[];
+}
+
+/**
+ * The Collect ("who to chase today") lists — receivable-side only, in ONE aging
+ * sweep. A contact with ANY overdue amount goes to `overdue`; a contact owed
+ * money with nothing overdue goes to `open`. **Open is never called overdue**
+ * (the honesty rule). Payable / settled contacts appear in neither list.
+ */
+export function collectList(data: VyoraData, today: string): CollectLists {
+  const overdue: OverdueRow[] = [];
+  const open: OpenRow[] = [];
+  for (const party of data.parties) {
+    const aging = agingForParty(data, party.id, today);
+    if (aging.openReceivable <= 0) continue; // nothing owed → not chased
+    if (aging.overdueAmount > 0 && aging.daysOverdue !== null) {
+      overdue.push({
+        partyId: party.id,
+        overdueAmount: aging.overdueAmount,
+        daysOverdue: aging.daysOverdue,
+        openReceivable: aging.openReceivable,
+        net: partyNet(data, party.id),
+      });
+    } else {
+      open.push({
+        partyId: party.id,
+        openReceivable: aging.openReceivable,
+        oldestOpenDays: aging.oldestOpenDays ?? 0,
+        net: partyNet(data, party.id),
+      });
+    }
+  }
+  overdue.sort((a, b) => {
+    const la = a.overdueAmount * a.daysOverdue;
+    const lb = b.overdueAmount * b.daysOverdue;
+    if (lb !== la) return lb - la;
+    return b.daysOverdue - a.daysOverdue;
+  });
+  open.sort((a, b) => {
+    if (b.oldestOpenDays !== a.oldestOpenDays) return b.oldestOpenDays - a.oldestOpenDays;
+    return b.openReceivable - a.openReceivable;
+  });
+  return { overdue, open };
+}

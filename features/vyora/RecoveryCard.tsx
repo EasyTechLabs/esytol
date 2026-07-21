@@ -98,9 +98,9 @@ export function RecoveryCard({
         </div>
       </div>
 
-      {/* Chase Now CTA — opens the highest-priority contact's statement to act on */}
+      {/* Chase Now CTA — opens the Collect worklist (who to chase today) */}
       <Link
-        href={`/vyora/parties/${top.partyId}`}
+        href="/vyora/collect"
         className="block rounded-xl bg-brand-600 py-3 text-center text-base font-semibold text-white hover:bg-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700"
       >
         Chase now →

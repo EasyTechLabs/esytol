@@ -14,6 +14,7 @@ import {
   overdueList,
   portfolioAging,
   recoverySummary,
+  collectList,
 } from "@/lib/vyora/aging";
 
 const TODAY = "2026-07-21";
@@ -275,6 +276,38 @@ describe("recoverySummary", () => {
     expect(s.overdueTotal).toBe(0);
     expect(s.highestPriority).toBeNull();
     expect(s.outstanding).toBe(1000); // still outstanding, just not overdue
+  });
+});
+
+// ─── collectList (Collect screen) ────────────────────────────────────────────
+describe("collectList", () => {
+  it("splits overdue vs open honestly, receivable-only, each sorted", () => {
+    const d = data(
+      [P("A"), P("B"), P("C"), P("D"), P("E")],
+      [
+        tx("a", "A", 5000, "given", "2026-04-20", "2026-05-01"), // overdue (5000 × 81)
+        tx("b", "B", 3000, "given", "2026-06-01", "2026-06-11"), // overdue (3000 × 40)
+        tx("c", "C", 1000, "given", "2026-05-20"), // undated → OPEN (62d), never overdue
+        tx("d", "D", 2000, "given", "2026-07-15", "2026-08-01"), // future due → OPEN (not due)
+        tx("e", "E", 8000, "taken", "2026-04-01", "2026-04-10"), // payable → neither list
+      ]
+    );
+    const { overdue, open } = collectList(d, TODAY);
+    expect(overdue.map((r) => r.partyId)).toEqual(["A", "B"]); // amount × days
+    expect(open.map((r) => r.partyId)).toEqual(["C", "D"]); // oldest-open first (C 62d > D future)
+    // honesty: C is OPEN, not overdue
+    const c = open.find((r) => r.partyId === "C");
+    expect(c?.openReceivable).toBe(1000);
+    expect(c?.oldestOpenDays).toBe(62);
+    // E (payable) is in neither list
+    expect([...overdue, ...open].some((r) => r.partyId === "E")).toBe(false);
+  });
+
+  it("empty overdue but populated open when nobody is late", () => {
+    const d = data([P("p")], [tx("t", "p", 1000, "given", "2026-07-15", "2026-08-01")]);
+    const { overdue, open } = collectList(d, TODAY);
+    expect(overdue).toHaveLength(0);
+    expect(open.map((r) => r.partyId)).toEqual(["p"]);
   });
 });
 

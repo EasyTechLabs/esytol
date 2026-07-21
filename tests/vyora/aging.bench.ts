@@ -6,7 +6,7 @@
 
 import { bench, describe } from "vitest";
 import type { VyoraData, Transaction, Payment } from "@/lib/vyora/types";
-import { overdueList, portfolioAging, agingForParty } from "@/lib/vyora/aging";
+import { overdueList, portfolioAging, agingForParty, collectList } from "@/lib/vyora/aging";
 
 function makeDataset(parties: number, entriesPer: number): VyoraData {
   const P: VyoraData["parties"] = [];
@@ -59,6 +59,12 @@ describe("aging performance", () => {
   });
   bench("overdueList · 100 contacts × 10 entries", () => {
     overdueList(typical, TODAY);
+  });
+  bench("collectList · 100 contacts × 10 entries (Collect screen)", () => {
+    collectList(typical, TODAY);
+  });
+  bench("collectList · 1,000 contacts × 20 entries (Collect stress)", () => {
+    collectList(large, TODAY);
   });
   bench("overdueList · 1,000 contacts × 20 entries", () => {
     overdueList(large, TODAY);
