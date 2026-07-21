@@ -123,6 +123,14 @@ export function Dashboard() {
         <StatCard label="Today's payments" value={formatMoney(today.payments)} tone="out" />
       </div>
 
+      {/* Close the day */}
+      <Link
+        href="/vyora/closing"
+        className="block rounded-2xl border-2 border-gray-200 bg-white py-3 text-center text-sm font-semibold text-gray-700 hover:bg-gray-50"
+      >
+        🌙 Close the day →
+      </Link>
+
       {/* Recent activity */}
       <section>
         <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-600">
