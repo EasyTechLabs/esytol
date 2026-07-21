@@ -8,7 +8,7 @@
 
 import { useRef } from "react";
 import { useVyora } from "../VyoraProvider";
-import { formatDate } from "@/lib/vyora/format";
+import { formatDateTime } from "@/lib/vyora/format";
 import { Card, Button } from "../primitives";
 
 export function Settings() {
@@ -26,6 +26,19 @@ export function Settings() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   if (!ready) return <div className="py-20 text-center text-gray-500">Loading…</div>;
+
+  const lastBackup = data.meta.lastBackupAt;
+  const backupAgeDays =
+    lastBackup && !Number.isNaN(new Date(lastBackup).getTime())
+      ? Math.floor((Date.now() - new Date(lastBackup).getTime()) / 86_400_000)
+      : null;
+  const backupStale = backupAgeDays === null || backupAgeDays > 7;
+  const ago =
+    backupAgeDays === null
+      ? ""
+      : backupAgeDays === 0
+        ? "today"
+        : `${backupAgeDays} day${backupAgeDays === 1 ? "" : "s"} ago`;
 
   const onImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -55,9 +68,18 @@ export function Settings() {
     if (confirm("Restore your last on-device backup? This replaces the current data.")) restore();
   };
   const onReset = () => {
+    const parties = data.parties.length;
+    const entries = data.transactions.length + data.payments.length;
+    const note =
+      lastBackup && !backupStale
+        ? `You last backed up ${ago}.`
+        : "⚠️ You have NOT backed up recently. Export a backup first, or this data is gone for good.";
     if (
       confirm(
-        "Erase ALL Vyora data on this device? This cannot be undone. Export a backup first if you want to keep it."
+        `Erase ALL Vyora data on this device?\n\n` +
+          `This permanently deletes ${parties} contact${parties === 1 ? "" : "s"} and ` +
+          `${entries} entr${entries === 1 ? "y" : "ies"}. It cannot be undone.\n\n` +
+          `${note}\n\nContinue?`
       )
     )
       reset();
@@ -72,11 +94,21 @@ export function Settings() {
         <div>
           <h2 className="font-semibold text-gray-900">On-device backup</h2>
           <p className="text-sm text-gray-600">
-            A safety copy on this phone — protects against an accidental change.{" "}
-            {data.meta.lastBackupAt
-              ? `Last backup: ${formatDate(data.meta.lastBackupAt)}.`
-              : "No backup yet."}
+            A safety copy on this phone — protects against an accidental change.
           </p>
+          {lastBackup ? (
+            <p
+              className={`mt-1 text-sm ${backupStale ? "font-medium text-amber-700" : "text-gray-700"}`}
+            >
+              <span className={backupStale ? "" : "text-positive-strong"}>●</span> Last backup:{" "}
+              <span className="font-medium">{formatDateTime(lastBackup)}</span> · {ago}
+              {backupStale && " — back up again to stay safe."}
+            </p>
+          ) : (
+            <p className="mt-1 text-sm font-medium text-red-700">
+              ● Never backed up on this device — back up (and export a copy) now.
+            </p>
+          )}
         </div>
         <div className="grid grid-cols-2 gap-3">
           <Button variant="primary" block onClick={backup}>

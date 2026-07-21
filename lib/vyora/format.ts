@@ -30,6 +30,19 @@ export function balanceColor(net: number): string {
   return "text-gray-500";
 }
 
+/** "12 Jul 2026, 3:40 PM" — a precise timestamp (used for the last-backup time). */
+export function formatDateTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 /** "Today", "Yesterday", or "12 Jul 2026". Keeps recent activity human. */
 export function formatDate(iso: string, now: Date = new Date()): string {
   const d = new Date(iso.length <= 10 ? `${iso}T00:00:00` : iso);
