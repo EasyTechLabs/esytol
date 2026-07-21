@@ -37,6 +37,9 @@ export function Dashboard() {
 
   return (
     <div className="space-y-4">
+      {/* Recovery — the first thing a merchant sees */}
+      <RecoveryCard data={data} todaysRecovery={t.todaysCollections} />
+
       {shouldRemind && (
         <div className="flex items-start justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
           <p className="text-sm text-amber-800">Back up your data to avoid accidental loss.</p>
@@ -78,9 +81,6 @@ export function Dashboard() {
               : "You are all square"}
         </div>
       </div>
-
-      {/* Recovery card — who's overdue and who to chase first (PR-2.2) */}
-      <RecoveryCard data={data} todaysRecovery={t.todaysCollections} />
 
       {/* Receivable / Payable */}
       <div className="grid grid-cols-2 gap-3">

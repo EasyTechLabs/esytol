@@ -5,7 +5,7 @@
  * automatically. Same fast, id-bound shape as credit entry, with a save toast + Undo.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useVyora } from "../VyoraProvider";
 import type { PaymentKind } from "@/lib/vyora/types";
@@ -17,7 +17,7 @@ const emptyParty: PartySelection = { text: "", ref: null };
 
 export function PaymentEntry() {
   const router = useRouter();
-  const { recordPayment } = useVyora();
+  const { recordPayment, data } = useVyora();
 
   const [amount, setAmount] = useState("");
   const [party, setParty] = useState<PartySelection>(emptyParty);
@@ -25,6 +25,22 @@ export function PaymentEntry() {
   const [note, setNote] = useState("");
   const [showMore, setShowMore] = useState(false);
   const [date, setDate] = useState(todayISO());
+  const [prefilled, setPrefilled] = useState(false);
+
+  // Pre-select the contact when arriving from a statement (…/payment?party=<id>).
+  useEffect(() => {
+    if (prefilled) return;
+    const id = new URLSearchParams(window.location.search).get("party");
+    if (!id) {
+      setPrefilled(true);
+      return;
+    }
+    const p = data.parties.find((x) => x.id === id);
+    if (p) {
+      setParty({ text: p.name, ref: { kind: "existing", id: p.id } });
+      setPrefilled(true);
+    }
+  }, [data.parties, prefilled]);
 
   const amountNum = Number(amount);
   const canSave = amountNum > 0 && party.ref !== null;

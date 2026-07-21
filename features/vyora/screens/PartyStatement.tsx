@@ -8,6 +8,7 @@
  */
 
 import { useState } from "react";
+import Link from "next/link";
 import { useVyora } from "../VyoraProvider";
 import { partyNet, partyStatement } from "@/lib/vyora/selectors";
 import { formatMoney, formatDate, balanceLabel, balanceColor } from "@/lib/vyora/format";
@@ -107,6 +108,22 @@ export function PartyStatement({ partyId }: { partyId: string }) {
             {net === 0 ? "Settled" : formatMoney(net)}
           </div>
         </div>
+      </div>
+
+      {/* Act from the statement — record a payment (recovery) or a credit for this contact */}
+      <div className="grid grid-cols-2 gap-3 print:hidden">
+        <Link
+          href={`/vyora/payment?party=${partyId}`}
+          className="rounded-xl bg-positive py-3 text-center font-semibold text-white hover:bg-positive-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-positive-strong"
+        >
+          ＋ Record payment
+        </Link>
+        <Link
+          href={`/vyora/credit?party=${partyId}`}
+          className="rounded-xl bg-brand-600 py-3 text-center font-semibold text-white hover:bg-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700"
+        >
+          ＋ Record credit
+        </Link>
       </div>
 
       {/* Statement */}

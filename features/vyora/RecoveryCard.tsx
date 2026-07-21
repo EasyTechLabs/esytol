@@ -1,16 +1,16 @@
 "use client";
 
 /**
- * Vyora — Dashboard Recovery Card (PR-2.2). Turns the aging domain into the one
- * thing a merchant opens the app to know: "who owes me, who's late, chase whom
- * first." Reads from the memoized `useRecovery` selector. No charts, no
- * analytics, no backend — just the numbers and one action.
+ * Vyora — Recovery landing hero (the FIRST thing a merchant sees). Turns the
+ * aging domain into today's job: "recover ₹X from N customers, chase this one
+ * first." When nothing is overdue it becomes a calm "All caught up". Reads from
+ * the memoized `useRecovery` selector, so recording a payment updates it live —
+ * no reload. No charts, no analytics, no backend.
  */
 
 import Link from "next/link";
 import type { VyoraData } from "@/lib/vyora/types";
 import { formatMoney } from "@/lib/vyora/format";
-import { Card } from "./primitives";
 import { useRecovery } from "./useRecovery";
 
 export function RecoveryCard({
@@ -18,7 +18,7 @@ export function RecoveryCard({
   todaysRecovery,
 }: {
   data: VyoraData;
-  /** Money received today — passed in from the dashboard's existing totals (no recompute). */
+  /** Money received today — the "Today's Recovery" figure that grows as payments land. */
   todaysRecovery: number;
 }) {
   const r = useRecovery(data);
@@ -26,68 +26,52 @@ export function RecoveryCard({
   // All caught up — the good state.
   if (r.highestPriority === null) {
     return (
-      <Card className="flex items-center gap-3 border-positive-line bg-positive-tint">
-        <span
-          aria-hidden
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-positive text-lg font-bold text-white"
-        >
-          ✓
-        </span>
-        <div className="min-w-0">
-          <p className="font-semibold text-positive-strong">All caught up</p>
-          <p className="text-sm text-gray-600">
-            Nobody is overdue right now.
-            {r.outstanding > 0 ? ` ${formatMoney(r.outstanding)} outstanding, none late.` : ""}
-          </p>
+      <div className="rounded-2xl border border-positive-line bg-positive-tint p-5">
+        <div className="flex items-center gap-3">
+          <span
+            aria-hidden
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-positive text-2xl font-bold text-white"
+          >
+            ✓
+          </span>
+          <div className="min-w-0">
+            <p className="text-lg font-bold text-positive-strong">All caught up</p>
+            <p className="text-sm text-gray-600">
+              Nobody is overdue right now.
+              {todaysRecovery > 0 ? ` You've recovered ${formatMoney(todaysRecovery)} today.` : ""}
+            </p>
+          </div>
         </div>
-      </Card>
+      </div>
     );
   }
 
   const top = r.highestPriority;
   const topName = data.parties.find((p) => p.id === top.partyId)?.name ?? "Contact";
-  const plural = r.overdueContactCount === 1 ? "contact" : "contacts";
+  const customers = `${r.overdueContactCount} customer${r.overdueContactCount === 1 ? "" : "s"}`;
 
   return (
-    <Card tone="danger" className="space-y-3">
-      {/* Overdue headline */}
-      <div className="flex items-end justify-between gap-3">
-        <div className="min-w-0">
-          <div className="text-xs font-semibold uppercase tracking-wide text-negative-strong">
-            Overdue to recover
-          </div>
-          <div className="break-words text-2xl font-bold tabular-nums leading-tight text-negative">
-            {formatMoney(r.overdueTotal)}
-          </div>
+    <div className="overflow-hidden rounded-2xl border border-red-200 bg-white">
+      {/* Today's recovery headline */}
+      <div className="bg-negative-tint px-5 pb-4 pt-5">
+        <div className="text-xs font-semibold uppercase tracking-wide text-negative-strong">
+          Today&rsquo;s recovery
         </div>
-        <div className="shrink-0 text-right text-xs text-gray-600">
-          <span className="font-semibold text-gray-900">{r.overdueContactCount}</span> overdue{" "}
-          {plural}
+        <div className="mt-1 break-words text-3xl font-bold tabular-nums leading-tight text-negative">
+          Recover {formatMoney(r.overdueTotal)}
+        </div>
+        <div className="mt-1 text-sm text-gray-600">
+          from {customers} overdue
+          {todaysRecovery > 0 ? ` · ${formatMoney(todaysRecovery)} recovered today` : ""}
         </div>
       </div>
 
-      {/* Today's recovery + outstanding */}
-      <div className="grid grid-cols-2 gap-3 border-t border-red-100 pt-3 text-sm">
-        <div>
-          <div className="text-gray-500">Recovered today</div>
-          <div className="font-semibold tabular-nums text-positive">
-            {formatMoney(todaysRecovery)}
-          </div>
-        </div>
-        <div>
-          <div className="text-gray-500">Outstanding</div>
-          <div className="font-semibold tabular-nums text-gray-900">
-            {formatMoney(r.outstanding)}
-          </div>
-        </div>
-      </div>
-
-      {/* Highest-priority contact */}
-      <div className="rounded-xl bg-white/70 p-3">
-        <div className="flex items-center justify-between gap-3">
+      {/* Top contact + Recover now */}
+      <div className="px-5 py-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <div className="text-xs text-gray-500">Chase first</div>
-            <div className="truncate font-medium text-gray-900">{topName}</div>
+            <div className="text-xs text-gray-500">Top contact</div>
+            <div className="truncate font-semibold text-gray-900">{topName}</div>
           </div>
           <div className="shrink-0 text-right">
             <div className="font-semibold tabular-nums text-negative">
@@ -96,15 +80,13 @@ export function RecoveryCard({
             <div className="text-xs text-gray-500">overdue {top.daysOverdue}d</div>
           </div>
         </div>
+        <Link
+          href="/vyora/collect"
+          className="block rounded-xl bg-brand-600 py-3.5 text-center text-base font-semibold text-white hover:bg-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700"
+        >
+          Recover now →
+        </Link>
       </div>
-
-      {/* Chase Now CTA — opens the Collect worklist (who to chase today) */}
-      <Link
-        href="/vyora/collect"
-        className="block rounded-xl bg-brand-600 py-3 text-center text-base font-semibold text-white hover:bg-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700"
-      >
-        Chase now →
-      </Link>
-    </Card>
+    </div>
   );
 }
