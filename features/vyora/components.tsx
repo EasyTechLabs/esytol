@@ -11,6 +11,13 @@ import { cn } from "@/lib/cn";
 import { useVyora } from "./VyoraProvider";
 import { searchParties } from "@/lib/vyora/selectors";
 import { formatMoney, balanceColor } from "@/lib/vyora/format";
+import type { PartyRef } from "@/lib/vyora/types";
+
+/** The picker's controlled value: what's typed, and the resolved contact (or null until chosen). */
+export interface PartySelection {
+  text: string;
+  ref: PartyRef | null;
+}
 
 /** A headline number card for the dashboard. */
 export function StatCard({
@@ -61,8 +68,8 @@ export function Segmented<T extends string>({
             type="button"
             onClick={() => onChange(o.value)}
             className={cn(
-              "rounded-xl border-2 px-3 py-3 text-sm font-semibold transition-colors",
-              active ? activeCls : "border-gray-200 bg-white text-gray-500"
+              "rounded-xl border-2 px-3 py-3 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600",
+              active ? activeCls : "border-gray-200 bg-white text-gray-600"
             )}
           >
             {o.label}
@@ -96,75 +103,102 @@ export function AmountField({ value, onChange }: { value: string; onChange: (v: 
 }
 
 /**
- * Party picker — type a name; pick an existing party or create one inline.
- * This is what makes entry fast: no separate "create party" step.
+ * Party picker — type a name and either **pick a known contact** (binds its
+ * immutable id) or **explicitly add a new one**. Typing a name never silently
+ * creates a duplicate: an entry can only be saved once a contact is bound
+ * (existing id) or the merchant deliberately chooses "Add new". An exact,
+ * unambiguous name match auto-binds so repeat customers stay fast.
  */
 export function PartyPicker({
   value,
   onChange,
 }: {
-  value: string;
-  onChange: (name: string) => void;
+  value: PartySelection;
+  onChange: (v: PartySelection) => void;
 }) {
   const { data } = useVyora();
   const [open, setOpen] = useState(false);
+  const q = value.text;
   const matches = useMemo(
-    () =>
-      value.trim() ? searchParties(data, value).slice(0, 6) : searchParties(data, "").slice(0, 6),
-    [data, value]
+    () => (q.trim() ? searchParties(data, q).slice(0, 6) : searchParties(data, "").slice(0, 6)),
+    [data, q]
   );
-  const exact = data.parties.some(
-    (p) => p.name.trim().toLowerCase() === value.trim().toLowerCase()
-  );
+
+  const setText = (text: string) => {
+    const exact = data.parties.filter(
+      (p) => p.name.trim().toLowerCase() === text.trim().toLowerCase()
+    );
+    onChange({ text, ref: exact.length === 1 ? { kind: "existing", id: exact[0].id } : null });
+    setOpen(true);
+  };
+  const pick = (id: string, name: string) => {
+    onChange({ text: name, ref: { kind: "existing", id } });
+    setOpen(false);
+  };
+  const addNew = () => {
+    if (q.trim()) onChange({ text: q, ref: { kind: "new", name: q.trim() } });
+    setOpen(false);
+  };
 
   return (
     <div className="relative">
       <label className="block">
-        <span className="mb-1 block text-sm font-medium text-gray-600">
-          Party (customer / supplier)
+        <span className="mb-1 block text-sm font-medium text-gray-700">
+          Contact (customer / supplier)
         </span>
         <input
-          value={value}
-          onChange={(e) => {
-            onChange(e.target.value);
-            setOpen(true);
-          }}
+          value={q}
+          onChange={(e) => setText(e.target.value)}
           onFocus={() => setOpen(true)}
           onBlur={() => setTimeout(() => setOpen(false), 150)}
           placeholder="Name…"
-          className="w-full rounded-2xl border-2 border-gray-200 bg-white px-4 py-3 text-lg outline-none focus:border-brand-500"
+          className="w-full rounded-2xl border-2 border-gray-200 bg-white px-4 py-3 text-lg outline-none focus:border-brand-500 focus-visible:border-brand-500"
         />
       </label>
-      {open && (matches.length > 0 || value.trim()) && (
+
+      {/* Bound-contact / new-contact indicator (so the merchant sees what they're recording against) */}
+      {value.ref?.kind === "existing" && (
+        <p className="mt-1 text-xs font-medium text-emerald-700">✓ Known contact selected</p>
+      )}
+      {value.ref?.kind === "new" && (
+        <p className="mt-1 text-xs font-medium text-brand-700">
+          ＋ New contact “{value.ref.name}” will be created
+        </p>
+      )}
+      {!value.ref && q.trim() && (
+        <p className="mt-1 text-xs font-medium text-amber-700">
+          Pick a contact below, or “Add new”.
+        </p>
+      )}
+
+      {open && (matches.length > 0 || q.trim()) && (
         <div className="absolute z-10 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-gray-200 bg-white shadow-lg">
           {matches.map(({ party, net }) => (
             <button
               key={party.id}
               type="button"
               onMouseDown={(e) => e.preventDefault()}
-              onClick={() => {
-                onChange(party.name);
-                setOpen(false);
-              }}
-              className="flex w-full items-center justify-between px-4 py-2.5 text-left hover:bg-gray-50"
+              onClick={() => pick(party.id, party.name)}
+              className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-gray-50 focus-visible:bg-gray-50 focus-visible:outline-none"
             >
-              <span className="font-medium text-gray-800">{party.name}</span>
-              <span className={cn("text-sm tabular-nums", balanceColor(net))}>
+              <span className="min-w-0 truncate font-medium text-gray-800">{party.name}</span>
+              <span className={cn("shrink-0 text-sm tabular-nums", balanceColor(net))}>
                 {net === 0 ? "Settled" : formatMoney(net)}
               </span>
             </button>
           ))}
-          {value.trim() && !exact && (
-            <button
-              type="button"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => setOpen(false)}
-              className="flex w-full items-center gap-2 border-t border-gray-100 px-4 py-2.5 text-left text-brand-700 hover:bg-brand-50"
-            >
-              <span className="text-lg leading-none">＋</span>
-              <span className="font-medium">Add “{value.trim()}” as a new party</span>
-            </button>
-          )}
+          {q.trim() &&
+            !data.parties.some((p) => p.name.trim().toLowerCase() === q.trim().toLowerCase()) && (
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={addNew}
+                className="flex w-full items-center gap-2 border-t border-gray-100 px-4 py-3 text-left text-brand-700 hover:bg-brand-50 focus-visible:bg-brand-50 focus-visible:outline-none"
+              >
+                <span className="text-lg leading-none">＋</span>
+                <span className="font-medium">Add “{q.trim()}” as a new contact</span>
+              </button>
+            )}
         </div>
       )}
     </div>
@@ -197,7 +231,7 @@ export function BigButton({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "w-full rounded-2xl px-4 py-4 text-lg font-semibold text-white transition-colors disabled:opacity-50",
+        "w-full rounded-2xl px-4 py-4 text-lg font-semibold text-white transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700 disabled:opacity-50",
         cls
       )}
     >

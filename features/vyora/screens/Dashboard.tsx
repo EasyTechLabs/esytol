@@ -3,28 +3,64 @@
 /**
  * Vyora Alpha — Dashboard. Answers the one question a merchant opens the app for:
  * "How much is stuck, and what moved today?" Receivable, Payable, Net Position,
- * today's cash in/out, and recent activity. Read in five seconds.
+ * today's cash in/out, and recent activity. Read in five seconds. Plus a gentle,
+ * occasional backup reminder.
  */
 
+import { useState } from "react";
 import Link from "next/link";
 import { useVyora } from "../VyoraProvider";
 import { dashboardTotals, recentActivity } from "@/lib/vyora/selectors";
 import { formatMoney, formatDate, balanceColor } from "@/lib/vyora/format";
 import { StatCard, Empty } from "../components";
 
+function daysSince(iso: string | null): number | null {
+  if (!iso) return null;
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return null;
+  return (Date.now() - then) / 86_400_000;
+}
+
 export function Dashboard() {
-  const { ready, data, reset } = useVyora();
-  if (!ready) return <div className="py-20 text-center text-gray-400">Loading…</div>;
+  const { ready, data, backup } = useVyora();
+  const [remindDismissed, setRemindDismissed] = useState(false);
+  if (!ready) return <div className="py-20 text-center text-gray-500">Loading…</div>;
 
   const t = dashboardTotals(data);
   const activity = recentActivity(data, 15);
+  const totalEntries = data.transactions.length + data.payments.length;
 
-  const onReset = () => {
-    if (confirm("Erase all Vyora data on this device? This cannot be undone.")) reset();
-  };
+  // Gentle, occasional reminder: enough entries to matter, and no recent backup.
+  const since = daysSince(data.meta.lastBackupAt);
+  const shouldRemind = !remindDismissed && totalEntries >= 8 && (since === null || since > 7);
 
   return (
     <div className="space-y-4">
+      {shouldRemind && (
+        <div className="flex items-start justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <p className="text-sm text-amber-800">Back up your data to avoid accidental loss.</p>
+          <div className="flex shrink-0 gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                backup();
+                setRemindDismissed(true);
+              }}
+              className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700"
+            >
+              Back up
+            </button>
+            <button
+              type="button"
+              onClick={() => setRemindDismissed(true)}
+              className="rounded-lg px-2 py-1.5 text-xs font-medium text-amber-700"
+            >
+              Later
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Net position hero */}
       <div className="rounded-2xl bg-gradient-to-br from-brand-600 to-brand-700 p-5 text-white">
         <div className="text-xs font-medium uppercase tracking-wide text-brand-100">
@@ -73,11 +109,11 @@ export function Dashboard() {
       {/* Recent activity */}
       <section>
         <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-600">
             Recent activity
           </h2>
           <Link href="/vyora/parties" className="text-sm font-medium text-brand-700">
-            All parties →
+            All contacts →
           </Link>
         </div>
         {activity.length === 0 ? (
@@ -92,7 +128,7 @@ export function Dashboard() {
               >
                 <div className="min-w-0">
                   <div className="truncate font-medium text-gray-800">{a.partyName}</div>
-                  <div className="text-xs text-gray-400">
+                  <div className="text-xs text-gray-500">
                     {a.label} · {formatDate(a.date)}
                     {a.note ? ` · ${a.note}` : ""}
                   </div>
@@ -110,14 +146,13 @@ export function Dashboard() {
       </section>
 
       {/* Footer */}
-      <div className="flex items-center justify-between pt-2 text-xs text-gray-400">
+      <div className="flex items-center justify-between pt-2 text-xs text-gray-500">
         <span>
-          {data.parties.length} parties · {data.transactions.length + data.payments.length} entries
-          · saved on this device only
+          {data.parties.length} contacts · {totalEntries} entries · saved on this device only
         </span>
-        <button type="button" onClick={onReset} className="text-red-500 hover:underline">
-          Clear data
-        </button>
+        <Link href="/vyora/settings" className="font-medium text-brand-700">
+          Data &amp; backup →
+        </Link>
       </div>
     </div>
   );

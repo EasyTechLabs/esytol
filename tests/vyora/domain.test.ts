@@ -1,7 +1,7 @@
 /**
- * Vyora Alpha — domain tests. The balance math is the product's trust; it must
- * be exactly right and never drift. Pure selectors tested on fixed fixtures;
- * mutations tested for shape/direction.
+ * Vyora Alpha — domain tests (v0.2). The balance math is the product's trust; it
+ * must be exactly right and never drift. Also covers the trust/recoverability
+ * features: robust identity, non-destructive migration, and import validation.
  */
 
 import { describe, it, expect } from "vitest";
@@ -13,21 +13,25 @@ import {
   searchParties,
   partyStatement,
   allActivity,
-  findPartyByName,
 } from "@/lib/vyora/selectors";
 import {
   emptyData,
-  addParty,
   addTransaction,
   addPayment,
-  getOrCreateParty,
   deleteEntry,
+  editParty,
+  resolvePartyRef,
+  migrate,
+  exportToFile,
+  parseImportFile,
+  VERSION,
 } from "@/lib/vyora/store";
 
 // ─── Deterministic fixture ───────────────────────────────────────────────────
-const T = (n: number) => `2026-07-21T10:0${n}:00.000Z`; // ascending createdAt
+const T = (n: number) => `2026-07-21T10:0${n}:00.000Z`;
 const data: VyoraData = {
-  version: 1,
+  version: VERSION,
+  meta: { lastBackupAt: null, exportCount: 0, importCount: 0 },
   parties: [
     { id: "p1", name: "Ramesh", createdAt: T(0) },
     { id: "p2", name: "Suresh", phone: "98765", createdAt: T(1) },
@@ -40,18 +44,16 @@ const data: VyoraData = {
     { id: "t4", partyId: "p3", amount: 2000, kind: "taken", date: "2026-07-13", createdAt: T(6) },
   ],
   payments: [
-    { id: "y1", partyId: "p1", amount: 200, kind: "received", date: "2026-07-21", createdAt: T(7) }, // today
-    { id: "y2", partyId: "p3", amount: 500, kind: "paid", date: "2026-07-21", createdAt: T(8) }, // today
+    { id: "y1", partyId: "p1", amount: 200, kind: "received", date: "2026-07-21", createdAt: T(7) },
+    { id: "y2", partyId: "p3", amount: 500, kind: "paid", date: "2026-07-21", createdAt: T(8) },
   ],
 };
 
 describe("party balances (signed net, + = they owe me)", () => {
   it("nets given − taken − received across a party", () => {
-    // Ramesh: +1000 −300 −200 = 500 (receivable)
     expect(partyNet(data, "p1")).toBe(500);
   });
-  it("a supplier (taken + paid) is a payable, then reduced by a payment made", () => {
-    // Cement Co: −2000 (taken) +500 (paid) = −1500 (I owe 1500)
+  it("a supplier (taken + paid) is a payable, reduced by a payment made", () => {
     expect(partyNet(data, "p3")).toBe(-1500);
   });
   it("sorts all balances by absolute exposure, biggest first", () => {
@@ -62,8 +64,8 @@ describe("party balances (signed net, + = they owe me)", () => {
 describe("dashboard totals", () => {
   it("splits receivable and payable and nets them", () => {
     const t = dashboardTotals(data, "2026-07-21");
-    expect(t.receivable).toBe(1000); // Ramesh 500 + Suresh 500
-    expect(t.payable).toBe(1500); // Cement Co
+    expect(t.receivable).toBe(1000);
+    expect(t.payable).toBe(1500);
     expect(t.net).toBe(-500);
   });
   it("counts only today's payments for collections/payments", () => {
@@ -75,11 +77,10 @@ describe("dashboard totals", () => {
 
 describe("statement + activity ordering", () => {
   it("statement is oldest-first with a correct running balance", () => {
-    const rows = partyStatement(data, "p1");
-    expect(rows.map((r) => r.runningNet)).toEqual([1000, 700, 500]); // given, taken, received
+    expect(partyStatement(data, "p1").map((r) => r.runningNet)).toEqual([1000, 700, 500]);
   });
   it("activity is newest-first", () => {
-    expect(allActivity(data)[0].id).toBe("y2"); // latest createdAt
+    expect(allActivity(data)[0].id).toBe("y2");
   });
 });
 
@@ -94,7 +95,7 @@ describe("search", () => {
 });
 
 describe("mutations", () => {
-  it("addTransaction records the amount + direction and defaults the date to today", () => {
+  it("addTransaction records amount + direction, defaults the date", () => {
     const { data: d, transaction } = addTransaction(emptyData(), {
       partyId: "px",
       amount: 1850,
@@ -110,17 +111,78 @@ describe("mutations", () => {
     expect(payment.amount).toBe(500);
   });
   it("deleteEntry removes an entry so the balance re-derives correctly", () => {
-    expect(partyNet(data, "p1")).toBe(500);
-    const without = deleteEntry(data, "y1"); // remove the ₹200 received
-    expect(partyNet(without, "p1")).toBe(700); // 1000 − 300
-    expect(without.payments.find((p) => p.id === "y1")).toBeUndefined();
+    const without = deleteEntry(data, "y1");
+    expect(partyNet(without, "p1")).toBe(700);
   });
-  it("getOrCreateParty reuses by name (case-insensitive), else creates", () => {
-    const base = addParty(emptyData(), { name: "Ramesh" }).data;
-    const reuse = getOrCreateParty(base, "  ramesh ");
-    expect(reuse.data.parties).toHaveLength(1); // reused, not duplicated
-    const created = getOrCreateParty(base, "Vijay");
-    expect(created.data.parties).toHaveLength(2);
-    expect(findPartyByName(created.data, "vijay")?.name).toBe("Vijay");
+});
+
+describe("robust identity (Task 1)", () => {
+  it("editing a party's name keeps its id and all history intact", () => {
+    const renamed = editParty(data, "p1", { name: "Ramesh Kaka", phone: "111" });
+    const p = renamed.parties.find((x) => x.id === "p1")!;
+    expect(p.name).toBe("Ramesh Kaka");
+    expect(p.phone).toBe("111");
+    expect(partyNet(renamed, "p1")).toBe(500); // balance unchanged — history keyed by id, not name
+  });
+  it("an existing PartyRef binds by id (no new party); a new ref creates one", () => {
+    const existing = resolvePartyRef(data, { kind: "existing", id: "p1" });
+    expect(existing.partyId).toBe("p1");
+    expect(existing.data.parties).toHaveLength(3); // none created
+
+    const created = resolvePartyRef(data, { kind: "new", name: "Vijay" });
+    expect(created.data.parties).toHaveLength(4);
+    expect(created.data.parties.find((p) => p.id === created.partyId)?.name).toBe("Vijay");
+  });
+});
+
+describe("migration is non-destructive (v1 → v2)", () => {
+  it("upgrades a v1 payload, preserving every entry and adding meta", () => {
+    const v1 = {
+      version: 1,
+      parties: data.parties,
+      transactions: data.transactions,
+      payments: data.payments,
+    };
+    const m = migrate(v1)!;
+    expect(m.version).toBe(VERSION);
+    expect(m.parties).toHaveLength(3);
+    expect(m.transactions).toHaveLength(4);
+    expect(m.meta).toEqual({ lastBackupAt: null, exportCount: 0, importCount: 0 });
+    expect(partyNet(m, "p1")).toBe(500); // data intact after migration
+  });
+  it("rejects non-datasets (returns null, never throws)", () => {
+    expect(migrate({})).toBeNull();
+    expect(migrate("nonsense")).toBeNull();
+    expect(migrate(null)).toBeNull();
+  });
+});
+
+describe("export / import (Task 2)", () => {
+  it("exports a versioned, timestamped envelope and bumps the export counter", () => {
+    const { data: after, text, filename } = exportToFile(data);
+    expect(after.meta.exportCount).toBe(1);
+    expect(filename).toMatch(/^vyora-backup-\d{8}\.json$/);
+    const parsed = JSON.parse(text);
+    expect(parsed.app).toBe("vyora");
+    expect(parsed.schemaVersion).toBe(VERSION);
+    expect(typeof parsed.exportedAt).toBe("string");
+  });
+  it("round-trips: a valid export imports cleanly with correct counts", () => {
+    const { text } = exportToFile(data);
+    const res = parseImportFile(text, emptyData());
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.summary).toEqual({ parties: 3, transactions: 4, payments: 2 });
+      expect(res.data.meta.importCount).toBe(1);
+      expect(res.data.meta.lastBackupAt).toBeNull();
+    }
+  });
+  it("detects corrupt / wrong / newer files without throwing", () => {
+    expect(parseImportFile("{not json", emptyData()).ok).toBe(false);
+    expect(parseImportFile(JSON.stringify({ app: "other" }), emptyData()).ok).toBe(false);
+    expect(
+      parseImportFile(JSON.stringify({ app: "vyora", schemaVersion: 999, data: {} }), emptyData())
+        .ok
+    ).toBe(false);
   });
 });

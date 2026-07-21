@@ -1,29 +1,41 @@
 "use client";
 
 /**
- * Vyora Alpha — the one client store the whole app reads and writes through.
+ * Vyora Alpha — the one client store the whole app reads and writes through. v0.2.
  *
- * Loads the merchant's data from localStorage on mount, exposes it plus a tiny
- * set of actions, and persists after every change. Pure domain logic lives in
- * lib/vyora; this only wires it to React state. No server, no network.
+ * Loads the merchant's data from localStorage on mount, exposes it plus a small
+ * set of actions, and persists after every change. Every action reassures the
+ * merchant with a toast; the three undoable actions (credit, payment, delete)
+ * carry an inline Undo. Entries bind to a party by immutable id (never by typed
+ * name), so a duplicate ledger can never be created by accident.
  */
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import type { VyoraData, Party, EntryKind, PaymentKind } from "@/lib/vyora/types";
+import type { VyoraData, Party, EntryKind, PaymentKind, PartyRef } from "@/lib/vyora/types";
+import { partyNet } from "@/lib/vyora/selectors";
+import { formatMoney } from "@/lib/vyora/format";
+import { useToast } from "./Toast";
 import {
   emptyData,
   loadData,
   saveData,
   addParty as addPartyMut,
+  editParty as editPartyMut,
+  resolvePartyRef,
   addTransaction as addTxnMut,
   addPayment as addPayMut,
-  getOrCreateParty as getOrCreatePartyMut,
   deleteEntry as deleteEntryMut,
+  backupNow as backupNowMut,
+  restoreBackup as restoreBackupStore,
+  hasBackup,
+  exportToFile,
+  parseImportFile,
+  type ImportResult,
   clearData,
 } from "@/lib/vyora/store";
 
 interface CreditInput {
-  partyName: string;
+  party: PartyRef;
   amount: number;
   kind: EntryKind;
   description?: string;
@@ -31,7 +43,7 @@ interface CreditInput {
   dueDate?: string;
 }
 interface PaymentInput {
-  partyName: string;
+  party: PartyRef;
   amount: number;
   kind: PaymentKind;
   note?: string;
@@ -39,29 +51,46 @@ interface PaymentInput {
 }
 
 interface VyoraContextValue {
-  /** True once localStorage has been read (avoids SSR/hydration flash). */
   ready: boolean;
   data: VyoraData;
-  /** Record a credit; creates the party by name if new. Returns the party. */
-  recordCredit: (input: CreditInput) => Party;
-  /** Record a payment; creates the party by name if new. Returns the party. */
-  recordPayment: (input: PaymentInput) => Party;
-  /** Create (or reuse) a party explicitly. */
+  hasBackup: boolean;
+  recordCredit: (input: CreditInput) => void;
+  recordPayment: (input: PaymentInput) => void;
   createParty: (input: { name: string; phone?: string; note?: string }) => Party;
-  /** Delete one entry (fix a mistake). */
+  editParty: (id: string, patch: { name?: string; phone?: string; note?: string }) => void;
   deleteEntry: (id: string) => void;
-  /** Erase everything on this device (with confirmation in the UI). */
+  backup: () => void;
+  restore: () => void;
+  exportData: () => void;
+  validateImport: (text: string) => ImportResult;
+  applyImport: (data: VyoraData) => void;
   reset: () => void;
 }
 
 const VyoraContext = createContext<VyoraContextValue | null>(null);
 
+function download(text: string, filename: string) {
+  if (typeof window === "undefined") return;
+  const blob = new Blob([text], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export function VyoraProvider({ children }: { children: React.ReactNode }) {
+  const toast = useToast();
   const [data, setData] = useState<VyoraData>(emptyData);
   const [ready, setReady] = useState(false);
+  const [backupExists, setBackupExists] = useState(false);
 
   useEffect(() => {
     setData(loadData());
+    setBackupExists(hasBackup());
     setReady(true);
   }, []);
 
@@ -70,63 +99,158 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
     saveData(next);
   }, []);
 
+  /** Restore a pre-action snapshot (session Undo). */
+  const undoTo = useCallback(
+    (prev: VyoraData) => {
+      commit(prev);
+      toast.info("Undone");
+    },
+    [commit, toast]
+  );
+
   const recordCredit = useCallback(
-    (input: CreditInput): Party => {
-      const created = getOrCreatePartyMut(data, input.partyName);
-      const { data: withTxn } = addTxnMut(created.data, {
-        partyId: created.party.id,
+    (input: CreditInput) => {
+      const prev = data;
+      const { data: withParty, partyId } = resolvePartyRef(data, input.party);
+      const { data: next } = addTxnMut(withParty, {
+        partyId,
         amount: input.amount,
         kind: input.kind,
         description: input.description,
         date: input.date,
         dueDate: input.dueDate,
       });
-      commit(withTxn);
-      return created.party;
+      commit(next);
+      const net = partyNet(next, partyId);
+      toast.success(
+        `✓ Credit recorded · Outstanding ${net >= 0 ? formatMoney(net) : `−${formatMoney(net)}`}`,
+        { label: "Undo", onAction: () => undoTo(prev) }
+      );
     },
-    [data, commit]
+    [data, commit, toast, undoTo]
   );
 
   const recordPayment = useCallback(
-    (input: PaymentInput): Party => {
-      const created = getOrCreatePartyMut(data, input.partyName);
-      const { data: withPay } = addPayMut(created.data, {
-        partyId: created.party.id,
+    (input: PaymentInput) => {
+      const prev = data;
+      const { data: withParty, partyId } = resolvePartyRef(data, input.party);
+      const { data: next } = addPayMut(withParty, {
+        partyId,
         amount: input.amount,
         kind: input.kind,
         note: input.note,
         date: input.date,
       });
-      commit(withPay);
-      return created.party;
+      commit(next);
+      const net = partyNet(next, partyId);
+      toast.success(`✓ Payment recorded · Balance ${net === 0 ? "settled" : formatMoney(net)}`, {
+        label: "Undo",
+        onAction: () => undoTo(prev),
+      });
     },
-    [data, commit]
+    [data, commit, toast, undoTo]
   );
 
   const createParty = useCallback(
     (input: { name: string; phone?: string; note?: string }): Party => {
       const { data: next, party } = addPartyMut(data, input);
       commit(next);
+      toast.success(`✓ Contact added · ${party.name}`);
       return party;
     },
-    [data, commit]
+    [data, commit, toast]
+  );
+
+  const editParty = useCallback(
+    (id: string, patch: { name?: string; phone?: string; note?: string }) => {
+      commit(editPartyMut(data, id, patch));
+      toast.success("✓ Contact updated");
+    },
+    [data, commit, toast]
   );
 
   const deleteEntry = useCallback(
     (id: string) => {
+      const prev = data;
       commit(deleteEntryMut(data, id));
+      toast.success("Entry deleted", { label: "Undo", onAction: () => undoTo(prev) });
     },
-    [data, commit]
+    [data, commit, toast, undoTo]
+  );
+
+  const backup = useCallback(() => {
+    const next = backupNowMut(data);
+    commit(next);
+    setBackupExists(true);
+    toast.success("✓ Backup saved on this device");
+  }, [data, commit, toast]);
+
+  const restore = useCallback(() => {
+    const restored = restoreBackupStore();
+    if (!restored) {
+      toast.info("No backup found on this device");
+      return;
+    }
+    commit(restored);
+    toast.success("✓ Restored from your last backup");
+  }, [commit, toast]);
+
+  const exportData = useCallback(() => {
+    const { data: withCount, text, filename } = exportToFile(data);
+    commit(withCount);
+    download(text, filename);
+    toast.success("✓ Exported — keep the file somewhere safe");
+  }, [data, commit, toast]);
+
+  const validateImport = useCallback((text: string) => parseImportFile(text, data), [data]);
+
+  const applyImport = useCallback(
+    (next: VyoraData) => {
+      commit(next);
+      toast.success(`✓ Imported · ${next.parties.length} contacts restored`);
+    },
+    [commit, toast]
   );
 
   const reset = useCallback(() => {
     clearData();
     setData(emptyData());
-  }, []);
+    toast.info("All data cleared from this device");
+  }, [toast]);
 
   const value = useMemo<VyoraContextValue>(
-    () => ({ ready, data, recordCredit, recordPayment, createParty, deleteEntry, reset }),
-    [ready, data, recordCredit, recordPayment, createParty, deleteEntry, reset]
+    () => ({
+      ready,
+      data,
+      hasBackup: backupExists,
+      recordCredit,
+      recordPayment,
+      createParty,
+      editParty,
+      deleteEntry,
+      backup,
+      restore,
+      exportData,
+      validateImport,
+      applyImport,
+      reset,
+    }),
+    [
+      ready,
+      data,
+      backupExists,
+      recordCredit,
+      recordPayment,
+      createParty,
+      editParty,
+      deleteEntry,
+      backup,
+      restore,
+      exportData,
+      validateImport,
+      applyImport,
+      reset,
+    ]
   );
 
   return <VyoraContext.Provider value={value}>{children}</VyoraContext.Provider>;

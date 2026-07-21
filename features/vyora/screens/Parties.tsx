@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Vyora Alpha — Parties. One flat list of everyone (customer, supplier, both),
+ * Vyora Alpha — Contacts. One flat list of everyone (customer, supplier, both),
  * with instant search and a quick add. Each row shows the net at a glance.
  */
 
@@ -19,7 +19,7 @@ export function Parties() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
 
-  if (!ready) return <div className="py-20 text-center text-gray-400">Loading…</div>;
+  if (!ready) return <div className="py-20 text-center text-gray-500">Loading…</div>;
 
   const results = searchParties(data, q);
 
@@ -37,9 +37,9 @@ export function Parties() {
       <input
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        placeholder="🔍 Search parties…"
+        placeholder="🔍 Search contacts…"
         className="w-full rounded-2xl border-2 border-gray-200 bg-white px-4 py-3 text-lg outline-none focus:border-brand-500"
-        aria-label="Search parties"
+        aria-label="Search contacts"
       />
 
       {!adding ? (
@@ -51,7 +51,7 @@ export function Parties() {
           }}
           className="text-sm font-medium text-brand-700"
         >
-          ＋ Add a party
+          ＋ Add a contact
         </button>
       ) : (
         <div className="space-y-2 rounded-2xl border border-gray-200 bg-white p-3">
@@ -75,7 +75,7 @@ export function Parties() {
             <button
               type="button"
               onClick={() => setAdding(false)}
-              className="rounded-2xl border-2 border-gray-200 px-4 text-sm font-semibold text-gray-600"
+              className="rounded-2xl border-2 border-gray-200 px-4 text-sm font-semibold text-gray-700"
             >
               Cancel
             </button>
@@ -86,11 +86,11 @@ export function Parties() {
       {/* List */}
       {results.length === 0 ? (
         <Empty
-          title={q ? `No party matching “${q}”` : "No parties yet"}
+          title={q ? `No contact matching “${q}”` : "No contacts yet"}
           subtitle={
             q
-              ? "Tap “Add a party” to create it."
-              : "Record a credit and the party is created for you."
+              ? "Tap “Add a contact” to create it."
+              : "Record a credit and the contact is created for you."
           }
         />
       ) : (
@@ -103,13 +103,13 @@ export function Parties() {
             >
               <div className="min-w-0">
                 <div className="truncate font-medium text-gray-800">{party.name}</div>
-                {party.phone && <div className="text-xs text-gray-400">{party.phone}</div>}
+                {party.phone && <div className="text-xs text-gray-500">{party.phone}</div>}
               </div>
               <div className="shrink-0 text-right">
                 <div className={`text-sm font-semibold tabular-nums ${balanceColor(net)}`}>
                   {net === 0 ? "Settled" : formatMoney(net)}
                 </div>
-                <div className="text-[10px] uppercase tracking-wide text-gray-400">
+                <div className="text-xs uppercase tracking-wide text-gray-500">
                   {balanceLabel(net)}
                 </div>
               </div>

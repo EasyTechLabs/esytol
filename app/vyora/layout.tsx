@@ -1,4 +1,5 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import { ToastProvider } from "@/features/vyora/Toast";
 import { VyoraProvider } from "@/features/vyora/VyoraProvider";
 import { AppShell } from "@/features/vyora/AppShell";
 
@@ -8,10 +9,17 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+/** Cover the notch so the safe-area insets resolve on iOS. */
+export const viewport: Viewport = {
+  viewportFit: "cover",
+};
+
 export default function VyoraLayout({ children }: { children: React.ReactNode }) {
   return (
-    <VyoraProvider>
-      <AppShell>{children}</AppShell>
-    </VyoraProvider>
+    <ToastProvider>
+      <VyoraProvider>
+        <AppShell>{children}</AppShell>
+      </VyoraProvider>
+    </ToastProvider>
   );
 }

@@ -2,8 +2,7 @@
 
 /**
  * Vyora Alpha — Payment entry. Records money received or paid; balances update
- * automatically (they're always derived from entries, never stored). Same fast
- * shape as credit entry.
+ * automatically. Same fast, id-bound shape as credit entry, with a save toast + Undo.
  */
 
 import { useState } from "react";
@@ -11,25 +10,27 @@ import { useRouter } from "next/navigation";
 import { useVyora } from "../VyoraProvider";
 import type { PaymentKind } from "@/lib/vyora/types";
 import { todayISO } from "@/lib/vyora/selectors";
-import { AmountField, PartyPicker, Segmented, BigButton } from "../components";
+import { AmountField, PartyPicker, Segmented, BigButton, type PartySelection } from "../components";
+
+const emptyParty: PartySelection = { text: "", ref: null };
 
 export function PaymentEntry() {
   const router = useRouter();
   const { recordPayment } = useVyora();
 
   const [amount, setAmount] = useState("");
-  const [party, setParty] = useState("");
+  const [party, setParty] = useState<PartySelection>(emptyParty);
   const [kind, setKind] = useState<PaymentKind>("received"); // default: they paid me
   const [note, setNote] = useState("");
   const [showMore, setShowMore] = useState(false);
   const [date, setDate] = useState(todayISO());
 
   const amountNum = Number(amount);
-  const canSave = amountNum > 0 && party.trim().length > 0;
+  const canSave = amountNum > 0 && party.ref !== null;
 
   const save = () => {
-    if (!canSave) return;
-    recordPayment({ partyName: party, amount: amountNum, kind, note: note || undefined, date });
+    if (!canSave || !party.ref) return;
+    recordPayment({ party: party.ref, amount: amountNum, kind, note: note || undefined, date });
     router.push("/vyora");
   };
 
@@ -50,7 +51,7 @@ export function PaymentEntry() {
       <PartyPicker value={party} onChange={setParty} />
 
       <label className="block">
-        <span className="mb-1 block text-sm font-medium text-gray-600">Note (optional)</span>
+        <span className="mb-1 block text-sm font-medium text-gray-700">Note (optional)</span>
         <input
           value={note}
           onChange={(e) => setNote(e.target.value)}
@@ -69,7 +70,7 @@ export function PaymentEntry() {
         </button>
       ) : (
         <label className="block">
-          <span className="mb-1 block text-sm font-medium text-gray-600">Date</span>
+          <span className="mb-1 block text-sm font-medium text-gray-700">Date</span>
           <input
             type="date"
             value={date}

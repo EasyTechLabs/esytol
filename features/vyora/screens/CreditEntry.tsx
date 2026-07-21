@@ -1,9 +1,10 @@
 "use client";
 
 /**
- * Vyora Alpha — Credit entry. The speed-critical screen. Target: faster than a
- * notebook, under 10 seconds. Amount is autofocused; the party picker creates a
- * new party inline (no separate step); everything else has a sensible default.
+ * Vyora Alpha — Credit entry. Fast (target under 10 s, ≤ 2 taps). Amount is
+ * autofocused; the contact is bound by immutable id (existing) or explicitly
+ * created (new) — never a silent duplicate. Save shows a confirmation toast with
+ * Undo.
  */
 
 import { useState } from "react";
@@ -11,14 +12,16 @@ import { useRouter } from "next/navigation";
 import { useVyora } from "../VyoraProvider";
 import type { EntryKind } from "@/lib/vyora/types";
 import { todayISO } from "@/lib/vyora/selectors";
-import { AmountField, PartyPicker, Segmented, BigButton } from "../components";
+import { AmountField, PartyPicker, Segmented, BigButton, type PartySelection } from "../components";
+
+const emptyParty: PartySelection = { text: "", ref: null };
 
 export function CreditEntry() {
   const router = useRouter();
   const { recordCredit } = useVyora();
 
   const [amount, setAmount] = useState("");
-  const [party, setParty] = useState("");
+  const [party, setParty] = useState<PartySelection>(emptyParty);
   const [kind, setKind] = useState<EntryKind>("given"); // default: they owe me
   const [description, setDescription] = useState("");
   const [showMore, setShowMore] = useState(false);
@@ -26,12 +29,12 @@ export function CreditEntry() {
   const [dueDate, setDueDate] = useState("");
 
   const amountNum = Number(amount);
-  const canSave = amountNum > 0 && party.trim().length > 0;
+  const canSave = amountNum > 0 && party.ref !== null;
 
   const save = (again: boolean) => {
-    if (!canSave) return;
+    if (!canSave || !party.ref) return;
     recordCredit({
-      partyName: party,
+      party: party.ref,
       amount: amountNum,
       kind,
       description: description || undefined,
@@ -40,7 +43,7 @@ export function CreditEntry() {
     });
     if (again) {
       setAmount("");
-      setParty("");
+      setParty(emptyParty);
       setDescription("");
       setDueDate("");
     } else {
@@ -65,7 +68,7 @@ export function CreditEntry() {
       <PartyPicker value={party} onChange={setParty} />
 
       <label className="block">
-        <span className="mb-1 block text-sm font-medium text-gray-600">Note (optional)</span>
+        <span className="mb-1 block text-sm font-medium text-gray-700">Note (optional)</span>
         <input
           value={description}
           onChange={(e) => setDescription(e.target.value)}
@@ -85,7 +88,7 @@ export function CreditEntry() {
       ) : (
         <div className="grid grid-cols-2 gap-3">
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-gray-600">Date</span>
+            <span className="mb-1 block text-sm font-medium text-gray-700">Date</span>
             <input
               type="date"
               value={date}
@@ -94,7 +97,7 @@ export function CreditEntry() {
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-gray-600">Due (optional)</span>
+            <span className="mb-1 block text-sm font-medium text-gray-700">Due (optional)</span>
             <input
               type="date"
               value={dueDate}
@@ -115,7 +118,7 @@ export function CreditEntry() {
           disabled={!canSave}
           className="w-full rounded-2xl border-2 border-gray-200 py-3 text-base font-semibold text-gray-700 disabled:opacity-50"
         >
-          Save & add another
+          Save &amp; add another
         </button>
       </div>
     </div>

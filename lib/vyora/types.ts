@@ -53,12 +53,38 @@ export interface Payment {
   createdAt: string;
 }
 
+/** Local-only housekeeping — never tracked, never sent anywhere. Powers Founder Mode + the backup reminder. */
+export interface Meta {
+  /** When the merchant last made a local backup (ISO), or null. */
+  lastBackupAt: string | null;
+  /** How many times the merchant exported (device-local counter). */
+  exportCount: number;
+  /** How many times the merchant imported (device-local counter). */
+  importCount: number;
+}
+
 /** The entire Vyora Alpha dataset — lives in one localStorage key on the device. */
 export interface VyoraData {
   version: number;
   parties: Party[];
   transactions: Transaction[];
   payments: Payment[];
+  meta: Meta;
+}
+
+/**
+ * How an entry names its party. Existing parties are bound by immutable **id**
+ * (never by typed name) so a slightly different spelling can never silently
+ * create a duplicate ledger. A brand-new party is created only on explicit intent.
+ */
+export type PartyRef = { kind: "existing"; id: string } | { kind: "new"; name: string };
+
+/** The envelope written by Export / read by Import — human-readable, versioned, timestamped. */
+export interface ExportFile {
+  app: "vyora";
+  schemaVersion: number;
+  exportedAt: string;
+  data: VyoraData;
 }
 
 /** A party's computed position. `net > 0` = they owe the merchant; `net < 0` = the merchant owes them. */

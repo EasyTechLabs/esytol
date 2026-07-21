@@ -1,33 +1,49 @@
 /**
- * Vyora Alpha — local store (persistence + pure mutations).
+ * Vyora Alpha — local store (persistence + pure mutations). v0.2.
  *
- * Mirrors the esytol local-finance store pattern: everything lives in ONE
- * versioned localStorage key on the device. No login, no cloud, no server —
- * the merchant's credit data never leaves their phone. (This is the simplest
- * possible thing to build AND it answers the trust/tax objection from the
- * validation sprint: nobody else can see it.)
+ * Everything lives in ONE versioned localStorage key on the device. No login,
+ * no cloud, no server — the merchant's credit data never leaves their phone.
  *
  * - SSR-safe: reads no-op to empty without `window`.
- * - Corruption-safe: bad/old payloads read as empty, never throw into the UI.
+ * - Corruption-safe: bad payloads read as empty, never throw into the UI.
+ * - **Migration-safe (v0.2): an older version is UPGRADED, never wiped.**
  * - Quota-safe: a failed write returns false; it never crashes a screen.
  * - Mutations are PURE (data in → new data out); the provider owns React state.
+ *
+ * Identity is by immutable `id`. Names are editable and never used as a key,
+ * so a slightly different spelling can never fragment a party's ledger.
  */
 
-import type { VyoraData, Party, Transaction, Payment, EntryKind, PaymentKind } from "./types";
+import type {
+  VyoraData,
+  Party,
+  Transaction,
+  Payment,
+  EntryKind,
+  PaymentKind,
+  Meta,
+  PartyRef,
+  ExportFile,
+} from "./types";
 import { todayISO } from "./selectors";
 
-const STORAGE_KEY = "vyora.alpha.v1";
-export const VERSION = 1;
+const STORAGE_KEY = "vyora.alpha.v1"; // key name kept stable across schema versions
+const BACKUP_KEY = "vyora.alpha.backup";
+export const VERSION = 2;
+export const APP_VERSION = "0.2.0";
 
-export function emptyData(): VyoraData {
-  return { version: VERSION, parties: [], transactions: [], payments: [] };
+function emptyMeta(): Meta {
+  return { lastBackupAt: null, exportCount: 0, importCount: 0 };
 }
 
-/** Stable unique id. Uses crypto.randomUUID when available. */
+export function emptyData(): VyoraData {
+  return { version: VERSION, parties: [], transactions: [], payments: [], meta: emptyMeta() };
+}
+
+/** Stable unique id. Uses crypto.randomUUID when available (secure contexts). */
 export function newId(prefix = "id"): string {
   const c = (globalThis as { crypto?: Crypto }).crypto;
   if (c && typeof c.randomUUID === "function") return `${prefix}_${c.randomUUID()}`;
-  // Deterministic-enough fallback (never used on modern browsers / Node ≥ 19).
   return `${prefix}_${Date.now().toString(36)}${Math.round(performance?.now?.() ?? 0).toString(36)}`;
 }
 
@@ -35,21 +51,34 @@ function nowISO(): string {
   return new Date().toISOString();
 }
 
-// ─── Persistence ───────────────────────────────────────────────────────────
+// ─── Migration (NEVER wipes valid data) ──────────────────────────────────────
+
+/** Coerce any older/loose payload up to the current schema, preserving all entries. */
+export function migrate(raw: unknown): VyoraData | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Partial<VyoraData>;
+  if (!Array.isArray(r.parties) || !Array.isArray(r.transactions) || !Array.isArray(r.payments)) {
+    return null; // not a Vyora dataset
+  }
+  return {
+    version: VERSION,
+    parties: r.parties as Party[],
+    transactions: r.transactions as Transaction[],
+    payments: r.payments as Payment[],
+    // v1 had no meta — add defaults; this is the v1→v2 migration.
+    meta: { ...emptyMeta(), ...(r.meta ?? {}) },
+  };
+}
+
+// ─── Persistence ─────────────────────────────────────────────────────────────
 
 export function loadData(): VyoraData {
   if (typeof window === "undefined") return emptyData();
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return emptyData();
-    const parsed = JSON.parse(raw) as VyoraData;
-    if (!parsed || parsed.version !== VERSION || !Array.isArray(parsed.parties)) return emptyData();
-    return {
-      version: VERSION,
-      parties: parsed.parties ?? [],
-      transactions: parsed.transactions ?? [],
-      payments: parsed.payments ?? [],
-    };
+    const migrated = migrate(JSON.parse(raw));
+    return migrated ?? emptyData();
   } catch {
     return emptyData();
   }
@@ -75,7 +104,17 @@ export function clearData(): boolean {
   }
 }
 
-// ─── Pure mutations (return NEW data; caller persists + sets state) ──────────
+/** Approximate on-device size of the saved dataset, in bytes (Founder Mode). */
+export function storageSizeBytes(): number {
+  if (typeof window === "undefined") return 0;
+  try {
+    return new Blob([window.localStorage.getItem(STORAGE_KEY) ?? ""]).size;
+  } catch {
+    return (window.localStorage.getItem(STORAGE_KEY) ?? "").length;
+  }
+}
+
+// ─── Pure mutations ──────────────────────────────────────────────────────────
 
 export function addParty(
   data: VyoraData,
@@ -89,6 +128,37 @@ export function addParty(
     createdAt: nowISO(),
   };
   return { data: { ...data, parties: [...data.parties, party] }, party };
+}
+
+/** Edit a party's name/phone/note. The immutable `id` is unchanged, so all history stays intact. */
+export function editParty(
+  data: VyoraData,
+  id: string,
+  patch: { name?: string; phone?: string; note?: string }
+): VyoraData {
+  return {
+    ...data,
+    parties: data.parties.map((p) =>
+      p.id === id
+        ? {
+            ...p,
+            name: patch.name?.trim() || p.name,
+            phone: patch.phone !== undefined ? patch.phone.trim() || undefined : p.phone,
+            note: patch.note !== undefined ? patch.note.trim() || undefined : p.note,
+          }
+        : p
+    ),
+  };
+}
+
+/** Resolve a PartyRef to a concrete partyId, creating a party only for an explicit "new". */
+export function resolvePartyRef(
+  data: VyoraData,
+  ref: PartyRef
+): { data: VyoraData; partyId: string } {
+  if (ref.kind === "existing") return { data, partyId: ref.id };
+  const { data: next, party } = addParty(data, { name: ref.name });
+  return { data: next, partyId: party.id };
 }
 
 export function addTransaction(
@@ -131,7 +201,7 @@ export function addPayment(
   return { data: { ...data, payments: [...data.payments, payment] }, payment };
 }
 
-/** Delete one entry (transaction or payment) by id — the minimal "fix a mistake" for Alpha (delete + re-add = edit). */
+/** Delete one entry (transaction or payment) by id. */
 export function deleteEntry(data: VyoraData, id: string): VyoraData {
   return {
     ...data,
@@ -140,10 +210,103 @@ export function deleteEntry(data: VyoraData, id: string): VyoraData {
   };
 }
 
-/** Reuse an existing party by name (case-insensitive) or create one — the key to fast entry. */
-export function getOrCreateParty(data: VyoraData, name: string): { data: VyoraData; party: Party } {
-  const n = name.trim().toLowerCase();
-  const existing = data.parties.find((p) => p.name.trim().toLowerCase() === n);
-  if (existing) return { data, party: existing };
-  return addParty(data, { name });
+// ─── Export / Import (the merchant owns their data) ──────────────────────────
+
+/** Serialise to a human-readable, versioned, timestamped file. Bumps the export counter. */
+export function exportToFile(data: VyoraData): { data: VyoraData; text: string; filename: string } {
+  const withCount: VyoraData = {
+    ...data,
+    meta: { ...data.meta, exportCount: data.meta.exportCount + 1 },
+  };
+  const file: ExportFile = {
+    app: "vyora",
+    schemaVersion: VERSION,
+    exportedAt: nowISO(),
+    data: withCount,
+  };
+  const stamp = todayISO().replace(/-/g, "");
+  return {
+    data: withCount,
+    text: JSON.stringify(file, null, 2),
+    filename: `vyora-backup-${stamp}.json`,
+  };
+}
+
+export type ImportResult =
+  | {
+      ok: true;
+      data: VyoraData;
+      summary: { parties: number; transactions: number; payments: number };
+    }
+  | { ok: false; error: string };
+
+/** Validate + parse an import file. Never throws; returns a typed result. */
+export function parseImportFile(text: string, current: VyoraData): ImportResult {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return { ok: false, error: "This is not a valid Vyora file (could not read it)." };
+  }
+  const f = parsed as Partial<ExportFile>;
+  if (!f || typeof f !== "object" || f.app !== "vyora" || !f.data) {
+    return { ok: false, error: "This file was not exported from Vyora." };
+  }
+  if (typeof f.schemaVersion === "number" && f.schemaVersion > VERSION) {
+    return {
+      ok: false,
+      error: "This file is from a newer version of Vyora. Please update the app first.",
+    };
+  }
+  const migrated = migrate(f.data);
+  if (!migrated) {
+    return { ok: false, error: "The file is corrupt or incomplete — nothing was changed." };
+  }
+  // Preserve device-local counters; a fresh import should be backed up again.
+  migrated.meta = {
+    lastBackupAt: null,
+    exportCount: current.meta.exportCount,
+    importCount: current.meta.importCount + 1,
+  };
+  return {
+    ok: true,
+    data: migrated,
+    summary: {
+      parties: migrated.parties.length,
+      transactions: migrated.transactions.length,
+      payments: migrated.payments.length,
+    },
+  };
+}
+
+// ─── Backup / Restore (in-app snapshot, guards against accidental loss) ──────
+
+/** Save a local snapshot + stamp lastBackupAt. Protects against an accidental clear/bad import. */
+export function backupNow(data: VyoraData): VyoraData {
+  const stamped: VyoraData = { ...data, meta: { ...data.meta, lastBackupAt: nowISO() } };
+  if (typeof window !== "undefined") {
+    try {
+      window.localStorage.setItem(BACKUP_KEY, JSON.stringify(stamped));
+    } catch {
+      /* quota — best effort */
+    }
+  }
+  return stamped;
+}
+
+export function hasBackup(): boolean {
+  if (typeof window === "undefined") return false;
+  return Boolean(window.localStorage.getItem(BACKUP_KEY));
+}
+
+/** Restore the last local snapshot, or null if none/corrupt. */
+export function restoreBackup(): VyoraData | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(BACKUP_KEY);
+    if (!raw) return null;
+    return migrate(JSON.parse(raw));
+  } catch {
+    return null;
+  }
 }
