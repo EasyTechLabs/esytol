@@ -219,12 +219,14 @@ export function PartyStatement({ partyId }: { partyId: string }) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Name"
+              aria-label="Contact name"
               className="border-2 px-3 py-2.5"
             />
             <TextInput
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="Phone (optional)"
+              aria-label="Phone number"
               inputMode="tel"
               className="border-2 px-3 py-2.5"
             />
@@ -385,7 +387,7 @@ export function PartyStatement({ partyId }: { partyId: string }) {
                           if (confirm(`Delete this entry (${e.action})? You can undo right after.`))
                             deleteEntry(eid);
                         }}
-                        className="flex min-h-[44px] min-w-[36px] items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-500 print:hidden"
+                        className="flex min-h-[44px] min-w-[36px] items-center justify-center rounded-lg text-gray-500 hover:bg-red-50 hover:text-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-500 print:hidden"
                       >
                         ✕
                       </button>

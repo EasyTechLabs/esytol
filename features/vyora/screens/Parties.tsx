@@ -107,6 +107,16 @@ export function Parties() {
     }
   }, [filters, loaded]);
 
+  // Dismiss the new-contact dialog with Escape (keyboard access).
+  useEffect(() => {
+    if (!adding) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setAdding(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [adding]);
+
   const toggle = (key: string) =>
     setFilters((f) => ({
       ...f,
@@ -271,6 +281,7 @@ export function Parties() {
             <div className="grid grid-cols-2 gap-2">
               <TextInput
                 inputMode="numeric"
+                aria-label="Minimum outstanding amount"
                 value={filters.amountMin}
                 onChange={(e) =>
                   setFilters((f) => ({ ...f, amountMin: e.target.value.replace(/[^0-9]/g, "") }))
@@ -280,6 +291,7 @@ export function Parties() {
               />
               <TextInput
                 inputMode="numeric"
+                aria-label="Maximum outstanding amount"
                 value={filters.amountMax}
                 onChange={(e) =>
                   setFilters((f) => ({ ...f, amountMax: e.target.value.replace(/[^0-9]/g, "") }))
@@ -314,12 +326,14 @@ export function Parties() {
               <div className="mt-2 grid grid-cols-2 gap-2">
                 <TextInput
                   type="date"
+                  aria-label="Active from date"
                   value={filters.from}
                   onChange={(e) => setFilters((f) => ({ ...f, from: e.target.value }))}
                   className="px-3 py-2.5"
                 />
                 <TextInput
                   type="date"
+                  aria-label="Active to date"
                   value={filters.to}
                   onChange={(e) => setFilters((f) => ({ ...f, to: e.target.value }))}
                   className="px-3 py-2.5"
@@ -390,30 +404,43 @@ export function Parties() {
       </button>
 
       {adding && (
-        <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/40 p-4 sm:items-center print:hidden">
-          <Card className="w-full max-w-sm space-y-3">
-            <h2 className="text-lg font-semibold text-gray-900">New contact</h2>
-            <TextInput
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Name (or business name)"
-              autoFocus
-            />
-            <TextInput
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="Mobile (optional)"
-              inputMode="tel"
-            />
-            <div className="flex gap-2 pt-1">
-              <Button variant="primary" block onClick={add} disabled={!name.trim()}>
-                Add contact
-              </Button>
-              <Button variant="secondary" onClick={() => setAdding(false)} className="px-5">
-                Cancel
-              </Button>
-            </div>
-          </Card>
+        <div
+          className="fixed inset-0 z-40 flex items-end justify-center bg-black/40 p-4 sm:items-center print:hidden"
+          onClick={() => setAdding(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="New contact"
+            className="w-full max-w-sm"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Card className="space-y-3">
+              <h2 className="text-lg font-semibold text-gray-900">New contact</h2>
+              <TextInput
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Name (or business name)"
+                aria-label="Contact name"
+                autoFocus
+              />
+              <TextInput
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="Mobile (optional)"
+                aria-label="Mobile number"
+                inputMode="tel"
+              />
+              <div className="flex gap-2 pt-1">
+                <Button variant="primary" block onClick={add} disabled={!name.trim()}>
+                  Add contact
+                </Button>
+                <Button variant="secondary" onClick={() => setAdding(false)} className="px-5">
+                  Cancel
+                </Button>
+              </div>
+            </Card>
+          </div>
         </div>
       )}
     </div>
@@ -506,7 +533,9 @@ function QuickAction({
     "flex min-h-[44px] flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium text-gray-700 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-600";
   const inner = (
     <>
-      <span className="text-base leading-none">{icon}</span>
+      <span aria-hidden className="text-base leading-none">
+        {icon}
+      </span>
       {label}
     </>
   );

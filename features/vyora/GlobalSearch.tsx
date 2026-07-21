@@ -189,7 +189,7 @@ export function GlobalSearch({ showBar }: { showBar: boolean }) {
           type="button"
           onClick={() => setOpen(true)}
           aria-label="Search everything"
-          className="mb-3 flex w-full items-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-600"
+          className="mb-3 flex w-full items-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-600"
         >
           <span aria-hidden>🔍</span>
           <span className="flex-1 text-left">Search customers, entries, amounts…</span>
@@ -211,7 +211,7 @@ export function GlobalSearch({ showBar }: { showBar: boolean }) {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-2 border-b border-gray-100 px-4 py-3">
-              <span aria-hidden className="text-gray-400">
+              <span aria-hidden className="text-gray-500">
                 🔍
               </span>
               <input
@@ -227,7 +227,7 @@ export function GlobalSearch({ showBar }: { showBar: boolean }) {
                 type="button"
                 onClick={() => setOpen(false)}
                 aria-label="Close search"
-                className="rounded px-2 text-sm text-gray-400 hover:text-gray-700"
+                className="rounded px-2 text-sm text-gray-500 hover:text-gray-700"
               >
                 Esc
               </button>
@@ -236,12 +236,12 @@ export function GlobalSearch({ showBar }: { showBar: boolean }) {
             <div className="min-h-0 flex-1 overflow-y-auto">
               {!q.trim() ? (
                 recent.length === 0 ? (
-                  <p className="px-4 py-6 text-center text-sm text-gray-400">
+                  <p className="px-4 py-6 text-center text-sm text-gray-500">
                     Type to search customers, credits, payments…
                   </p>
                 ) : (
                   <div>
-                    <div className="px-4 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                    <div className="px-4 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
                       Recent searches
                     </div>
                     {recent.map((r) => (
@@ -251,7 +251,7 @@ export function GlobalSearch({ showBar }: { showBar: boolean }) {
                         onClick={() => setQ(r)}
                         className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
                       >
-                        <span aria-hidden className="text-gray-400">
+                        <span aria-hidden className="text-gray-500">
                           ↺
                         </span>
                         {r}
@@ -260,7 +260,7 @@ export function GlobalSearch({ showBar }: { showBar: boolean }) {
                   </div>
                 )
               ) : results.flat.length === 0 ? (
-                <p className="px-4 py-6 text-center text-sm text-gray-400">
+                <p className="px-4 py-6 text-center text-sm text-gray-500">
                   No matches for “{q.trim()}”.
                 </p>
               ) : (
@@ -303,7 +303,7 @@ export function GlobalSearch({ showBar }: { showBar: boolean }) {
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="px-4 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+      <div className="px-4 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
         {title}
       </div>
       {children}

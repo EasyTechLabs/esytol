@@ -59,7 +59,7 @@ export function StatCard({
       <div className={cn("mt-1 break-words text-2xl font-bold tabular-nums leading-tight", color)}>
         {value}
       </div>
-      {hint && <div className="mt-0.5 text-xs text-gray-400">{hint}</div>}
+      {hint && <div className="mt-0.5 text-xs text-gray-500">{hint}</div>}
     </Card>
   );
 }
@@ -106,7 +106,7 @@ export function AmountField({ value, onChange }: { value: string; onChange: (v: 
     <label className="block">
       <span className="mb-1 block text-sm font-medium text-gray-600">Amount</span>
       <div className="flex items-center rounded-2xl border-2 border-gray-200 bg-white px-4 focus-within:border-brand-500">
-        <span className="text-3xl font-bold text-gray-400">₹</span>
+        <span className="text-3xl font-bold text-gray-500">₹</span>
         <input
           autoFocus
           inputMode="numeric"
