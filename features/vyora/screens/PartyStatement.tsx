@@ -8,8 +8,9 @@
  * stays visible via a sticky bar. Browser share only — no PDF, no backend.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { cn } from "@/lib/cn";
 import { useVyora } from "../VyoraProvider";
 import { useToast } from "../Toast";
 import { partyNet, partyStatement, todayISO } from "@/lib/vyora/selectors";
@@ -82,6 +83,22 @@ export function PartyStatement({ partyId }: { partyId: string }) {
 
   // Timeline: newest first, each row carrying its balance-after-transaction.
   const rows = useMemo(() => [...partyStatement(data, partyId)].reverse(), [data, partyId]);
+
+  // Highlight a row when arriving from global search (…?highlight=<entryId>).
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+  const highlightRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const h = new URLSearchParams(window.location.search).get("highlight");
+    if (!h) return;
+    setHighlightId(h);
+    const t = setTimeout(() => setHighlightId(null), 2600);
+    return () => clearTimeout(t);
+  }, []);
+  useEffect(() => {
+    if (highlightId && highlightRef.current) {
+      highlightRef.current.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+  }, [highlightId, rows]);
 
   if (!ready) return <div className="py-20 text-center text-gray-500">Loading…</div>;
   if (!party) return <Empty title="Contact not found" subtitle="It may have been cleared." />;
@@ -242,7 +259,14 @@ export function PartyStatement({ partyId }: { partyId: string }) {
           </div>
           <div className="divide-y divide-gray-100">
             {rows.map((r) => (
-              <div key={r.id} className="flex items-center justify-between gap-3 px-4 py-3">
+              <div
+                key={r.id}
+                ref={r.id === highlightId ? highlightRef : undefined}
+                className={cn(
+                  "flex items-center justify-between gap-3 px-4 py-3",
+                  r.id === highlightId && "bg-brand-50 ring-2 ring-inset ring-brand-400"
+                )}
+              >
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
                     <span

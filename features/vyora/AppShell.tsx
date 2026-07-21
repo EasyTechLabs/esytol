@@ -11,6 +11,7 @@ import { useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
+import { GlobalSearch } from "./GlobalSearch";
 
 const SAFE_BOTTOM = "calc(0.625rem + env(safe-area-inset-bottom))";
 
@@ -85,7 +86,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Content */}
-      <main className="flex-1 px-4 pb-32 pt-4">{children}</main>
+      <main className="flex-1 px-4 pb-32 pt-4">
+        <GlobalSearch
+          showBar={
+            pathname === "/vyora" ||
+            pathname === "/vyora/collect" ||
+            pathname.startsWith("/vyora/parties")
+          }
+        />
+        {children}
+      </main>
 
       {/* Bottom action bar (safe-area aware) */}
       <nav
