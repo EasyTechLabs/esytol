@@ -5,6 +5,7 @@ import { buildMetadata } from "@/seo/metadata";
 import { webSiteSchema, organizationSchema } from "@/seo/jsonld";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { ChromeSlot } from "@/components/layout/ChromeSlot";
 import { Analytics } from "@/analytics/Analytics";
 import { CommandPalette } from "@/features/search/CommandPalette";
 import "./globals.css";
@@ -42,13 +43,22 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         >
           Skip to content
         </a>
-        <Header />
+        <ChromeSlot>
+          <Header />
+        </ChromeSlot>
         <main id="main-content" tabIndex={-1} className="flex-1">
           {children}
         </main>
-        <Footer />
-        <CommandPalette />
-        <Analytics />
+        <ChromeSlot>
+          <Footer />
+        </ChromeSlot>
+        <ChromeSlot>
+          <CommandPalette />
+        </ChromeSlot>
+        {/* Vyora Alpha carries no external tracking — analytics is suppressed on /vyora. */}
+        <ChromeSlot>
+          <Analytics />
+        </ChromeSlot>
       </body>
     </html>
   );

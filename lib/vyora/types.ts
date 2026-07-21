@@ -1,0 +1,98 @@
+/**
+ * Vyora Alpha — domain types.
+ *
+ * The whole domain, deliberately tiny (Mission Alpha 001): Party, Transaction,
+ * Payment, and a derived Balance. Nothing else. Every party is simply a Party —
+ * they can be a customer, supplier, contractor, or friend at the same time. The
+ * DIRECTION of each entry (not a fixed role) decides whether a party owes the
+ * merchant or the merchant owes them, so one party can be both over time.
+ */
+
+/** A credit event's direction, from the MERCHANT's point of view. */
+export type EntryKind =
+  | "given" // I gave goods/credit → THEY owe ME (receivable ↑)
+  | "taken"; // I took goods/credit from them → I owe THEM (payable ↑)
+
+/** A payment's direction, from the MERCHANT's point of view. */
+export type PaymentKind =
+  | "received" // THEY paid ME → they owe me less (receivable ↓)
+  | "paid"; // I paid THEM → I owe them less (payable ↓)
+
+export interface Party {
+  id: string;
+  name: string;
+  phone?: string;
+  note?: string;
+  /** ISO timestamp. */
+  createdAt: string;
+}
+
+/** A credit entry (goods/money given or taken on credit). */
+export interface Transaction {
+  id: string;
+  partyId: string;
+  /** Rupees, positive. */
+  amount: number;
+  kind: EntryKind;
+  description?: string;
+  /** Business date, YYYY-MM-DD. */
+  date: string;
+  /** Optional due date, YYYY-MM-DD. */
+  dueDate?: string;
+  createdAt: string;
+}
+
+/** A payment (settling a credit, in either direction). */
+export interface Payment {
+  id: string;
+  partyId: string;
+  amount: number;
+  kind: PaymentKind;
+  note?: string;
+  date: string;
+  createdAt: string;
+}
+
+/** The entire Vyora Alpha dataset — lives in one localStorage key on the device. */
+export interface VyoraData {
+  version: number;
+  parties: Party[];
+  transactions: Transaction[];
+  payments: Payment[];
+}
+
+/** A party's computed position. `net > 0` = they owe the merchant; `net < 0` = the merchant owes them. */
+export interface PartyBalance {
+  party: Party;
+  /** Signed: + = receivable (they owe me), − = payable (I owe them). Rupees. */
+  net: number;
+}
+
+/** The dashboard headline numbers, all derived — never stored. */
+export interface DashboardTotals {
+  /** Sum of all positive party nets — money the merchant will collect. */
+  receivable: number;
+  /** Sum of all negative party nets (as a positive number) — money the merchant owes. */
+  payable: number;
+  /** receivable − payable. The true net position. */
+  net: number;
+  /** Payments received today. */
+  todaysCollections: number;
+  /** Payments made today. */
+  todaysPayments: number;
+}
+
+/** A unified item for the "recent activity" and party-statement lists. */
+export interface ActivityItem {
+  id: string;
+  partyId: string;
+  partyName: string;
+  date: string;
+  createdAt: string;
+  /** Signed effect on "they owe me": +given/+paid, −taken/−received. */
+  signedAmount: number;
+  amount: number;
+  label: string; // e.g. "Credit given", "Payment received"
+  note?: string;
+  type: "transaction" | "payment";
+}
