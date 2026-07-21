@@ -13,7 +13,7 @@ import { useVyora } from "../VyoraProvider";
 import { useToast } from "../Toast";
 import { formatMoney } from "@/lib/vyora/format";
 import { Card } from "../primitives";
-import { PriorityBadge } from "../components";
+import { PriorityBadge, LoadingList } from "../components";
 import { useCollect } from "../useCollect";
 
 function reminderText(name: string, amount: number): string {
@@ -30,7 +30,7 @@ export function Collect() {
   const toast = useToast();
   const { overdue, open } = useCollect(data);
 
-  if (!ready) return <div className="py-20 text-center text-gray-500">Loading…</div>;
+  if (!ready) return <LoadingList />;
 
   const nameOf = (id: string) => data.parties.find((p) => p.id === id)?.name ?? "Contact";
 

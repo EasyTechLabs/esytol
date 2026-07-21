@@ -81,7 +81,7 @@ export function Button({
       disabled={disabled}
       aria-label={ariaLabel}
       className={cn(
-        "font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50",
+        "font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-[0.98] disabled:opacity-50 motion-reduce:active:scale-100",
         SIZE[size],
         VARIANT[variant],
         block && "w-full",

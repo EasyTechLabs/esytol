@@ -7,6 +7,7 @@
  */
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { useVyora } from "./VyoraProvider";
 import { searchParties } from "@/lib/vyora/selectors";
@@ -246,12 +247,68 @@ export function BigButton({
   );
 }
 
-/** A small empty-state block. */
-export function Empty({ title, subtitle }: { title: string; subtitle?: string }) {
+/** A friendly empty-state block: an illustration glyph, a helpful message, and an optional CTA. */
+export function Empty({
+  title,
+  subtitle,
+  icon = "📄",
+  cta,
+}: {
+  title: string;
+  subtitle?: string;
+  icon?: string;
+  cta?: { label: string; href: string };
+}) {
   return (
-    <Card tone="dashed" className="p-8 text-center">
+    <Card tone="dashed" className="animate-fade-in p-8 text-center motion-reduce:animate-none">
+      <div
+        aria-hidden
+        className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 text-2xl"
+      >
+        {icon}
+      </div>
       <p className="font-medium text-gray-700">{title}</p>
       {subtitle && <p className="mt-1 text-sm text-gray-500">{subtitle}</p>}
+      {cta && (
+        <Link
+          href={cta.href}
+          className="mt-4 inline-block rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 active:scale-[0.98] motion-reduce:active:scale-100"
+        >
+          {cta.label}
+        </Link>
+      )}
     </Card>
+  );
+}
+
+/** A shimmering placeholder block. */
+export function Skeleton({ className }: { className?: string }) {
+  return (
+    <div className={cn("relative overflow-hidden rounded-lg bg-gray-100", className)}>
+      <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/70 to-transparent motion-reduce:hidden" />
+    </div>
+  );
+}
+
+/** Skeleton for a loading list screen — a hero block plus a few rows. */
+export function LoadingList({ rows = 5 }: { rows?: number }) {
+  return (
+    <div className="space-y-3">
+      <Skeleton className="h-24 w-full rounded-2xl" />
+      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
+        {Array.from({ length: rows }).map((_, i) => (
+          <div
+            key={i}
+            className="flex items-center justify-between gap-3 border-t border-gray-100 px-4 py-3 first:border-t-0"
+          >
+            <div className="flex-1 space-y-1.5">
+              <Skeleton className="h-3.5 w-1/2" />
+              <Skeleton className="h-3 w-1/3" />
+            </div>
+            <Skeleton className="h-4 w-16" />
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

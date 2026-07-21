@@ -17,7 +17,7 @@ import { partyNet, partyStatement, todayISO } from "@/lib/vyora/selectors";
 import { agingForParty, allocateFifo, daysBetween } from "@/lib/vyora/aging";
 import { formatMoney, formatDate, balanceLabel, balanceColor } from "@/lib/vyora/format";
 import { Card, Button, TextInput } from "../primitives";
-import { Empty } from "../components";
+import { Empty, LoadingList } from "../components";
 
 type Status = "OVERDUE" | "DUE_SOON" | "GOOD" | "SETTLED";
 const STATUS: Record<Status, { label: string; cls: string }> = {
@@ -159,8 +159,9 @@ export function PartyStatement({ partyId }: { partyId: string }) {
     }
   }, [highlightId, rows]);
 
-  if (!ready) return <div className="py-20 text-center text-gray-500">Loading…</div>;
-  if (!party) return <Empty title="Contact not found" subtitle="It may have been cleared." />;
+  if (!ready) return <LoadingList />;
+  if (!party)
+    return <Empty icon="🔍" title="Contact not found" subtitle="It may have been cleared." />;
 
   const { net, status } = summary;
   const badge = STATUS[status];

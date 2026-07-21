@@ -12,7 +12,7 @@ import Link from "next/link";
 import { useVyora } from "../VyoraProvider";
 import { recentActivity, todayISO, rupees } from "@/lib/vyora/selectors";
 import { formatMoney, formatDate, balanceColor } from "@/lib/vyora/format";
-import { StatCard, Empty, PriorityBadge } from "../components";
+import { StatCard, Empty, PriorityBadge, LoadingList } from "../components";
 import { RecoveryCard } from "../RecoveryCard";
 import { useRecoveryDashboard } from "../useRecoveryDashboard";
 
@@ -41,7 +41,7 @@ export function Dashboard() {
     return { collections: rupees(collections), payments: rupees(payments) };
   }, [data]);
 
-  if (!ready) return <div className="py-20 text-center text-gray-500">Loading…</div>;
+  if (!ready) return <LoadingList />;
 
   const totalEntries = data.transactions.length + data.payments.length;
   const since = daysSince(data.meta.lastBackupAt);
@@ -138,8 +138,10 @@ export function Dashboard() {
         </h2>
         {activity.length === 0 ? (
           <Empty
+            icon="🧾"
             title="No entries yet"
-            subtitle="Tap “New credit” below to add your first udhaar."
+            subtitle="Record your first udhaar to get started."
+            cta={{ label: "＋ New credit", href: "/vyora/credit" }}
           />
         ) : (
           <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-200 bg-white">

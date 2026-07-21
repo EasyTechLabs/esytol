@@ -13,7 +13,7 @@ import { useVyora } from "../VyoraProvider";
 import { useToast } from "../Toast";
 import { todayISO, rupees } from "@/lib/vyora/selectors";
 import { formatMoney, formatDate, formatDateTime } from "@/lib/vyora/format";
-import { StatCard, Empty, PriorityBadge } from "../components";
+import { StatCard, Empty, PriorityBadge, LoadingList } from "../components";
 import { Card } from "../primitives";
 import { useRecoveryDashboard } from "../useRecoveryDashboard";
 
@@ -77,7 +77,7 @@ export function DayClosing() {
     };
   }, [data]);
 
-  if (!ready) return <div className="py-20 text-center text-gray-500">Loading…</div>;
+  if (!ready) return <LoadingList />;
 
   const today = todayISO();
   const todaysClosing = closings.find((c) => c.date === today);
@@ -126,7 +126,7 @@ export function DayClosing() {
           Pending recovery · top 5
         </h2>
         {rec.top5.length === 0 ? (
-          <Empty title="All caught up" subtitle="Nobody is overdue right now." />
+          <Empty icon="✅" title="All caught up" subtitle="Nobody is overdue right now." />
         ) : (
           <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-200 bg-white">
             {rec.top5.map((row) => (
@@ -216,7 +216,7 @@ export function DayClosing() {
           Last 30 days
         </h2>
         {history.length === 0 ? (
-          <Empty title="No closings yet" subtitle="Close today to start your history." />
+          <Empty icon="🌙" title="No closings yet" subtitle="Close today to start your history." />
         ) : (
           <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-200 bg-white">
             {history.map((c) => (

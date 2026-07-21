@@ -41,8 +41,20 @@ const config: Config = {
           line: "#ef4444", // red-500
         },
       },
+      keyframes: {
+        "fade-in": {
+          "0%": { opacity: "0", transform: "translateY(4px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        shimmer: {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(100%)" },
+        },
+      },
       animation: {
         "spin-slow": "spin 3s linear infinite",
+        "fade-in": "fade-in 0.25s ease-out",
+        shimmer: "shimmer 1.5s infinite",
       },
     },
   },

@@ -94,7 +94,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             pathname.startsWith("/vyora/parties")
           }
         />
-        {children}
+        <div key={pathname} className="animate-fade-in motion-reduce:animate-none">
+          {children}
+        </div>
       </main>
 
       {/* Bottom action bar (safe-area aware) */}

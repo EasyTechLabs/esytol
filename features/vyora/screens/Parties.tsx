@@ -14,7 +14,7 @@ import { useVyora } from "../VyoraProvider";
 import { todayISO } from "@/lib/vyora/selectors";
 import { formatMoney, balanceLabel, balanceColor } from "@/lib/vyora/format";
 import { Card, Button, TextInput } from "../primitives";
-import { Empty } from "../components";
+import { Empty, LoadingList } from "../components";
 import { useContactsWorkspace, type ContactRow, type ContactStatus } from "../useContactsWorkspace";
 
 type Sort = "outstanding" | "due" | "alpha" | "updated";
@@ -200,7 +200,7 @@ export function Parties() {
     return list;
   }, [rows, q, filters, sort]);
 
-  if (!ready) return <div className="py-20 text-center text-gray-500">Loading…</div>;
+  if (!ready) return <LoadingList />;
 
   const add = () => {
     if (!name.trim()) return;
@@ -354,6 +354,7 @@ export function Parties() {
       {/* Cards */}
       {view.length === 0 ? (
         <Empty
+          icon="👥"
           title={activeCount > 0 || q ? "No contacts match these filters" : "No contacts here"}
           subtitle={
             activeCount > 0 || q
