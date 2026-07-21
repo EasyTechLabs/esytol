@@ -1,19 +1,20 @@
 "use client";
 
 /**
- * Vyora Alpha — Dashboard. Answers the one question a merchant opens the app for:
- * "How much is stuck, and what moved today?" Receivable, Payable, Net Position,
- * today's cash in/out, and recent activity. Read in five seconds. Plus a gentle,
- * occasional backup reminder.
+ * Vyora — Recovery Dashboard (P0-006). Replaces the accounting dashboard. Opens
+ * with today's recovery, then the overdue top-5, money due today, today's
+ * collections and payments, recent activity, and quick actions. No charts, no
+ * analytics. All recovery numbers come from ONE memoized sweep — fast loading.
  */
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useVyora } from "../VyoraProvider";
-import { dashboardTotals, recentActivity } from "@/lib/vyora/selectors";
+import { recentActivity, todayISO, rupees } from "@/lib/vyora/selectors";
 import { formatMoney, formatDate, balanceColor } from "@/lib/vyora/format";
 import { StatCard, Empty } from "../components";
 import { RecoveryCard } from "../RecoveryCard";
+import { useRecoveryDashboard } from "../useRecoveryDashboard";
 
 function daysSince(iso: string | null): number | null {
   if (!iso) return null;
@@ -25,20 +26,32 @@ function daysSince(iso: string | null): number | null {
 export function Dashboard() {
   const { ready, data, backup } = useVyora();
   const [remindDismissed, setRemindDismissed] = useState(false);
-  const t = useMemo(() => dashboardTotals(data), [data]);
-  const activity = useMemo(() => recentActivity(data, 15), [data]);
+
+  const rec = useRecoveryDashboard(data);
+  const activity = useMemo(() => recentActivity(data, 12), [data]);
+  const today = useMemo(() => {
+    const t = todayISO();
+    let collections = 0;
+    let payments = 0;
+    for (const p of data.payments) {
+      if (p.date !== t) continue;
+      if (p.kind === "received") collections += p.amount;
+      else payments += p.amount;
+    }
+    return { collections: rupees(collections), payments: rupees(payments) };
+  }, [data]);
+
   if (!ready) return <div className="py-20 text-center text-gray-500">Loading…</div>;
 
   const totalEntries = data.transactions.length + data.payments.length;
-
-  // Gentle, occasional reminder: enough entries to matter, and no recent backup.
   const since = daysSince(data.meta.lastBackupAt);
   const shouldRemind = !remindDismissed && totalEntries >= 8 && (since === null || since > 7);
+  const nameOf = (id: string) => data.parties.find((p) => p.id === id)?.name ?? "Contact";
 
   return (
     <div className="space-y-4">
-      {/* Recovery — the first thing a merchant sees */}
-      <RecoveryCard data={data} todaysRecovery={t.todaysCollections} />
+      {/* Top hero — Today's Recovery */}
+      <RecoveryCard data={data} summary={rec} todaysRecovery={today.collections} />
 
       {shouldRemind && (
         <div className="flex items-start justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
@@ -65,63 +78,58 @@ export function Dashboard() {
         </div>
       )}
 
-      {/* Net position hero */}
-      <div className="rounded-2xl bg-gradient-to-br from-brand-600 to-brand-700 p-5 text-white">
-        <div className="text-xs font-medium uppercase tracking-wide text-brand-100">
-          Net position
-        </div>
-        <div className="mt-1 break-words text-3xl font-bold tabular-nums leading-tight sm:text-4xl">
-          {formatMoney(t.net)}
-        </div>
-        <div className="mt-1 text-sm text-brand-100">
-          {t.net > 0
-            ? "You are owed more than you owe"
-            : t.net < 0
-              ? "You owe more than you are owed"
-              : "You are all square"}
-        </div>
-      </div>
+      {/* Overdue customers — top 5 */}
+      {rec.top5.length > 0 && (
+        <section>
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-600">
+              Overdue customers
+            </h2>
+            <Link href="/vyora/collect" className="text-sm font-medium text-brand-700">
+              See all →
+            </Link>
+          </div>
+          <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-200 bg-white">
+            {rec.top5.map((row) => (
+              <Link
+                key={row.partyId}
+                href={`/vyora/parties/${row.partyId}`}
+                className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-gray-50"
+              >
+                <div className="min-w-0">
+                  <div className="truncate font-medium text-gray-800">{nameOf(row.partyId)}</div>
+                  <span className="mt-0.5 inline-flex items-center rounded-lg bg-negative-tint px-1.5 py-0.5 text-xs font-semibold text-negative-strong">
+                    Overdue {row.daysOverdue}d
+                  </span>
+                </div>
+                <div className="shrink-0 font-semibold tabular-nums text-negative">
+                  {formatMoney(row.overdueAmount)}
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
-      {/* Receivable / Payable */}
-      <div className="grid grid-cols-2 gap-3">
-        <StatCard label="You'll get (Receivable)" value={formatMoney(t.receivable)} tone="in" />
-        <StatCard label="You'll pay (Payable)" value={formatMoney(t.payable)} tone="out" />
-      </div>
+      {/* Money coming today */}
+      <StatCard label="Money coming today" value={formatMoney(rec.dueToday)} tone="in" />
 
-      {/* Today */}
+      {/* Today's collections + payments */}
       <div className="grid grid-cols-2 gap-3">
-        <StatCard label="Today's collections" value={formatMoney(t.todaysCollections)} tone="in" />
-        <StatCard label="Today's payments" value={formatMoney(t.todaysPayments)} tone="out" />
-      </div>
-
-      {/* Quick actions (also always in the bottom bar) */}
-      <div className="grid grid-cols-2 gap-3">
-        <Link
-          href="/vyora/credit"
-          className="rounded-2xl bg-brand-600 py-4 text-center text-base font-semibold text-white hover:bg-brand-700"
-        >
-          ＋ Record credit
-        </Link>
-        <Link
-          href="/vyora/payment"
-          className="rounded-2xl bg-emerald-600 py-4 text-center text-base font-semibold text-white hover:bg-emerald-700"
-        >
-          ＋ Record payment
-        </Link>
+        <StatCard label="Today's collections" value={formatMoney(today.collections)} tone="in" />
+        <StatCard label="Today's payments" value={formatMoney(today.payments)} tone="out" />
       </div>
 
       {/* Recent activity */}
       <section>
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-600">
-            Recent activity
-          </h2>
-          <Link href="/vyora/parties" className="text-sm font-medium text-brand-700">
-            All contacts →
-          </Link>
-        </div>
+        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-600">
+          Recent activity
+        </h2>
         {activity.length === 0 ? (
-          <Empty title="No entries yet" subtitle="Tap “Record credit” to add your first udhaar." />
+          <Empty
+            title="No entries yet"
+            subtitle="Tap “New credit” below to add your first udhaar."
+          />
         ) : (
           <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-200 bg-white">
             {activity.map((a) => (
@@ -134,7 +142,6 @@ export function Dashboard() {
                   <div className="truncate font-medium text-gray-800">{a.partyName}</div>
                   <div className="text-xs text-gray-500">
                     {a.label} · {formatDate(a.date)}
-                    {a.note ? ` · ${a.note}` : ""}
                   </div>
                 </div>
                 <div
@@ -149,15 +156,32 @@ export function Dashboard() {
         )}
       </section>
 
-      {/* Footer */}
-      <div className="flex items-center justify-between pt-2 text-xs text-gray-500">
-        <span>
-          {data.parties.length} contacts · {totalEntries} entries · saved on this device only
-        </span>
-        <Link href="/vyora/settings" className="font-medium text-brand-700">
-          Data &amp; backup →
-        </Link>
-      </div>
+      {/* Quick actions */}
+      <section>
+        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-600">
+          Quick actions
+        </h2>
+        <div className="grid grid-cols-3 gap-2">
+          <Link
+            href="/vyora/credit"
+            className="rounded-2xl bg-brand-600 py-4 text-center text-sm font-semibold text-white hover:bg-brand-700"
+          >
+            ＋ New credit
+          </Link>
+          <Link
+            href="/vyora/payment"
+            className="rounded-2xl bg-positive py-4 text-center text-sm font-semibold text-white hover:bg-positive-strong"
+          >
+            ＋ Payment
+          </Link>
+          <Link
+            href="/vyora/parties"
+            className="rounded-2xl border-2 border-gray-200 bg-white py-4 text-center text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          >
+            ＋ Contact
+          </Link>
+        </div>
+      </section>
     </div>
   );
 }

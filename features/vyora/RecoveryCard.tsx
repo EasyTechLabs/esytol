@@ -3,25 +3,28 @@
 /**
  * Vyora — Recovery landing hero (the FIRST thing a merchant sees). Turns the
  * aging domain into today's job: "recover ₹X from N customers, chase this one
- * first." When nothing is overdue it becomes a calm "All caught up". Reads from
- * the memoized `useRecovery` selector, so recording a payment updates it live —
- * no reload. No charts, no analytics, no backend.
+ * first." When nothing is overdue it becomes a calm "All caught up". Reads a
+ * summary computed once by the dashboard's single sweep, so recording a payment
+ * updates it live — no reload. No charts, no analytics, no backend.
  */
 
 import Link from "next/link";
 import type { VyoraData } from "@/lib/vyora/types";
 import { formatMoney } from "@/lib/vyora/format";
-import { useRecovery } from "./useRecovery";
+import type { RecoveryDashboard } from "./useRecoveryDashboard";
 
 export function RecoveryCard({
   data,
+  summary,
   todaysRecovery,
 }: {
   data: VyoraData;
+  /** Recovery totals — computed once by the dashboard's single sweep. */
+  summary: RecoveryDashboard;
   /** Money received today — the "Today's Recovery" figure that grows as payments land. */
   todaysRecovery: number;
 }) {
-  const r = useRecovery(data);
+  const r = summary;
 
   // All caught up — the good state.
   if (r.highestPriority === null) {
