@@ -8,7 +8,7 @@
  * hits zero, the account shows as Settled.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { useVyora } from "../VyoraProvider";
@@ -39,12 +39,13 @@ const MODES: { value: PaymentMode; label: string }[] = [
 
 export function PaymentEntry() {
   const router = useRouter();
-  const { recordPayment, data } = useVyora();
+  const { recordPayment, data, settings } = useVyora();
 
   const [amount, setAmount] = useState("");
   const [party, setParty] = useState<PartySelection>(emptyParty);
   const [kind, setKind] = useState<PaymentKind>("received"); // default: they paid me
   const [mode, setMode] = useState<PaymentMode>("cash");
+  const [modeTouched, setModeTouched] = useState(false); // user picked a mode
   const [reference, setReference] = useState("");
   const [showMore, setShowMore] = useState(false);
   const [date, setDate] = useState(todayISO());
@@ -52,6 +53,7 @@ export function PaymentEntry() {
   const [saving, setSaving] = useState(false); // prevent a double-tap double-save (P3-001)
   const [restored, setRestored] = useState(false); // a draft was recovered
   const [hydrated, setHydrated] = useState(false); // gate the draft-saver until restore has run
+  const restoredRef = useRef(false); // synchronous "a draft was restored" flag for the seeder
 
   // Pre-select the contact when arriving from a statement (…/payment?party=<id>).
   useEffect(() => {
@@ -84,6 +86,7 @@ export function PaymentEntry() {
             if (typeof d.reference === "string") setReference(d.reference);
             if (typeof d.date === "string" && d.date) setDate(d.date);
             if (d.showMore) setShowMore(true);
+            restoredRef.current = true;
             setRestored(true);
           }
         }
@@ -112,6 +115,13 @@ export function PaymentEntry() {
       /* ignore */
     }
   };
+
+  // Seed the payment mode from the merchant's default (P3-002) — unless a draft was
+  // restored or the merchant has already picked one.
+  useEffect(() => {
+    if (restoredRef.current || modeTouched) return;
+    setMode(settings.defaultPaymentMode);
+  }, [settings.defaultPaymentMode, modeTouched]);
 
   const amountNum = Number(amount);
   const canSave = amountNum > 0 && party.ref !== null;
@@ -176,7 +186,10 @@ export function PaymentEntry() {
             <button
               key={m.value}
               type="button"
-              onClick={() => setMode(m.value)}
+              onClick={() => {
+                setMode(m.value);
+                setModeTouched(true);
+              }}
               className={cn(
                 "rounded-xl py-2.5 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600",
                 mode === m.value

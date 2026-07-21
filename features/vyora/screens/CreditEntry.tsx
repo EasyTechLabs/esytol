@@ -8,7 +8,7 @@
  * the dashboard, recovery, and collect list — update instantly, no reload.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useVyora } from "../VyoraProvider";
 import type { EntryKind } from "@/lib/vyora/types";
@@ -32,7 +32,7 @@ interface CreditDraft {
 
 export function CreditEntry() {
   const router = useRouter();
-  const { recordCredit, data } = useVyora();
+  const { recordCredit, data, settings } = useVyora();
 
   const [amount, setAmount] = useState("");
   const [party, setParty] = useState<PartySelection>(emptyParty);
@@ -41,11 +41,13 @@ export function CreditEntry() {
   const [description, setDescription] = useState("");
   const [date, setDate] = useState(todayISO());
   const [dueDate, setDueDate] = useState("");
+  const [dueTouched, setDueTouched] = useState(false); // user edited the due date
   const [showMore, setShowMore] = useState(false);
   const [prefilled, setPrefilled] = useState(false);
   const [saving, setSaving] = useState(false); // prevent a double-tap double-save (P3-001)
   const [restored, setRestored] = useState(false); // a draft was recovered
   const [hydrated, setHydrated] = useState(false); // gate the draft-saver until restore has run
+  const restoredRef = useRef(false); // synchronous "a draft was restored" flag for the seeder
 
   // Pre-select the contact when arriving from a statement (…/credit?party=<id>).
   useEffect(() => {
@@ -79,6 +81,7 @@ export function CreditEntry() {
             if (typeof d.date === "string" && d.date) setDate(d.date);
             if (typeof d.dueDate === "string") setDueDate(d.dueDate);
             if (d.showMore) setShowMore(true);
+            restoredRef.current = true;
             setRestored(true);
           }
         }
@@ -116,6 +119,17 @@ export function CreditEntry() {
       /* ignore */
     }
   };
+
+  // Seed the due date from the merchant's "default credit days" (P3-002) — unless a
+  // draft was restored or the merchant has already set one.
+  useEffect(() => {
+    if (restoredRef.current || dueTouched || dueDate) return;
+    const days = settings.defaultCreditDays;
+    if (days == null) return;
+    const d = new Date(`${todayISO()}T00:00:00`);
+    d.setDate(d.getDate() + days);
+    setDueDate(d.toISOString().slice(0, 10));
+  }, [settings.defaultCreditDays, dueTouched, dueDate]);
 
   const amountNum = Number(amount);
   const canSave = amountNum > 0 && party.ref !== null;
@@ -210,7 +224,10 @@ export function CreditEntry() {
               <TextInput
                 type="date"
                 value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
+                onChange={(e) => {
+                  setDueDate(e.target.value);
+                  setDueTouched(true);
+                }}
                 className="px-3"
               />
             </label>

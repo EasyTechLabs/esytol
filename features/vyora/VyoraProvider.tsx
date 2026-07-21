@@ -18,14 +18,17 @@ import type {
   PaymentKind,
   PaymentMode,
   PartyRef,
+  VyoraSettings,
 } from "@/lib/vyora/types";
 import { partyNet } from "@/lib/vyora/selectors";
-import { formatMoney } from "@/lib/vyora/format";
+import { formatMoney, configureFormat } from "@/lib/vyora/format";
 import { useToast } from "./Toast";
 import {
   emptyData,
   loadData,
   saveData,
+  defaultSettings,
+  updateSettings as updateSettingsMut,
   addParty as addPartyMut,
   editParty as editPartyMut,
   resolvePartyRef,
@@ -66,6 +69,9 @@ interface VyoraContextValue {
   ready: boolean;
   data: VyoraData;
   hasBackup: boolean;
+  settings: VyoraSettings;
+  resolvedDark: boolean;
+  updateSettings: (patch: Partial<VyoraSettings>) => void;
   recordCredit: (input: CreditInput) => string;
   recordPayment: (input: PaymentInput) => string;
   createParty: (input: { name: string; phone?: string; note?: string }) => Party;
@@ -101,11 +107,24 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
   const [data, setData] = useState<VyoraData>(emptyData);
   const [ready, setReady] = useState(false);
   const [backupExists, setBackupExists] = useState(false);
+  const [systemDark, setSystemDark] = useState(false);
 
   useEffect(() => {
-    setData(loadData());
+    const loaded = loadData();
+    configureFormat(loaded.settings ?? defaultSettings()); // apply currency/number/date prefs
+    setData(loaded);
     setBackupExists(hasBackup());
     setReady(true);
+  }, []);
+
+  // Track the OS colour scheme so a "System" appearance choice resolves correctly.
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    setSystemDark(mq.matches);
+    const on = (e: MediaQueryListEvent) => setSystemDark(e.matches);
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
   }, []);
 
   const commit = useCallback((next: VyoraData) => {
@@ -217,6 +236,16 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
     [data, commit, toast]
   );
 
+  const updateSettings = useCallback(
+    (patch: Partial<VyoraSettings>) => {
+      const next = updateSettingsMut(data, patch);
+      configureFormat(next.settings ?? defaultSettings());
+      commit(next);
+      toast.success("✓ Settings saved");
+    },
+    [data, commit, toast]
+  );
+
   const backup = useCallback(() => {
     const next = backupNowMut(data);
     commit(next);
@@ -257,11 +286,17 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
     toast.info("All data cleared from this device");
   }, [toast]);
 
+  const settings = data.settings ?? defaultSettings();
+  const resolvedDark = settings.theme === "dark" || (settings.theme === "system" && systemDark);
+
   const value = useMemo<VyoraContextValue>(
     () => ({
       ready,
       data,
       hasBackup: backupExists,
+      settings,
+      resolvedDark,
+      updateSettings,
       recordCredit,
       recordPayment,
       createParty,
@@ -280,6 +315,9 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
       ready,
       data,
       backupExists,
+      settings,
+      resolvedDark,
+      updateSettings,
       recordCredit,
       recordPayment,
       createParty,

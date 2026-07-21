@@ -12,12 +12,14 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { GlobalSearch } from "./GlobalSearch";
+import { useVyora } from "./VyoraProvider";
 
 const SAFE_BOTTOM = "calc(0.625rem + env(safe-area-inset-bottom))";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { resolvedDark } = useVyora();
   const isHome = pathname === "/vyora";
 
   // Hidden Founder-Mode gesture: 5 quick taps on the Alpha badge.
@@ -38,7 +40,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-lg flex-col bg-gray-50">
+    <div
+      className={cn(
+        "vyora-app mx-auto flex min-h-screen w-full max-w-lg flex-col bg-gray-50",
+        resolvedDark && "vyora-dark"
+      )}
+    >
       {/* Top bar */}
       <header className="sticky top-0 z-20 flex items-center justify-between gap-2 border-b border-gray-200 bg-white px-4 py-3">
         {!isHome ? (

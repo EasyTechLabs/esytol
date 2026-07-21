@@ -6,11 +6,117 @@
  * recover. Every destructive action confirms first. No cloud, no accounts.
  */
 
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { cn } from "@/lib/cn";
 import { useVyora } from "../VyoraProvider";
-import { formatDateTime, formatMoney } from "@/lib/vyora/format";
-import type { TrashEntry, VyoraData } from "@/lib/vyora/types";
-import { Card, Button } from "../primitives";
+import { formatDateTime, formatMoney, CURRENCY_SYMBOLS } from "@/lib/vyora/format";
+import type {
+  TrashEntry,
+  VyoraData,
+  PaymentMode,
+  ThemePref,
+  DateFormatPref,
+  NumberFormatPref,
+} from "@/lib/vyora/types";
+import { APP_VERSION, VERSION, storageSizeBytes } from "@/lib/vyora/store";
+import { Card, Button, TextInput } from "../primitives";
+
+const CURRENCIES = Object.keys(CURRENCY_SYMBOLS);
+const LANGUAGES: { value: string; label: string }[] = [
+  { value: "en", label: "English" },
+  { value: "hi", label: "हिन्दी (Hindi)" },
+  { value: "mr", label: "मराठी (Marathi)" },
+  { value: "gu", label: "ગુજરાતી (Gujarati)" },
+  { value: "ta", label: "தமிழ் (Tamil)" },
+  { value: "te", label: "తెలుగు (Telugu)" },
+  { value: "bn", label: "বাংলা (Bengali)" },
+];
+const CREDIT_DAYS: { value: number | null; label: string }[] = [
+  { value: null, label: "No due date" },
+  { value: 7, label: "7 days" },
+  { value: 15, label: "15 days" },
+  { value: 30, label: "30 days" },
+  { value: 45, label: "45 days" },
+  { value: 60, label: "60 days" },
+  { value: 90, label: "90 days" },
+];
+const PAYMENT_MODES: { value: PaymentMode; label: string }[] = [
+  { value: "cash", label: "Cash" },
+  { value: "upi", label: "UPI" },
+  { value: "bank", label: "Bank" },
+  { value: "cheque", label: "Cheque" },
+];
+const DATE_FORMATS: { value: DateFormatPref; label: string }[] = [
+  { value: "relative", label: "Relative — Today, Yesterday, 12 Jul 2026" },
+  { value: "dmy", label: "Date — 12 Jul 2026" },
+  { value: "iso", label: "ISO — 2026-07-12" },
+];
+const NUMBER_FORMATS: { value: NumberFormatPref; label: string }[] = [
+  { value: "indian", label: "Indian — 1,80,000" },
+  { value: "international", label: "International — 180,000" },
+];
+const THEMES: { value: ThemePref; label: string }[] = [
+  { value: "light", label: "Light" },
+  { value: "dark", label: "Dark" },
+  { value: "system", label: "System" },
+];
+
+function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / 1024 / 1024).toFixed(2)} MB`;
+}
+
+/** A labelled form row. */
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-sm font-medium text-gray-700">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+/** A styled native <select> (keeps the whole page working with no extra deps). */
+function Select<T extends string | number | null>({
+  value,
+  options,
+  onChange,
+  ariaLabel,
+}: {
+  value: T;
+  options: { value: T; label: string }[];
+  onChange: (v: T) => void;
+  ariaLabel: string;
+}) {
+  return (
+    <select
+      aria-label={ariaLabel}
+      value={String(value)}
+      onChange={(e) => {
+        const picked = options.find((o) => String(o.value) === e.target.value);
+        if (picked) onChange(picked.value);
+      }}
+      className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-600"
+    >
+      {options.map((o) => (
+        <option key={String(o.value)} value={String(o.value)}>
+          {o.label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+/** A read-only About row (label · value). */
+function AboutRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 py-1.5 text-sm">
+      <span className="text-gray-600">{label}</span>
+      <span className="font-medium tabular-nums text-gray-900">{value}</span>
+    </div>
+  );
+}
 
 /** Human summary of a recently-deleted record (P3-001) for the Restore list. */
 function describeTrash(entry: TrashEntry, data: VyoraData): { title: string; sub: string } {
@@ -50,10 +156,38 @@ export function Settings() {
     validateImport,
     applyImport,
     restoreDeleted,
+    settings,
+    updateSettings,
     reset,
   } = useVyora();
   const fileRef = useRef<HTMLInputElement>(null);
   const trash = data.trash ?? [];
+
+  // Business-profile text fields edit locally, then save in one commit.
+  const [biz, setBiz] = useState({
+    businessName: "",
+    ownerName: "",
+    mobile: "",
+    address: "",
+    gst: "",
+  });
+  useEffect(() => {
+    setBiz({
+      businessName: settings.businessName ?? "",
+      ownerName: settings.ownerName ?? "",
+      mobile: settings.mobile ?? "",
+      address: settings.address ?? "",
+      gst: settings.gst ?? "",
+    });
+  }, [settings.businessName, settings.ownerName, settings.mobile, settings.address, settings.gst]);
+  const saveProfile = () =>
+    updateSettings({
+      businessName: biz.businessName.trim() || undefined,
+      ownerName: biz.ownerName.trim() || undefined,
+      mobile: biz.mobile.trim() || undefined,
+      address: biz.address.trim() || undefined,
+      gst: biz.gst.trim() || undefined,
+    });
 
   if (!ready) return <div className="py-20 text-center text-gray-500">Loading…</div>;
 
@@ -117,7 +251,156 @@ export function Settings() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-lg font-semibold text-gray-900">Data &amp; backup</h1>
+      <h1 className="text-lg font-semibold text-gray-900">Settings</h1>
+
+      {/* Business profile — brands shared statements (P3-002) */}
+      <Card as="section" className="space-y-3">
+        <div>
+          <h2 className="font-semibold text-gray-900">Business profile</h2>
+          <p className="text-sm text-gray-600">
+            Appears on the statements you share with customers.
+          </p>
+        </div>
+        <Field label="Business name">
+          <TextInput
+            value={biz.businessName}
+            onChange={(e) => setBiz({ ...biz, businessName: e.target.value })}
+            placeholder="e.g. Sharma Traders"
+          />
+        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Owner name">
+            <TextInput
+              value={biz.ownerName}
+              onChange={(e) => setBiz({ ...biz, ownerName: e.target.value })}
+              placeholder="Owner"
+            />
+          </Field>
+          <Field label="Mobile">
+            <TextInput
+              value={biz.mobile}
+              onChange={(e) => setBiz({ ...biz, mobile: e.target.value })}
+              placeholder="Phone"
+              inputMode="tel"
+            />
+          </Field>
+        </div>
+        <Field label="Address">
+          <TextInput
+            value={biz.address}
+            onChange={(e) => setBiz({ ...biz, address: e.target.value })}
+            placeholder="Shop address (optional)"
+          />
+        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="GST (optional)">
+            <TextInput
+              value={biz.gst}
+              onChange={(e) => setBiz({ ...biz, gst: e.target.value })}
+              placeholder="GSTIN"
+            />
+          </Field>
+          <Field label="Currency">
+            <Select
+              ariaLabel="Currency"
+              value={settings.currency}
+              options={CURRENCIES.map((c) => ({
+                value: c,
+                label: `${c} · ${CURRENCY_SYMBOLS[c]}`,
+              }))}
+              onChange={(v) => updateSettings({ currency: v })}
+            />
+          </Field>
+        </div>
+        <Field label="Language">
+          <Select
+            ariaLabel="Language"
+            value={settings.language}
+            options={LANGUAGES}
+            onChange={(v) => updateSettings({ language: v })}
+          />
+        </Field>
+        {settings.language !== "en" && (
+          <p className="text-xs text-gray-500">
+            The interface is in English today — your language choice is saved for upcoming
+            translations.
+          </p>
+        )}
+        <Button variant="primary" onClick={saveProfile} className="px-4 py-2.5">
+          Save profile
+        </Button>
+      </Card>
+
+      {/* Ledger preferences — seed new entries & drive display (P3-002) */}
+      <Card as="section" className="space-y-3">
+        <div>
+          <h2 className="font-semibold text-gray-900">Ledger preferences</h2>
+          <p className="text-sm text-gray-600">
+            Sensible defaults so entries are faster to record.
+          </p>
+        </div>
+        <Field label="Default credit days">
+          <Select
+            ariaLabel="Default credit days"
+            value={settings.defaultCreditDays}
+            options={CREDIT_DAYS}
+            onChange={(v) => updateSettings({ defaultCreditDays: v })}
+          />
+        </Field>
+        <Field label="Default payment mode">
+          <Select
+            ariaLabel="Default payment mode"
+            value={settings.defaultPaymentMode}
+            options={PAYMENT_MODES}
+            onChange={(v) => updateSettings({ defaultPaymentMode: v })}
+          />
+        </Field>
+        <Field label="Date format">
+          <Select
+            ariaLabel="Date format"
+            value={settings.dateFormat}
+            options={DATE_FORMATS}
+            onChange={(v) => updateSettings({ dateFormat: v })}
+          />
+        </Field>
+        <Field label="Number format">
+          <Select
+            ariaLabel="Number format"
+            value={settings.numberFormat}
+            options={NUMBER_FORMATS}
+            onChange={(v) => updateSettings({ numberFormat: v })}
+          />
+        </Field>
+      </Card>
+
+      {/* Appearance (P3-002) */}
+      <Card as="section" className="space-y-3">
+        <div>
+          <h2 className="font-semibold text-gray-900">Appearance</h2>
+          <p className="text-sm text-gray-600">How Vyora looks on this device.</p>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          {THEMES.map((t) => {
+            const active = settings.theme === t.value;
+            return (
+              <button
+                key={t.value}
+                type="button"
+                onClick={() => updateSettings({ theme: t.value })}
+                aria-pressed={active}
+                className={cn(
+                  "rounded-xl border-2 px-3 py-2.5 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600",
+                  active
+                    ? "border-brand-500 bg-brand-50 text-brand-700"
+                    : "border-gray-200 bg-white text-gray-600"
+                )}
+              >
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+      </Card>
 
       {/* Backup on device */}
       <Card as="section" className="space-y-3">
@@ -217,6 +500,18 @@ export function Settings() {
             })}
           </div>
         )}
+      </Card>
+
+      {/* About (P3-002) */}
+      <Card as="section" className="space-y-1">
+        <h2 className="mb-1 font-semibold text-gray-900">About</h2>
+        <AboutRow label="App version" value={APP_VERSION} />
+        <AboutRow label="Database version" value={`v${VERSION}`} />
+        <AboutRow
+          label="Backup status"
+          value={lastBackup ? `Last backed up ${ago}` : "Never backed up"}
+        />
+        <AboutRow label="Storage used" value={formatBytes(storageSizeBytes())} />
       </Card>
 
       {/* Danger */}

@@ -26,6 +26,7 @@ import type {
   PartyRef,
   ExportFile,
   TrashEntry,
+  VyoraSettings,
 } from "./types";
 import { todayISO } from "./selectors";
 
@@ -40,6 +41,19 @@ function emptyMeta(): Meta {
   return { lastBackupAt: null, exportCount: 0, importCount: 0 };
 }
 
+/** Default merchant settings (P3-002) — INR, Indian number format, no theme override. */
+export function defaultSettings(): VyoraSettings {
+  return {
+    currency: "INR",
+    language: "en",
+    defaultCreditDays: null,
+    defaultPaymentMode: "cash",
+    dateFormat: "relative",
+    numberFormat: "indian",
+    theme: "system",
+  };
+}
+
 export function emptyData(): VyoraData {
   return {
     version: VERSION,
@@ -48,7 +62,13 @@ export function emptyData(): VyoraData {
     payments: [],
     meta: emptyMeta(),
     trash: [],
+    settings: defaultSettings(),
   };
+}
+
+/** Merge a settings patch onto the current settings (P3-002). Pure. */
+export function updateSettings(data: VyoraData, patch: Partial<VyoraSettings>): VyoraData {
+  return { ...data, settings: { ...defaultSettings(), ...(data.settings ?? {}), ...patch } };
 }
 
 /** Stable unique id. Uses crypto.randomUUID when available (secure contexts). */
@@ -80,6 +100,8 @@ export function migrate(raw: unknown): VyoraData | null {
     meta: { ...emptyMeta(), ...(r.meta ?? {}) },
     // Recently-deleted (P3-001) — absent in older payloads; default to empty.
     trash: Array.isArray(r.trash) ? (r.trash as TrashEntry[]) : [],
+    // Merchant settings (P3-002) — absent in older payloads; fill defaults.
+    settings: { ...defaultSettings(), ...(r.settings ?? {}) },
   };
 }
 

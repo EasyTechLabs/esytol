@@ -89,6 +89,30 @@ export interface TrashEntry {
   payments: Payment[];
 }
 
+export type ThemePref = "light" | "dark" | "system";
+export type DateFormatPref = "relative" | "dmy" | "iso";
+export type NumberFormatPref = "indian" | "international";
+
+/**
+ * Merchant settings (P3-002) — makes Vyora feel like the shopkeeper's own ledger.
+ * Business profile brands shared statements; ledger prefs seed new entries; format
+ * prefs drive money/date display; theme drives appearance. All local, all optional.
+ */
+export interface VyoraSettings {
+  businessName?: string;
+  ownerName?: string;
+  mobile?: string;
+  address?: string;
+  gst?: string;
+  currency: string; // ISO-ish code: "INR" | "USD" | …
+  language: string; // "en" | "hi" | … (stored; interface copy is English today)
+  defaultCreditDays: number | null; // seeds the due date on a new credit
+  defaultPaymentMode: PaymentMode; // seeds the mode on a new payment
+  dateFormat: DateFormatPref;
+  numberFormat: NumberFormatPref;
+  theme: ThemePref;
+}
+
 export interface VyoraData {
   version: number;
   parties: Party[];
@@ -97,6 +121,8 @@ export interface VyoraData {
   meta: Meta;
   /** Recently-deleted records, newest first (P3-001). Optional for migration safety. */
   trash?: TrashEntry[];
+  /** Merchant settings (P3-002). Optional for migration safety. */
+  settings?: VyoraSettings;
 }
 
 /**

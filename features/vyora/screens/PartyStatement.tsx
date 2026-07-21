@@ -49,7 +49,7 @@ function monthLabel(key: string): string {
 }
 
 export function PartyStatement({ partyId }: { partyId: string }) {
-  const { ready, data, editParty, deleteEntry, deleteContact } = useVyora();
+  const { ready, data, editParty, deleteEntry, deleteContact, settings } = useVyora();
   const router = useRouter();
   const toast = useToast();
   const [editing, setEditing] = useState(false);
@@ -213,7 +213,15 @@ export function PartyStatement({ partyId }: { partyId: string }) {
             )} · bal ${formatMoney(r.runningNet)}`
         ),
     ].filter(Boolean);
-    const text = lines.join("\n");
+    // Brand the shared statement with the merchant's own business profile (P3-002).
+    const bizHeader = [
+      settings.businessName,
+      [settings.mobile, settings.gst ? `GST ${settings.gst}` : ""].filter(Boolean).join(" · "),
+      settings.address,
+    ]
+      .filter(Boolean)
+      .join("\n");
+    const text = (bizHeader ? `${bizHeader}\n\n` : "") + lines.join("\n");
     try {
       if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
         await navigator.share({ title: `Statement — ${party.name}`, text });

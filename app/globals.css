@@ -30,3 +30,55 @@
     @apply py-12 sm:py-16 lg:py-20;
   }
 }
+
+/*
+ * Vyora dark appearance (P3-002). Scoped to the Vyora app (`.vyora-dark`, set on
+ * the app shell when the merchant chooses Dark, or System resolves to dark). It
+ * remaps the neutral surface/ink utilities the Vyora UI uses, so the whole app
+ * goes dark without a global Tailwind change and WITHOUT affecting any other page.
+ * Brand/semantic colours (blue, positive/negative, amber) carry through unchanged.
+ */
+.vyora-dark {
+  color-scheme: dark;
+  background-color: #0b1020;
+}
+.vyora-dark .bg-white {
+  background-color: #131a2a !important;
+}
+.vyora-dark .bg-gray-50,
+.vyora-dark .bg-gray-50\/95 {
+  background-color: #0f1626 !important;
+}
+.vyora-dark .bg-gray-100 {
+  background-color: #1e293b !important;
+}
+.vyora-dark .text-gray-900 {
+  color: #f1f5f9 !important;
+}
+.vyora-dark .text-gray-800 {
+  color: #e2e8f0 !important;
+}
+.vyora-dark .text-gray-700 {
+  color: #cbd5e1 !important;
+}
+.vyora-dark .text-gray-600 {
+  color: #a3aec2 !important;
+}
+.vyora-dark .text-gray-500 {
+  color: #8b95a7 !important;
+}
+.vyora-dark .border-gray-200 {
+  border-color: #26324a !important;
+}
+.vyora-dark .border-gray-100 {
+  border-color: #1c2740 !important;
+}
+.vyora-dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #1c2740 !important;
+}
+.vyora-dark .bg-brand-50 {
+  background-color: #14213f !important;
+}
+.vyora-dark .bg-amber-50 {
+  background-color: #2a2410 !important;
+}
