@@ -12,7 +12,25 @@ import { useVyora } from "./VyoraProvider";
 import { searchParties } from "@/lib/vyora/selectors";
 import { formatMoney, balanceColor } from "@/lib/vyora/format";
 import type { PartyRef } from "@/lib/vyora/types";
+import type { Priority } from "@/lib/vyora/aging";
 import { Card, Button } from "./primitives";
+
+const PRIORITY_META: Record<Priority, { label: string; cls: string }> = {
+  critical: { label: "Critical", cls: "bg-negative-tint text-negative-strong" },
+  high: { label: "High", cls: "bg-amber-50 text-amber-800" },
+  medium: { label: "Medium", cls: "bg-brand-50 text-brand-700" },
+  low: { label: "Low", cls: "bg-gray-100 text-gray-600" },
+};
+
+/** A recovery-priority pill (Critical / High / Medium / Low). */
+export function PriorityBadge({ priority }: { priority: Priority }) {
+  const m = PRIORITY_META[priority];
+  return (
+    <span className={cn("rounded-lg px-1.5 py-0.5 text-[10px] font-bold uppercase", m.cls)}>
+      {m.label}
+    </span>
+  );
+}
 
 /** The picker's controlled value: what's typed, and the resolved contact (or null until chosen). */
 export interface PartySelection {

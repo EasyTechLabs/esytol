@@ -74,6 +74,42 @@ export interface OverdueRow {
   openReceivable: number;
   /** Full signed net for context (+ = they owe the merchant). */
   net: number;
+  /** Recovery score 0–100 (set by the scoring hooks). */
+  score?: number;
+  priority?: Priority;
+}
+
+/** Recovery priority bucket (deterministic — no ML). */
+export type Priority = "critical" | "high" | "medium" | "low";
+
+export interface RecoveryScoreInput {
+  overdueAmount: number;
+  daysOverdue: number;
+  /** received ÷ given for this contact (0 = never paid back, 1 = paid in full). */
+  paymentRatio: number;
+  /** number of credit entries for this contact. */
+  txnCount: number;
+  /** portfolio max overdue amount, for normalising the outstanding factor. */
+  maxOverdue: number;
+}
+
+/**
+ * Deterministic recovery score (0–100) — NO ML, a pure weighted formula:
+ *  - 40%  outstanding (overdue amount, normalised to the biggest in the book)
+ *  - 30%  days overdue (capped at 60 days)
+ *  - 20%  payment history (POOR payers score higher — 1 − paymentRatio)
+ *  - 10%  frequency (more credit entries → more established exposure, capped at 10)
+ * Buckets: ≥70 critical · ≥50 high · ≥30 medium · else low.
+ */
+export function recoveryScore(i: RecoveryScoreInput): { score: number; priority: Priority } {
+  const amountF = i.maxOverdue > 0 ? Math.min(1, i.overdueAmount / i.maxOverdue) : 0;
+  const daysF = Math.min(1, Math.max(0, i.daysOverdue) / 60);
+  const historyF = 1 - Math.min(1, Math.max(0, i.paymentRatio));
+  const freqF = Math.min(1, i.txnCount / 10);
+  const score = Math.round(40 * amountF + 30 * daysF + 20 * historyF + 10 * freqF);
+  const priority: Priority =
+    score >= 70 ? "critical" : score >= 50 ? "high" : score >= 30 ? "medium" : "low";
+  return { score, priority };
 }
 
 /** Portfolio-wide receivable aging totals. */

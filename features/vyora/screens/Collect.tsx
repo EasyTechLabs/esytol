@@ -13,6 +13,7 @@ import { useVyora } from "../VyoraProvider";
 import { useToast } from "../Toast";
 import { formatMoney } from "@/lib/vyora/format";
 import { Card } from "../primitives";
+import { PriorityBadge } from "../components";
 import { useCollect } from "../useCollect";
 
 function reminderText(name: string, amount: number): string {
@@ -93,9 +94,12 @@ export function Collect() {
               <div key={r.partyId} className="flex items-center justify-between gap-3 px-4 py-3">
                 <Link href={`/vyora/parties/${r.partyId}`} className="min-w-0 flex-1">
                   <div className="truncate font-medium text-gray-800">{nameOf(r.partyId)}</div>
-                  <span className="mt-1 inline-flex items-center rounded-lg bg-negative-tint px-1.5 py-0.5 text-xs font-semibold text-negative-strong">
-                    Overdue {r.daysOverdue}d
-                  </span>
+                  <div className="mt-1 flex items-center gap-1.5">
+                    <span className="inline-flex items-center rounded-lg bg-negative-tint px-1.5 py-0.5 text-xs font-semibold text-negative-strong">
+                      Overdue {r.daysOverdue}d
+                    </span>
+                    {r.priority && <PriorityBadge priority={r.priority} />}
+                  </div>
                 </Link>
                 <div className="flex shrink-0 items-center gap-2">
                   <div className="text-right">

@@ -11,6 +11,7 @@
 import Link from "next/link";
 import type { VyoraData } from "@/lib/vyora/types";
 import { formatMoney } from "@/lib/vyora/format";
+import { PriorityBadge } from "./components";
 import type { RecoveryDashboard } from "./useRecoveryDashboard";
 
 export function RecoveryCard({
@@ -74,7 +75,10 @@ export function RecoveryCard({
         <div className="mb-3 flex items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="text-xs text-gray-500">Top contact</div>
-            <div className="truncate font-semibold text-gray-900">{topName}</div>
+            <div className="flex items-center gap-1.5">
+              <span className="truncate font-semibold text-gray-900">{topName}</span>
+              {top.priority && <PriorityBadge priority={top.priority} />}
+            </div>
           </div>
           <div className="shrink-0 text-right">
             <div className="font-semibold tabular-nums text-negative">

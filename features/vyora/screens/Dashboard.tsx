@@ -12,7 +12,7 @@ import Link from "next/link";
 import { useVyora } from "../VyoraProvider";
 import { recentActivity, todayISO, rupees } from "@/lib/vyora/selectors";
 import { formatMoney, formatDate, balanceColor } from "@/lib/vyora/format";
-import { StatCard, Empty } from "../components";
+import { StatCard, Empty, PriorityBadge } from "../components";
 import { RecoveryCard } from "../RecoveryCard";
 import { useRecoveryDashboard } from "../useRecoveryDashboard";
 
@@ -83,7 +83,7 @@ export function Dashboard() {
         <section>
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-600">
-              Overdue customers
+              Top recovery opportunities
             </h2>
             <Link href="/vyora/collect" className="text-sm font-medium text-brand-700">
               See all →
@@ -98,9 +98,12 @@ export function Dashboard() {
               >
                 <div className="min-w-0">
                   <div className="truncate font-medium text-gray-800">{nameOf(row.partyId)}</div>
-                  <span className="mt-0.5 inline-flex items-center rounded-lg bg-negative-tint px-1.5 py-0.5 text-xs font-semibold text-negative-strong">
-                    Overdue {row.daysOverdue}d
-                  </span>
+                  <div className="mt-0.5 flex items-center gap-1.5">
+                    <span className="inline-flex items-center rounded-lg bg-negative-tint px-1.5 py-0.5 text-xs font-semibold text-negative-strong">
+                      Overdue {row.daysOverdue}d
+                    </span>
+                    {row.priority && <PriorityBadge priority={row.priority} />}
+                  </div>
                 </div>
                 <div className="shrink-0 font-semibold tabular-nums text-negative">
                   {formatMoney(row.overdueAmount)}
