@@ -1,19 +1,30 @@
 "use client";
 
 /**
- * Vyora Alpha — Payment entry. Records money received or paid; balances update
- * automatically. Same fast, id-bound shape as credit entry, with a save toast + Undo.
+ * Vyora — Fast Payment Entry (P0-003). Record money received: amount autofocused
+ * (keyboard opens immediately), payment mode in one tap, optional reference.
+ * Save returns to the contact's Statement, where the balance — and the dashboard,
+ * recovery, and collect list — update instantly (no reload). When the balance
+ * hits zero, the account shows as Settled.
  */
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { cn } from "@/lib/cn";
 import { useVyora } from "../VyoraProvider";
-import type { PaymentKind } from "@/lib/vyora/types";
+import type { PaymentKind, PaymentMode } from "@/lib/vyora/types";
 import { todayISO } from "@/lib/vyora/selectors";
 import { AmountField, PartyPicker, Segmented, BigButton, type PartySelection } from "../components";
 import { TextInput } from "../primitives";
 
 const emptyParty: PartySelection = { text: "", ref: null };
+
+const MODES: { value: PaymentMode; label: string }[] = [
+  { value: "cash", label: "Cash" },
+  { value: "upi", label: "UPI" },
+  { value: "bank", label: "Bank" },
+  { value: "cheque", label: "Cheque" },
+];
 
 export function PaymentEntry() {
   const router = useRouter();
@@ -22,7 +33,8 @@ export function PaymentEntry() {
   const [amount, setAmount] = useState("");
   const [party, setParty] = useState<PartySelection>(emptyParty);
   const [kind, setKind] = useState<PaymentKind>("received"); // default: they paid me
-  const [note, setNote] = useState("");
+  const [mode, setMode] = useState<PaymentMode>("cash");
+  const [reference, setReference] = useState("");
   const [showMore, setShowMore] = useState(false);
   const [date, setDate] = useState(todayISO());
   const [prefilled, setPrefilled] = useState(false);
@@ -47,8 +59,16 @@ export function PaymentEntry() {
 
   const save = () => {
     if (!canSave || !party.ref) return;
-    recordPayment({ party: party.ref, amount: amountNum, kind, note: note || undefined, date });
-    router.push("/vyora");
+    const partyId = recordPayment({
+      party: party.ref,
+      amount: amountNum,
+      kind,
+      mode,
+      reference: reference || undefined,
+      date,
+    });
+    // Save → return to Statement; balance + dashboard/recovery/collect update live.
+    router.push(`/vyora/parties/${partyId}`);
   };
 
   return (
@@ -67,12 +87,35 @@ export function PaymentEntry() {
       <AmountField value={amount} onChange={setAmount} />
       <PartyPicker value={party} onChange={setParty} />
 
+      {/* Payment mode — one tap */}
+      <div>
+        <span className="mb-1 block text-sm font-medium text-gray-700">Payment mode</span>
+        <div className="grid grid-cols-4 gap-2">
+          {MODES.map((m) => (
+            <button
+              key={m.value}
+              type="button"
+              onClick={() => setMode(m.value)}
+              className={cn(
+                "rounded-xl py-2.5 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600",
+                mode === m.value
+                  ? "bg-brand-600 text-white"
+                  : "border border-gray-200 bg-white text-gray-600"
+              )}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Reference — optional */}
       <label className="block">
-        <span className="mb-1 block text-sm font-medium text-gray-700">Note (optional)</span>
+        <span className="mb-1 block text-sm font-medium text-gray-700">Reference</span>
         <TextInput
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          placeholder="e.g. UPI, cash"
+          value={reference}
+          onChange={(e) => setReference(e.target.value)}
+          placeholder="UPI ref / cheque no. (optional)"
         />
       </label>
 
@@ -82,7 +125,7 @@ export function PaymentEntry() {
           onClick={() => setShowMore(true)}
           className="text-sm font-medium text-brand-700"
         >
-          + Change date
+          ＋ Change date
         </button>
       ) : (
         <label className="block">

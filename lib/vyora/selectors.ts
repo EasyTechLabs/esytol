@@ -118,6 +118,8 @@ export function allActivity(data: VyoraData): ActivityItem[] {
       signedAmount: paymentEffect(p),
       label: paymentLabel(p),
       note: p.note,
+      reference: p.reference,
+      mode: p.mode,
       type: "payment",
     });
   }

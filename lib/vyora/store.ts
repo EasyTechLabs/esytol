@@ -21,6 +21,7 @@ import type {
   Payment,
   EntryKind,
   PaymentKind,
+  PaymentMode,
   Meta,
   PartyRef,
   ExportFile,
@@ -189,13 +190,23 @@ export function addTransaction(
 
 export function addPayment(
   data: VyoraData,
-  input: { partyId: string; amount: number; kind: PaymentKind; note?: string; date?: string }
+  input: {
+    partyId: string;
+    amount: number;
+    kind: PaymentKind;
+    mode?: PaymentMode;
+    reference?: string;
+    note?: string;
+    date?: string;
+  }
 ): { data: VyoraData; payment: Payment } {
   const payment: Payment = {
     id: newId("pay"),
     partyId: input.partyId,
     amount: Math.abs(input.amount),
     kind: input.kind,
+    mode: input.mode,
+    reference: input.reference?.trim() || undefined,
     note: input.note?.trim() || undefined,
     date: input.date || todayISO(),
     createdAt: nowISO(),

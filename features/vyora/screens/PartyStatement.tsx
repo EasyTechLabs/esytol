@@ -258,6 +258,7 @@ export function PartyStatement({ partyId }: { partyId: string }) {
                   </div>
                   <div className="mt-0.5 text-xs text-gray-500">
                     {formatDate(r.date)}
+                    {r.mode ? ` · ${r.mode.toUpperCase()}` : ""}
                     {r.reference ? ` · Ref ${r.reference}` : ""}
                     {r.note ? ` · ${r.note}` : ""}
                   </div>

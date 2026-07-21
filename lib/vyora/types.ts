@@ -18,6 +18,9 @@ export type PaymentKind =
   | "received" // THEY paid ME → they owe me less (receivable ↓)
   | "paid"; // I paid THEM → I owe them less (payable ↓)
 
+/** How a payment was made. */
+export type PaymentMode = "cash" | "upi" | "bank" | "cheque";
+
 export interface Party {
   id: string;
   name: string;
@@ -51,6 +54,10 @@ export interface Payment {
   partyId: string;
   amount: number;
   kind: PaymentKind;
+  /** How it was paid — cash / UPI / bank / cheque. */
+  mode?: PaymentMode;
+  /** Optional short reference — UPI txn id, cheque no., etc. */
+  reference?: string;
   note?: string;
   date: string;
   createdAt: string;
@@ -123,7 +130,9 @@ export interface ActivityItem {
   amount: number;
   label: string; // e.g. "Credit given", "Payment received"
   note?: string;
-  /** Short reference (credits only) — bill no. / invoice. */
+  /** Short reference — bill no. / invoice (credit) or UPI/cheque ref (payment). */
   reference?: string;
+  /** Payment mode (payments only). */
+  mode?: PaymentMode;
   type: "transaction" | "payment";
 }

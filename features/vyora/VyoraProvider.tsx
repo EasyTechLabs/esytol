@@ -11,7 +11,14 @@
  */
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import type { VyoraData, Party, EntryKind, PaymentKind, PartyRef } from "@/lib/vyora/types";
+import type {
+  VyoraData,
+  Party,
+  EntryKind,
+  PaymentKind,
+  PaymentMode,
+  PartyRef,
+} from "@/lib/vyora/types";
 import { partyNet } from "@/lib/vyora/selectors";
 import { formatMoney } from "@/lib/vyora/format";
 import { useToast } from "./Toast";
@@ -47,6 +54,8 @@ interface PaymentInput {
   party: PartyRef;
   amount: number;
   kind: PaymentKind;
+  mode?: PaymentMode;
+  reference?: string;
   note?: string;
   date?: string;
 }
@@ -56,7 +65,7 @@ interface VyoraContextValue {
   data: VyoraData;
   hasBackup: boolean;
   recordCredit: (input: CreditInput) => string;
-  recordPayment: (input: PaymentInput) => void;
+  recordPayment: (input: PaymentInput) => string;
   createParty: (input: { name: string; phone?: string; note?: string }) => Party;
   editParty: (id: string, patch: { name?: string; phone?: string; note?: string }) => void;
   deleteEntry: (id: string) => void;
@@ -134,22 +143,27 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
   );
 
   const recordPayment = useCallback(
-    (input: PaymentInput) => {
+    (input: PaymentInput): string => {
       const prev = data;
       const { data: withParty, partyId } = resolvePartyRef(data, input.party);
       const { data: next } = addPayMut(withParty, {
         partyId,
         amount: input.amount,
         kind: input.kind,
+        mode: input.mode,
+        reference: input.reference,
         note: input.note,
         date: input.date,
       });
       commit(next);
       const net = partyNet(next, partyId);
-      toast.success(`✓ Payment recorded · Balance ${net === 0 ? "settled" : formatMoney(net)}`, {
-        label: "Undo",
-        onAction: () => undoTo(prev),
-      });
+      toast.success(
+        net === 0
+          ? "✓ Payment recorded · Account settled"
+          : `✓ Payment recorded · Balance ${formatMoney(net)}`,
+        { label: "Undo", onAction: () => undoTo(prev) }
+      );
+      return partyId;
     },
     [data, commit, toast, undoTo]
   );
