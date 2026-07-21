@@ -27,6 +27,26 @@ const STATUS: Record<Status, { label: string; cls: string }> = {
   SETTLED: { label: "Settled", cls: "bg-gray-100 text-gray-600" },
 };
 
+type TLType = "created" | "credit" | "payment";
+interface TLEvent {
+  id: string;
+  entryId?: string;
+  date: string;
+  action: string;
+  type: TLType;
+  amount?: number;
+  signedAmount?: number;
+  balanceAfter: number;
+  reference?: string;
+  note?: string;
+  mode?: string;
+}
+function monthLabel(key: string): string {
+  const d = new Date(`${key}-01T00:00:00`);
+  if (Number.isNaN(d.getTime())) return key;
+  return d.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+}
+
 export function PartyStatement({ partyId }: { partyId: string }) {
   const { ready, data, editParty, deleteEntry } = useVyora();
   const toast = useToast();
@@ -83,6 +103,45 @@ export function PartyStatement({ partyId }: { partyId: string }) {
 
   // Timeline: newest first, each row carrying its balance-after-transaction.
   const rows = useMemo(() => [...partyStatement(data, partyId)].reverse(), [data, partyId]);
+
+  // Full timeline: credit/payment entries + the "Created contact" event, newest first.
+  const events = useMemo<TLEvent[]>(() => {
+    const evs: TLEvent[] = rows.map((r) => ({
+      id: r.id,
+      entryId: r.id,
+      date: r.date,
+      action: r.label,
+      type: r.type === "payment" ? "payment" : "credit",
+      amount: r.amount,
+      signedAmount: r.signedAmount,
+      balanceAfter: r.runningNet,
+      reference: r.reference,
+      note: r.note,
+      mode: r.mode,
+    }));
+    if (party) {
+      evs.push({
+        id: `created-${party.id}`,
+        date: party.createdAt.slice(0, 10),
+        action: "Created contact",
+        type: "created",
+        balanceAfter: 0,
+      });
+    }
+    return evs; // rows are newest-first; "created" is the oldest, so it lands last
+  }, [rows, party]);
+
+  // Group by month (newest month first), preserving newest-first order within each.
+  const groups = useMemo(() => {
+    const map = new Map<string, TLEvent[]>();
+    for (const e of events) {
+      const key = e.date.slice(0, 7);
+      const arr = map.get(key);
+      if (arr) arr.push(e);
+      else map.set(key, [e]);
+    }
+    return Array.from(map, ([key, items]) => ({ key, label: monthLabel(key), items }));
+  }, [events]);
 
   // Highlight a row when arriving from global search (…?highlight=<entryId>).
   const [highlightId, setHighlightId] = useState<string | null>(null);
@@ -249,71 +308,94 @@ export function PartyStatement({ partyId }: { partyId: string }) {
         </Card>
       </div>
 
-      {/* Timeline — newest first */}
-      {rows.length === 0 ? (
-        <Empty title="No entries for this contact yet" />
-      ) : (
-        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
-          <div className="border-b border-gray-100 bg-gray-50 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-            Timeline · newest first
-          </div>
-          <div className="divide-y divide-gray-100">
-            {rows.map((r) => (
-              <div
-                key={r.id}
-                ref={r.id === highlightId ? highlightRef : undefined}
-                className={cn(
-                  "flex items-center justify-between gap-3 px-4 py-3",
-                  r.id === highlightId && "bg-brand-50 ring-2 ring-inset ring-brand-400"
-                )}
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span
-                      className={`rounded px-1 py-0.5 text-[10px] font-bold uppercase ${
-                        r.type === "payment"
-                          ? "bg-positive-tint text-positive-strong"
-                          : "bg-brand-50 text-brand-700"
-                      }`}
-                    >
-                      {r.type === "payment" ? "Payment" : "Credit"}
-                    </span>
-                    <span className="truncate text-sm font-medium text-gray-800">{r.label}</span>
-                  </div>
-                  <div className="mt-0.5 text-xs text-gray-500">
-                    {formatDate(r.date)}
-                    {r.mode ? ` · ${r.mode.toUpperCase()}` : ""}
-                    {r.reference ? ` · Ref ${r.reference}` : ""}
-                    {r.note ? ` · ${r.note}` : ""}
-                  </div>
-                </div>
-                <div className="shrink-0 text-right">
+      {/* Timeline — grouped by month, newest first, with sticky month headers */}
+      <section className="space-y-2">
+        <h2 className="px-1 text-sm font-semibold uppercase tracking-wide text-gray-600">
+          Timeline
+        </h2>
+        {groups.map((g) => (
+          <div key={g.key}>
+            <div className="sticky top-[92px] z-[5] -mx-4 border-y border-gray-200 bg-gray-50/95 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-500 backdrop-blur">
+              {g.label}
+            </div>
+            <div className="mt-2 divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-200 bg-white">
+              {g.items.map((e) => {
+                const eid = e.entryId;
+                const hl = eid != null && eid === highlightId;
+                return (
                   <div
-                    className={`text-sm font-semibold tabular-nums ${balanceColor(r.signedAmount)}`}
+                    key={e.id}
+                    ref={hl ? highlightRef : undefined}
+                    className={cn(
+                      "flex items-center justify-between gap-3 px-4 py-3",
+                      hl && "bg-brand-50 ring-2 ring-inset ring-brand-400"
+                    )}
                   >
-                    {r.signedAmount > 0 ? "+" : "−"}
-                    {formatMoney(r.amount)}
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={cn(
+                            "rounded px-1 py-0.5 text-[10px] font-bold uppercase",
+                            e.type === "created"
+                              ? "bg-gray-100 text-gray-600"
+                              : e.type === "payment"
+                                ? "bg-positive-tint text-positive-strong"
+                                : "bg-brand-50 text-brand-700"
+                          )}
+                        >
+                          {e.type === "created"
+                            ? "New"
+                            : e.type === "payment"
+                              ? "Payment"
+                              : "Credit"}
+                        </span>
+                        <span className="truncate text-sm font-medium text-gray-800">
+                          {e.action}
+                        </span>
+                      </div>
+                      <div className="mt-0.5 text-xs text-gray-500">
+                        {formatDate(e.date)}
+                        {e.mode ? ` · ${e.mode.toUpperCase()}` : ""}
+                        {e.reference ? ` · Ref ${e.reference}` : ""}
+                        {e.note ? ` · ${e.note}` : ""}
+                      </div>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      {e.signedAmount != null && (
+                        <div
+                          className={cn(
+                            "text-sm font-semibold tabular-nums",
+                            balanceColor(e.signedAmount)
+                          )}
+                        >
+                          {e.signedAmount > 0 ? "+" : "−"}
+                          {formatMoney(e.amount ?? 0)}
+                        </div>
+                      )}
+                      <div className="text-xs tabular-nums text-gray-500">
+                        Bal {formatMoney(e.balanceAfter)}
+                      </div>
+                    </div>
+                    {eid && (
+                      <button
+                        type="button"
+                        aria-label="Delete entry"
+                        onClick={() => {
+                          if (confirm(`Delete this entry (${e.action})? You can undo right after.`))
+                            deleteEntry(eid);
+                        }}
+                        className="flex min-h-[44px] min-w-[36px] items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-500 print:hidden"
+                      >
+                        ✕
+                      </button>
+                    )}
                   </div>
-                  <div className="text-xs tabular-nums text-gray-500">
-                    Bal {formatMoney(r.runningNet)}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  aria-label="Delete entry"
-                  onClick={() => {
-                    if (confirm(`Delete this entry (${r.label})? You can undo right after.`))
-                      deleteEntry(r.id);
-                  }}
-                  className="flex min-h-[44px] min-w-[36px] items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-500 print:hidden"
-                >
-                  ✕
-                </button>
-              </div>
-            ))}
+                );
+              })}
+            </div>
           </div>
-        </div>
-      )}
+        ))}
+      </section>
 
       <p className="px-1 text-xs text-gray-500">
         Positive = they owe you · Negative = you owe them · Balance is the running outstanding after
