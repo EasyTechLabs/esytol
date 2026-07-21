@@ -1,29 +1,53 @@
 "use client";
 
 /**
- * Vyora — Contacts Workspace (P0-005). The page answers, at a glance: who owes
- * me, who I owe, who's overdue, who needs action. Colour-coded status, quick
- * actions (Call / Statement / Record payment / More), top filters, instant
- * search, sort, and a New-Contact FAB. Local only — no backend.
+ * Vyora — Contacts Workspace (P0-005) + Smart Filters (P1-002). Answers who owes
+ * me / who I owe / who's overdue / who needs action, and filters the list
+ * instantly: 8 combinable toggles, an amount range, and a date range — persisted
+ * per screen, local only. Colour-coded status, quick actions, search, sort, FAB.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { cn } from "@/lib/cn";
 import { useVyora } from "../VyoraProvider";
+import { todayISO } from "@/lib/vyora/selectors";
 import { formatMoney, balanceLabel, balanceColor } from "@/lib/vyora/format";
 import { Card, Button, TextInput } from "../primitives";
 import { Empty } from "../components";
 import { useContactsWorkspace, type ContactRow, type ContactStatus } from "../useContactsWorkspace";
 
-type Filter = "all" | "receivable" | "payable" | "overdue" | "settled";
 type Sort = "outstanding" | "due" | "alpha" | "updated";
+type DateRange = "all" | "today" | "7d" | "30d" | "custom";
 
-const FILTERS: { key: Filter; label: string }[] = [
-  { key: "all", label: "All" },
+interface Filters {
+  toggles: string[];
+  amountMin: string;
+  amountMax: string;
+  dateRange: DateRange;
+  from: string;
+  to: string;
+}
+
+const FILTERS_KEY = "vyora.filters.contacts";
+const DEFAULT_FILTERS: Filters = {
+  toggles: [],
+  amountMin: "",
+  amountMax: "",
+  dateRange: "all",
+  from: "",
+  to: "",
+};
+
+const TOGGLES: { key: string; label: string }[] = [
+  { key: "overdue", label: "Overdue" },
+  { key: "dueToday", label: "Due today" },
+  { key: "dueWeek", label: "Due this week" },
   { key: "receivable", label: "Receivable" },
   { key: "payable", label: "Payable" },
-  { key: "overdue", label: "Overdue" },
   { key: "settled", label: "Settled" },
+  { key: "highValue", label: "High value" },
+  { key: "inactive", label: "Inactive" },
 ];
 
 const SORTS: { key: Sort; label: string }[] = [
@@ -33,6 +57,14 @@ const SORTS: { key: Sort; label: string }[] = [
   { key: "updated", label: "Recently updated" },
 ];
 
+const DATE_RANGES: { key: DateRange; label: string }[] = [
+  { key: "all", label: "Any time" },
+  { key: "today", label: "Today" },
+  { key: "7d", label: "7 days" },
+  { key: "30d", label: "30 days" },
+  { key: "custom", label: "Custom" },
+];
+
 const STATUS_META: Record<ContactStatus, { label: string; cls: string }> = {
   OVERDUE: { label: "Overdue", cls: "bg-negative-tint text-negative-strong" },
   DUE_SOON: { label: "Due soon", cls: "bg-amber-50 text-amber-800" },
@@ -40,47 +72,133 @@ const STATUS_META: Record<ContactStatus, { label: string; cls: string }> = {
   SETTLED: { label: "Settled", cls: "bg-gray-100 text-gray-600" },
 };
 
+const INACTIVE_DAYS = 30;
+
 export function Parties() {
   const { ready, data, createParty } = useVyora();
   const rows = useContactsWorkspace(data);
 
   const [q, setQ] = useState("");
-  const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<Sort>("outstanding");
   const [menuId, setMenuId] = useState<string | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
 
+  // Filters — persisted per screen (local only).
+  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(FILTERS_KEY);
+      if (raw) setFilters({ ...DEFAULT_FILTERS, ...JSON.parse(raw) });
+    } catch {
+      /* ignore */
+    }
+    setLoaded(true);
+  }, []);
+  useEffect(() => {
+    if (!loaded) return;
+    try {
+      localStorage.setItem(FILTERS_KEY, JSON.stringify(filters));
+    } catch {
+      /* ignore */
+    }
+  }, [filters, loaded]);
+
+  const toggle = (key: string) =>
+    setFilters((f) => ({
+      ...f,
+      toggles: f.toggles.includes(key) ? f.toggles.filter((k) => k !== key) : [...f.toggles, key],
+    }));
+  const activeCount =
+    filters.toggles.length +
+    (filters.amountMin || filters.amountMax ? 1 : 0) +
+    (filters.dateRange !== "all" ? 1 : 0);
+
   const view = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    const matches = (r: ContactRow) =>
-      !needle ||
-      [r.party.name, r.party.phone ?? "", r.party.note ?? ""]
-        .join(" ")
-        .toLowerCase()
-        .includes(needle);
-    const keep = (r: ContactRow) => {
-      if (filter === "receivable") return r.direction === "receivable";
-      if (filter === "payable") return r.direction === "payable";
-      if (filter === "overdue") return r.status === "OVERDUE";
-      if (filter === "settled") return r.status === "SETTLED";
+    // "High value" = top quartile of outstanding among contacts who are owed something.
+    const outs = rows
+      .map((r) => r.outstanding)
+      .filter((o) => o > 0)
+      .sort((a, b) => a - b);
+    let hvThreshold = Infinity;
+    if (outs.length) {
+      const idx = Math.min(Math.floor(outs.length * 0.75), outs.length - 1);
+      hvThreshold = outs[idx] ?? Infinity;
+    }
+
+    const now = Date.now();
+    const daysSince = (iso: string) => (now - new Date(iso).getTime()) / 86_400_000;
+    const t = todayISO();
+    const min = filters.amountMin.trim() ? Number(filters.amountMin) : null;
+    const max = filters.amountMax.trim() ? Number(filters.amountMax) : null;
+
+    const inDateRange = (r: ContactRow) => {
+      const d = r.lastUpdated.slice(0, 10);
+      if (filters.dateRange === "today") return d === t;
+      if (filters.dateRange === "7d") return daysSince(r.lastUpdated) <= 7;
+      if (filters.dateRange === "30d") return daysSince(r.lastUpdated) <= 30;
+      if (filters.dateRange === "custom") {
+        if (filters.from && d < filters.from) return false;
+        if (filters.to && d > filters.to) return false;
+        return true;
+      }
       return true;
     };
-    const list = rows.filter((r) => keep(r) && matches(r));
+    const passToggle = (r: ContactRow, key: string) => {
+      switch (key) {
+        case "overdue":
+          return r.status === "OVERDUE";
+        case "dueToday":
+          return r.nearestDueDays === 0;
+        case "dueWeek":
+          return r.nearestDueDays !== null && r.nearestDueDays >= 0 && r.nearestDueDays <= 7;
+        case "receivable":
+          return r.direction === "receivable";
+        case "payable":
+          return r.direction === "payable";
+        case "settled":
+          return r.status === "SETTLED";
+        case "highValue":
+          return r.outstanding > 0 && r.outstanding >= hvThreshold;
+        case "inactive":
+          return daysSince(r.lastUpdated) > INACTIVE_DAYS;
+        default:
+          return true;
+      }
+    };
+
+    const needle = q.trim().toLowerCase();
+    const list = rows.filter((r) => {
+      if (
+        needle &&
+        ![r.party.name, r.party.phone ?? "", r.party.note ?? ""]
+          .join(" ")
+          .toLowerCase()
+          .includes(needle)
+      )
+        return false;
+      if (min !== null && r.outstanding < min) return false;
+      if (max !== null && r.outstanding > max) return false;
+      if (!inDateRange(r)) return false;
+      for (const key of filters.toggles) if (!passToggle(r, key)) return false;
+      return true;
+    });
+
     const byName = (a: ContactRow, b: ContactRow) => a.party.name.localeCompare(b.party.name);
     list.sort((a, b) => {
       if (sort === "outstanding") return b.outstanding - a.outstanding || byName(a, b);
       if (sort === "alpha") return byName(a, b);
       if (sort === "updated")
         return a.lastUpdated < b.lastUpdated ? 1 : a.lastUpdated > b.lastUpdated ? -1 : 0;
-      // "due": most overdue / oldest-open first; contacts with nothing open last.
       const ao = a.oldestOpenDays ?? -Infinity;
       const bo = b.oldestOpenDays ?? -Infinity;
       return bo - ao || byName(a, b);
     });
     return list;
-  }, [rows, q, filter, sort]);
+  }, [rows, q, filters, sort]);
 
   if (!ready) return <div className="py-20 text-center text-gray-500">Loading…</div>;
 
@@ -94,31 +212,123 @@ export function Parties() {
 
   return (
     <div className="space-y-3">
-      {/* Instant search */}
+      {/* Search */}
       <TextInput
         value={q}
         onChange={(e) => setQ(e.target.value)}
         placeholder="🔍 Search name, phone, business…"
-        aria-label="Search contacts by name, phone, or business name"
+        aria-label="Search contacts"
       />
 
-      {/* Top filters */}
+      {/* Filter toggles */}
       <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-        {FILTERS.map((f) => (
-          <button
-            key={f.key}
-            type="button"
-            onClick={() => setFilter(f.key)}
-            className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-600 ${
-              filter === f.key
-                ? "bg-brand-600 text-white"
-                : "border border-gray-200 bg-white text-gray-600"
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
+        {TOGGLES.map((f) => {
+          const on = filters.toggles.includes(f.key);
+          return (
+            <button
+              key={f.key}
+              type="button"
+              onClick={() => toggle(f.key)}
+              aria-pressed={on}
+              className={cn(
+                "shrink-0 rounded-full px-3.5 py-1.5 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-600",
+                on ? "bg-brand-600 text-white" : "border border-gray-200 bg-white text-gray-600"
+              )}
+            >
+              {f.label}
+            </button>
+          );
+        })}
       </div>
+
+      {/* Amount + date ranges (expandable) + clear */}
+      <div className="flex items-center justify-between px-1">
+        <button
+          type="button"
+          onClick={() => setShowFilters((s) => !s)}
+          className="text-sm font-medium text-brand-700"
+        >
+          {showFilters ? "Hide" : "Amount & date"}{" "}
+          {activeCount > 0 ? `· ${activeCount} active` : ""}
+        </button>
+        {activeCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setFilters(DEFAULT_FILTERS)}
+            className="text-sm font-medium text-gray-500"
+          >
+            Clear all
+          </button>
+        )}
+      </div>
+
+      {showFilters && (
+        <Card className="space-y-3 p-3">
+          <div>
+            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+              Amount range (outstanding)
+            </span>
+            <div className="grid grid-cols-2 gap-2">
+              <TextInput
+                inputMode="numeric"
+                value={filters.amountMin}
+                onChange={(e) =>
+                  setFilters((f) => ({ ...f, amountMin: e.target.value.replace(/[^0-9]/g, "") }))
+                }
+                placeholder="Min ₹"
+                className="px-3 py-2.5 text-base"
+              />
+              <TextInput
+                inputMode="numeric"
+                value={filters.amountMax}
+                onChange={(e) =>
+                  setFilters((f) => ({ ...f, amountMax: e.target.value.replace(/[^0-9]/g, "") }))
+                }
+                placeholder="Max ₹"
+                className="px-3 py-2.5 text-base"
+              />
+            </div>
+          </div>
+          <div>
+            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+              Last active
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {DATE_RANGES.map((d) => (
+                <button
+                  key={d.key}
+                  type="button"
+                  onClick={() => setFilters((f) => ({ ...f, dateRange: d.key }))}
+                  className={cn(
+                    "rounded-lg px-3 py-1.5 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-600",
+                    filters.dateRange === d.key
+                      ? "bg-brand-600 text-white"
+                      : "border border-gray-200 bg-white text-gray-600"
+                  )}
+                >
+                  {d.label}
+                </button>
+              ))}
+            </div>
+            {filters.dateRange === "custom" && (
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <TextInput
+                  type="date"
+                  value={filters.from}
+                  onChange={(e) => setFilters((f) => ({ ...f, from: e.target.value }))}
+                  className="px-3 py-2.5"
+                />
+                <TextInput
+                  type="date"
+                  value={filters.to}
+                  onChange={(e) => setFilters((f) => ({ ...f, to: e.target.value }))}
+                  className="px-3 py-2.5"
+                />
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
 
       {/* Sort + count */}
       <div className="flex items-center justify-between px-1">
@@ -141,13 +351,13 @@ export function Parties() {
         </label>
       </div>
 
-      {/* Contact cards */}
+      {/* Cards */}
       {view.length === 0 ? (
         <Empty
-          title={q ? `No contact matching “${q}”` : "No contacts here"}
+          title={activeCount > 0 || q ? "No contacts match these filters" : "No contacts here"}
           subtitle={
-            q
-              ? "Try another search, or tap ＋ to add."
+            activeCount > 0 || q
+              ? "Adjust the filters or search, or tap ＋ to add."
               : "Tap ＋ to add a contact, or record a credit."
           }
         />
@@ -164,7 +374,7 @@ export function Parties() {
         </div>
       )}
 
-      {/* Floating action button — New contact */}
+      {/* New-contact FAB */}
       <button
         type="button"
         onClick={() => {
@@ -178,7 +388,6 @@ export function Parties() {
         ＋
       </button>
 
-      {/* New-contact modal */}
       {adding && (
         <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/40 p-4 sm:items-center print:hidden">
           <Card className="w-full max-w-sm space-y-3">
@@ -225,7 +434,6 @@ function ContactCard({
 
   return (
     <Card className="relative space-y-3">
-      {/* Header: name + status, and the outstanding */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -246,7 +454,6 @@ function ContactCard({
         </div>
       </div>
 
-      {/* Quick actions */}
       <div className="grid grid-cols-4 gap-2 border-t border-gray-100 pt-3">
         <QuickAction
           label="Call"
@@ -259,7 +466,6 @@ function ContactCard({
         <QuickAction label="More" icon="⋯" onClick={onMenu} />
       </div>
 
-      {/* More menu */}
       {menuOpen && (
         <div className="absolute bottom-2 right-2 z-10 w-44 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg">
           <Link
