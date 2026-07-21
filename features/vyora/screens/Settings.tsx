@@ -9,6 +9,7 @@
 import { useRef } from "react";
 import { useVyora } from "../VyoraProvider";
 import { formatDate } from "@/lib/vyora/format";
+import { Card, Button } from "../primitives";
 
 export function Settings() {
   const {
@@ -67,7 +68,7 @@ export function Settings() {
       <h1 className="text-lg font-semibold text-gray-900">Data &amp; backup</h1>
 
       {/* Backup on device */}
-      <section className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4">
+      <Card as="section" className="space-y-3">
         <div>
           <h2 className="font-semibold text-gray-900">On-device backup</h2>
           <p className="text-sm text-gray-600">
@@ -78,26 +79,17 @@ export function Settings() {
           </p>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={backup}
-            className="rounded-xl bg-brand-600 py-3 font-semibold text-white hover:bg-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700"
-          >
+          <Button variant="primary" block onClick={backup}>
             Back up now
-          </button>
-          <button
-            type="button"
-            onClick={onRestore}
-            disabled={!hasBackup}
-            className="rounded-xl border-2 border-gray-200 py-3 font-semibold text-gray-700 disabled:opacity-50"
-          >
+          </Button>
+          <Button variant="secondary" block disabled={!hasBackup} onClick={onRestore}>
             Restore backup
-          </button>
+          </Button>
         </div>
-      </section>
+      </Card>
 
       {/* Export / Import file */}
-      <section className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4">
+      <Card as="section" className="space-y-3">
         <div>
           <h2 className="font-semibold text-gray-900">Export &amp; import a file</h2>
           <p className="text-sm text-gray-600">
@@ -106,20 +98,12 @@ export function Settings() {
           </p>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={exportData}
-            className="rounded-xl bg-emerald-600 py-3 font-semibold text-white hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
-          >
+          <Button variant="positive" block onClick={exportData}>
             Export data
-          </button>
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            className="rounded-xl border-2 border-gray-200 py-3 font-semibold text-gray-700"
-          >
+          </Button>
+          <Button variant="secondary" block onClick={() => fileRef.current?.click()}>
             Import file
-          </button>
+          </Button>
           <input
             ref={fileRef}
             type="file"
@@ -128,22 +112,18 @@ export function Settings() {
             className="hidden"
           />
         </div>
-      </section>
+      </Card>
 
       {/* Danger */}
-      <section className="space-y-2 rounded-2xl border border-red-200 bg-red-50 p-4">
+      <Card as="section" tone="danger" className="space-y-2">
         <h2 className="font-semibold text-red-800">Clear everything</h2>
         <p className="text-sm text-red-700">
           Permanently erase all data on this device. Export a backup first if you want to keep it.
         </p>
-        <button
-          type="button"
-          onClick={onReset}
-          className="rounded-xl border-2 border-red-300 bg-white px-4 py-2.5 font-semibold text-red-700 hover:bg-red-100"
-        >
+        <Button variant="danger" onClick={onReset} className="px-4 py-2.5">
           Clear all data
-        </button>
-      </section>
+        </Button>
+      </Card>
 
       <p className="px-1 text-xs text-gray-500">
         Everything is stored only in this browser. Nothing is sent to any server. On iPhone, add

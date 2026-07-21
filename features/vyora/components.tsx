@@ -12,6 +12,7 @@ import { useVyora } from "./VyoraProvider";
 import { searchParties } from "@/lib/vyora/selectors";
 import { formatMoney, balanceColor } from "@/lib/vyora/format";
 import type { PartyRef } from "@/lib/vyora/types";
+import { Card, Button } from "./primitives";
 
 /** The picker's controlled value: what's typed, and the resolved contact (or null until chosen). */
 export interface PartySelection {
@@ -32,15 +33,15 @@ export function StatCard({
   hint?: string;
 }) {
   const color =
-    tone === "in" ? "text-emerald-600" : tone === "out" ? "text-red-600" : "text-gray-900";
+    tone === "in" ? "text-positive" : tone === "out" ? "text-negative" : "text-gray-900";
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-4">
+    <Card>
       <div className="text-xs font-medium uppercase tracking-wide text-gray-500">{label}</div>
       <div className={cn("mt-1 break-words text-2xl font-bold tabular-nums leading-tight", color)}>
         {value}
       </div>
       {hint && <div className="mt-0.5 text-xs text-gray-400">{hint}</div>}
-    </div>
+    </Card>
   );
 }
 
@@ -60,8 +61,8 @@ export function Segmented<T extends string>({
         const active = o.value === value;
         const activeCls =
           o.tone === "in"
-            ? "border-emerald-500 bg-emerald-50 text-emerald-700"
-            : "border-red-500 bg-red-50 text-red-700";
+            ? "border-positive-line bg-positive-tint text-positive-strong"
+            : "border-negative-line bg-negative-tint text-negative-strong";
         return (
           <button
             key={o.value}
@@ -205,7 +206,7 @@ export function PartyPicker({
   );
 }
 
-/** Primary full-width action button. */
+/** Primary full-width action button — thin wrapper over the shared `Button` (lg, block). */
 export function BigButton({
   children,
   onClick,
@@ -219,33 +220,20 @@ export function BigButton({
   type?: "button" | "submit";
   tone?: "brand" | "emerald" | "red";
 }) {
-  const cls =
-    tone === "emerald"
-      ? "bg-emerald-600 hover:bg-emerald-700"
-      : tone === "red"
-        ? "bg-red-600 hover:bg-red-700"
-        : "bg-brand-600 hover:bg-brand-700";
+  const variant = tone === "emerald" ? "positive" : tone === "red" ? "negative" : "primary";
   return (
-    <button
-      type={type}
-      onClick={onClick}
-      disabled={disabled}
-      className={cn(
-        "w-full rounded-2xl px-4 py-4 text-lg font-semibold text-white transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700 disabled:opacity-50",
-        cls
-      )}
-    >
+    <Button type={type} onClick={onClick} disabled={disabled} variant={variant} size="lg" block>
       {children}
-    </button>
+    </Button>
   );
 }
 
 /** A small empty-state block. */
 export function Empty({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
-    <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center">
+    <Card tone="dashed" className="p-8 text-center">
       <p className="font-medium text-gray-700">{title}</p>
       {subtitle && <p className="mt-1 text-sm text-gray-500">{subtitle}</p>}
-    </div>
+    </Card>
   );
 }

@@ -23,10 +23,10 @@ export function balanceLabel(net: number): "They owe you" | "You owe them" | "Se
   return "Settled";
 }
 
-/** Tailwind text colour for a signed net (green = coming in, red = going out). */
+/** Semantic token colour for a signed net (positive = coming in, negative = going out). */
 export function balanceColor(net: number): string {
-  if (net > 0) return "text-emerald-600";
-  if (net < 0) return "text-red-600";
+  if (net > 0) return "text-positive";
+  if (net < 0) return "text-negative";
   return "text-gray-500";
 }
 

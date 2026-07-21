@@ -13,6 +13,7 @@ import { useVyora } from "../VyoraProvider";
 import type { EntryKind } from "@/lib/vyora/types";
 import { todayISO } from "@/lib/vyora/selectors";
 import { AmountField, PartyPicker, Segmented, BigButton, type PartySelection } from "../components";
+import { TextInput, Button } from "../primitives";
 
 const emptyParty: PartySelection = { text: "", ref: null };
 
@@ -69,11 +70,10 @@ export function CreditEntry() {
 
       <label className="block">
         <span className="mb-1 block text-sm font-medium text-gray-700">Note (optional)</span>
-        <input
+        <TextInput
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="e.g. cement, 2 bags"
-          className="w-full rounded-2xl border-2 border-gray-200 bg-white px-4 py-3 outline-none focus:border-brand-500"
         />
       </label>
 
@@ -89,20 +89,20 @@ export function CreditEntry() {
         <div className="grid grid-cols-2 gap-3">
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-gray-700">Date</span>
-            <input
+            <TextInput
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full rounded-2xl border-2 border-gray-200 bg-white px-3 py-3 outline-none focus:border-brand-500"
+              className="px-3"
             />
           </label>
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-gray-700">Due (optional)</span>
-            <input
+            <TextInput
               type="date"
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
-              className="w-full rounded-2xl border-2 border-gray-200 bg-white px-3 py-3 outline-none focus:border-brand-500"
+              className="px-3"
             />
           </label>
         </div>
@@ -112,14 +112,16 @@ export function CreditEntry() {
         <BigButton type="button" onClick={() => save(false)} disabled={!canSave}>
           Save
         </BigButton>
-        <button
+        <Button
           type="button"
           onClick={() => save(true)}
           disabled={!canSave}
-          className="w-full rounded-2xl border-2 border-gray-200 py-3 text-base font-semibold text-gray-700 disabled:opacity-50"
+          variant="secondary"
+          block
+          className="rounded-2xl"
         >
           Save &amp; add another
-        </button>
+        </Button>
       </div>
     </div>
   );

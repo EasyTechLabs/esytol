@@ -11,6 +11,7 @@ import { useVyora } from "../VyoraProvider";
 import type { PaymentKind } from "@/lib/vyora/types";
 import { todayISO } from "@/lib/vyora/selectors";
 import { AmountField, PartyPicker, Segmented, BigButton, type PartySelection } from "../components";
+import { TextInput } from "../primitives";
 
 const emptyParty: PartySelection = { text: "", ref: null };
 
@@ -52,11 +53,10 @@ export function PaymentEntry() {
 
       <label className="block">
         <span className="mb-1 block text-sm font-medium text-gray-700">Note (optional)</span>
-        <input
+        <TextInput
           value={note}
           onChange={(e) => setNote(e.target.value)}
           placeholder="e.g. UPI, cash"
-          className="w-full rounded-2xl border-2 border-gray-200 bg-white px-4 py-3 outline-none focus:border-brand-500"
         />
       </label>
 
@@ -71,11 +71,11 @@ export function PaymentEntry() {
       ) : (
         <label className="block">
           <span className="mb-1 block text-sm font-medium text-gray-700">Date</span>
-          <input
+          <TextInput
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="w-full rounded-2xl border-2 border-gray-200 bg-white px-3 py-3 outline-none focus:border-brand-500"
+            className="px-3"
           />
         </label>
       )}

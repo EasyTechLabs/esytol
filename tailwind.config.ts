@@ -25,6 +25,21 @@ const config: Config = {
           700: "#1d4ed8",
           900: "#1e3a8a",
         },
+        // Vyora semantic design tokens (money direction, from the merchant's view).
+        // Values equal the existing palette exactly — a naming layer, not a restyle.
+        // positive = money coming IN (receivable / received); negative = money OUT (payable / overdue).
+        positive: {
+          DEFAULT: "#059669", // emerald-600
+          strong: "#047857", // emerald-700 (hover / text on tint)
+          tint: "#ecfdf5", // emerald-50 (selected background)
+          line: "#10b981", // emerald-500 (selected border)
+        },
+        negative: {
+          DEFAULT: "#dc2626", // red-600
+          strong: "#b91c1c", // red-700
+          tint: "#fef2f2", // red-50
+          line: "#ef4444", // red-500
+        },
       },
       animation: {
         "spin-slow": "spin 3s linear infinite",
