@@ -230,3 +230,53 @@ export function portfolioAging(data: VyoraData, today: string): PortfolioAging {
     overdueContactCount,
   };
 }
+
+/** The compact recovery summary for the dashboard card. */
+export interface RecoverySummary {
+  /** Total open receivable across the portfolio (rupees). */
+  outstanding: number;
+  /** Total overdue amount (rupees). */
+  overdueTotal: number;
+  /** How many contacts are overdue. */
+  overdueContactCount: number;
+  /** The single highest-leverage overdue contact to chase first, or null if none. */
+  highestPriority: OverdueRow | null;
+}
+
+/**
+ * One-pass recovery summary — outstanding, overdue total, overdue count, and the
+ * highest-priority contact — computed from a SINGLE `agingForParty` sweep per
+ * contact (no calling `portfolioAging` + `overdueList` separately, which would
+ * double the FIFO work). Ranking matches `overdueList` (overdueAmount × daysOverdue).
+ */
+export function recoverySummary(data: VyoraData, today: string): RecoverySummary {
+  let outstanding = 0;
+  let overdueTotal = 0;
+  const overdue: OverdueRow[] = [];
+  for (const party of data.parties) {
+    const aging = agingForParty(data, party.id, today);
+    outstanding += aging.openReceivable;
+    if (aging.overdueAmount > 0 && aging.daysOverdue !== null) {
+      overdueTotal += aging.overdueAmount;
+      overdue.push({
+        partyId: party.id,
+        overdueAmount: aging.overdueAmount,
+        daysOverdue: aging.daysOverdue,
+        openReceivable: aging.openReceivable,
+        net: partyNet(data, party.id),
+      });
+    }
+  }
+  overdue.sort((a, b) => {
+    const la = a.overdueAmount * a.daysOverdue;
+    const lb = b.overdueAmount * b.daysOverdue;
+    if (lb !== la) return lb - la;
+    return b.daysOverdue - a.daysOverdue;
+  });
+  return {
+    outstanding: rupees(outstanding),
+    overdueTotal: rupees(overdueTotal),
+    overdueContactCount: overdue.length,
+    highestPriority: overdue[0] ?? null,
+  };
+}

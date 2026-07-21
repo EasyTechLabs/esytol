@@ -13,6 +13,7 @@ import {
   agingForParty,
   overdueList,
   portfolioAging,
+  recoverySummary,
 } from "@/lib/vyora/aging";
 
 const TODAY = "2026-07-21";
@@ -246,6 +247,34 @@ describe("portfolioAging", () => {
     expect(pf.buckets["60+"]).toBe(5000);
     expect(pf.buckets["30-60"]).toBe(3000);
     expect(pf.buckets["0-30"]).toBe(1000);
+  });
+});
+
+// ─── recoverySummary (dashboard card) ────────────────────────────────────────
+describe("recoverySummary", () => {
+  it("summarises outstanding, overdue, count, and the highest-priority contact", () => {
+    const d = data(
+      [P("A"), P("B"), P("C")],
+      [
+        tx("a", "A", 5000, "given", "2026-04-20", "2026-05-01"), // overdue, biggest × oldest
+        tx("b", "B", 3000, "given", "2026-06-01", "2026-06-11"), // overdue
+        tx("c", "C", 1000, "given", "2026-07-18"), // undated → open, NOT overdue
+      ]
+    );
+    const s = recoverySummary(d, TODAY);
+    expect(s.outstanding).toBe(9000); // all open receivable
+    expect(s.overdueTotal).toBe(8000); // only the two overdue
+    expect(s.overdueContactCount).toBe(2);
+    expect(s.highestPriority?.partyId).toBe("A"); // 5000 × 81 leads
+  });
+
+  it("reports no overdue (highestPriority null) when nothing is late", () => {
+    const d = data([P("p")], [tx("t", "p", 1000, "given", "2026-07-15", "2026-08-01")]);
+    const s = recoverySummary(d, TODAY);
+    expect(s.overdueContactCount).toBe(0);
+    expect(s.overdueTotal).toBe(0);
+    expect(s.highestPriority).toBeNull();
+    expect(s.outstanding).toBe(1000); // still outstanding, just not overdue
   });
 });
 

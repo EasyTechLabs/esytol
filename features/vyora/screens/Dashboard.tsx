@@ -7,12 +7,13 @@
  * occasional backup reminder.
  */
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useVyora } from "../VyoraProvider";
 import { dashboardTotals, recentActivity } from "@/lib/vyora/selectors";
 import { formatMoney, formatDate, balanceColor } from "@/lib/vyora/format";
 import { StatCard, Empty } from "../components";
+import { RecoveryCard } from "../RecoveryCard";
 
 function daysSince(iso: string | null): number | null {
   if (!iso) return null;
@@ -24,10 +25,10 @@ function daysSince(iso: string | null): number | null {
 export function Dashboard() {
   const { ready, data, backup } = useVyora();
   const [remindDismissed, setRemindDismissed] = useState(false);
+  const t = useMemo(() => dashboardTotals(data), [data]);
+  const activity = useMemo(() => recentActivity(data, 15), [data]);
   if (!ready) return <div className="py-20 text-center text-gray-500">Loading…</div>;
 
-  const t = dashboardTotals(data);
-  const activity = recentActivity(data, 15);
   const totalEntries = data.transactions.length + data.payments.length;
 
   // Gentle, occasional reminder: enough entries to matter, and no recent backup.
@@ -77,6 +78,9 @@ export function Dashboard() {
               : "You are all square"}
         </div>
       </div>
+
+      {/* Recovery card — who's overdue and who to chase first (PR-2.2) */}
+      <RecoveryCard data={data} todaysRecovery={t.todaysCollections} />
 
       {/* Receivable / Payable */}
       <div className="grid grid-cols-2 gap-3">
