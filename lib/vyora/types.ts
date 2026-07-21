@@ -34,7 +34,10 @@ export interface Transaction {
   /** Rupees, positive. */
   amount: number;
   kind: EntryKind;
+  /** Free-text notes (e.g. "cement, 3 bags"). */
   description?: string;
+  /** Optional short reference — bill no., invoice, order id. */
+  reference?: string;
   /** Business date, YYYY-MM-DD. */
   date: string;
   /** Optional due date, YYYY-MM-DD. */
@@ -120,5 +123,7 @@ export interface ActivityItem {
   amount: number;
   label: string; // e.g. "Credit given", "Payment received"
   note?: string;
+  /** Short reference (credits only) — bill no. / invoice. */
+  reference?: string;
   type: "transaction" | "payment";
 }

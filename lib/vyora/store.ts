@@ -168,6 +168,7 @@ export function addTransaction(
     amount: number;
     kind: EntryKind;
     description?: string;
+    reference?: string;
     date?: string;
     dueDate?: string;
   }
@@ -178,6 +179,7 @@ export function addTransaction(
     amount: Math.abs(input.amount),
     kind: input.kind,
     description: input.description?.trim() || undefined,
+    reference: input.reference?.trim() || undefined,
     date: input.date || todayISO(),
     dueDate: input.dueDate || undefined,
     createdAt: nowISO(),

@@ -39,6 +39,7 @@ interface CreditInput {
   amount: number;
   kind: EntryKind;
   description?: string;
+  reference?: string;
   date?: string;
   dueDate?: string;
 }
@@ -54,7 +55,7 @@ interface VyoraContextValue {
   ready: boolean;
   data: VyoraData;
   hasBackup: boolean;
-  recordCredit: (input: CreditInput) => void;
+  recordCredit: (input: CreditInput) => string;
   recordPayment: (input: PaymentInput) => void;
   createParty: (input: { name: string; phone?: string; note?: string }) => Party;
   editParty: (id: string, patch: { name?: string; phone?: string; note?: string }) => void;
@@ -109,7 +110,7 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
   );
 
   const recordCredit = useCallback(
-    (input: CreditInput) => {
+    (input: CreditInput): string => {
       const prev = data;
       const { data: withParty, partyId } = resolvePartyRef(data, input.party);
       const { data: next } = addTxnMut(withParty, {
@@ -117,6 +118,7 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
         amount: input.amount,
         kind: input.kind,
         description: input.description,
+        reference: input.reference,
         date: input.date,
         dueDate: input.dueDate,
       });
@@ -126,6 +128,7 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
         `✓ Credit recorded · Outstanding ${net >= 0 ? formatMoney(net) : `−${formatMoney(net)}`}`,
         { label: "Undo", onAction: () => undoTo(prev) }
       );
+      return partyId;
     },
     [data, commit, toast, undoTo]
   );

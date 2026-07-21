@@ -1,10 +1,11 @@
 "use client";
 
 /**
- * Vyora Alpha — Credit entry. Fast (target under 10 s, ≤ 2 taps). Amount is
- * autofocused; the contact is bound by immutable id (existing) or explicitly
- * created (new) — never a silent duplicate. Save shows a confirmation toast with
- * Undo.
+ * Vyora — Fast Credit Entry (P0-002). Record a credit sale in under 15 seconds:
+ * the amount is autofocused (keyboard opens immediately), the date defaults to
+ * today, and due date / reference / notes are optional and tucked out of the
+ * fast path. Save returns to the contact's Statement, where outstanding — and
+ * the dashboard, recovery, and collect list — update instantly, no reload.
  */
 
 import { useEffect, useState } from "react";
@@ -23,11 +24,12 @@ export function CreditEntry() {
 
   const [amount, setAmount] = useState("");
   const [party, setParty] = useState<PartySelection>(emptyParty);
-  const [kind, setKind] = useState<EntryKind>("given"); // default: they owe me
+  const [kind, setKind] = useState<EntryKind>("given"); // default: they owe me (a credit sale)
+  const [reference, setReference] = useState("");
   const [description, setDescription] = useState("");
-  const [showMore, setShowMore] = useState(false);
   const [date, setDate] = useState(todayISO());
   const [dueDate, setDueDate] = useState("");
+  const [showMore, setShowMore] = useState(false);
   const [prefilled, setPrefilled] = useState(false);
 
   // Pre-select the contact when arriving from a statement (…/credit?party=<id>).
@@ -48,23 +50,30 @@ export function CreditEntry() {
   const amountNum = Number(amount);
   const canSave = amountNum > 0 && party.ref !== null;
 
+  const resetForm = () => {
+    setAmount("");
+    setParty(emptyParty);
+    setReference("");
+    setDescription("");
+    setDueDate("");
+  };
+
   const save = (again: boolean) => {
     if (!canSave || !party.ref) return;
-    recordCredit({
+    const partyId = recordCredit({
       party: party.ref,
       amount: amountNum,
       kind,
+      reference: reference || undefined,
       description: description || undefined,
       date,
       dueDate: dueDate || undefined,
     });
     if (again) {
-      setAmount("");
-      setParty(emptyParty);
-      setDescription("");
-      setDueDate("");
+      resetForm();
     } else {
-      router.push("/vyora");
+      // Save → return to Statement; outstanding + dashboard/recovery/collect update live.
+      router.push(`/vyora/parties/${partyId}`);
     }
   };
 
@@ -84,41 +93,51 @@ export function CreditEntry() {
       <AmountField value={amount} onChange={setAmount} />
       <PartyPicker value={party} onChange={setParty} />
 
-      <label className="block">
-        <span className="mb-1 block text-sm font-medium text-gray-700">Note (optional)</span>
-        <TextInput
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="e.g. cement, 2 bags"
-        />
-      </label>
-
+      {/* Optional details — kept out of the sub-15-second fast path */}
       {!showMore ? (
         <button
           type="button"
           onClick={() => setShowMore(true)}
           className="text-sm font-medium text-brand-700"
         >
-          + Date / due date
+          ＋ Due date · reference · notes
         </button>
       ) : (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-3 rounded-2xl border border-gray-200 bg-white p-3">
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block">
+              <span className="mb-1 block text-sm font-medium text-gray-700">Date</span>
+              <TextInput
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="px-3"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-sm font-medium text-gray-700">Due date</span>
+              <TextInput
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="px-3"
+              />
+            </label>
+          </div>
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-gray-700">Date</span>
+            <span className="mb-1 block text-sm font-medium text-gray-700">Reference</span>
             <TextInput
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="px-3"
+              value={reference}
+              onChange={(e) => setReference(e.target.value)}
+              placeholder="Bill / invoice no. (optional)"
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-gray-700">Due (optional)</span>
+            <span className="mb-1 block text-sm font-medium text-gray-700">Notes</span>
             <TextInput
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              className="px-3"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="e.g. cement, 3 bags (optional)"
             />
           </label>
         </div>

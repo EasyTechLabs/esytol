@@ -103,6 +103,7 @@ export function allActivity(data: VyoraData): ActivityItem[] {
       signedAmount: transactionEffect(t),
       label: transactionLabel(t),
       note: t.description,
+      reference: t.reference,
       type: "transaction",
     });
   }
