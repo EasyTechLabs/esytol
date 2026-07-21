@@ -1,32 +1,93 @@
 "use client";
 
 /**
- * Vyora Alpha — Party statement. The full, dispute-settling history for one
- * contact: every credit and payment, a running balance, and the outstanding at
- * top. The contact can be renamed safely (history is keyed by immutable id, so
- * nothing breaks). "Print / Save as PDF" uses the browser's print dialog.
+ * Vyora — Merchant Statement (P0-004). Replaces the paper ledger page for one
+ * contact: header + status, a summary (total credit / paid / outstanding /
+ * oldest due), a newest-first timeline with balance-after-transaction and
+ * reference, and bottom actions (record credit / payment / share). Outstanding
+ * stays visible via a sticky bar. Browser share only — no PDF, no backend.
  */
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useVyora } from "../VyoraProvider";
-import { partyNet, partyStatement } from "@/lib/vyora/selectors";
+import { useToast } from "../Toast";
+import { partyNet, partyStatement, todayISO } from "@/lib/vyora/selectors";
+import { agingForParty, allocateFifo, daysBetween } from "@/lib/vyora/aging";
 import { formatMoney, formatDate, balanceLabel, balanceColor } from "@/lib/vyora/format";
+import { Card, Button, TextInput } from "../primitives";
 import { Empty } from "../components";
+
+type Status = "OVERDUE" | "DUE_SOON" | "GOOD" | "SETTLED";
+const STATUS: Record<Status, { label: string; cls: string }> = {
+  OVERDUE: { label: "Overdue", cls: "bg-negative-tint text-negative-strong" },
+  DUE_SOON: { label: "Due soon", cls: "bg-amber-50 text-amber-800" },
+  GOOD: { label: "Good", cls: "bg-positive-tint text-positive-strong" },
+  SETTLED: { label: "Settled", cls: "bg-gray-100 text-gray-600" },
+};
 
 export function PartyStatement({ partyId }: { partyId: string }) {
   const { ready, data, editParty, deleteEntry } = useVyora();
+  const toast = useToast();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
 
-  if (!ready) return <div className="py-20 text-center text-gray-500">Loading…</div>;
-
   const party = data.parties.find((p) => p.id === partyId);
+
+  // Summary + status in one memoized pass (reuses the aging domain).
+  const summary = useMemo(() => {
+    const today = todayISO();
+    const net = partyNet(data, partyId);
+    const aging = agingForParty(data, partyId, today);
+
+    let totalCredit = 0;
+    let totalPayment = 0;
+    let received = 0;
+    for (const t of data.transactions) if (t.partyId === partyId) totalCredit += t.amount;
+    for (const p of data.payments) {
+      if (p.partyId !== partyId) continue;
+      totalPayment += p.amount;
+      if (p.kind === "received") received += p.amount;
+    }
+
+    const given = data.transactions.filter((t) => t.partyId === partyId && t.kind === "given");
+    let oldestDue: string | null = null;
+    let nearestFutureDueDays: number | null = null;
+    for (const lot of allocateFifo(given, received)) {
+      if (lot.openAmount <= 0 || !lot.dueDate) continue;
+      if (oldestDue === null || lot.dueDate < oldestDue) oldestDue = lot.dueDate;
+      if (lot.dueDate >= today) {
+        const d = daysBetween(today, lot.dueDate);
+        if (nearestFutureDueDays === null || d < nearestFutureDueDays) nearestFutureDueDays = d;
+      }
+    }
+
+    let status: Status;
+    if (net === 0) status = "SETTLED";
+    else if (aging.overdueAmount > 0) status = "OVERDUE";
+    else if (net > 0 && nearestFutureDueDays !== null && nearestFutureDueDays <= 7)
+      status = "DUE_SOON";
+    else status = "GOOD";
+
+    return {
+      net,
+      totalCredit,
+      totalPayment,
+      oldestDue,
+      overdue: aging.overdueAmount > 0,
+      status,
+    };
+  }, [data, partyId]);
+
+  // Timeline: newest first, each row carrying its balance-after-transaction.
+  const rows = useMemo(() => [...partyStatement(data, partyId)].reverse(), [data, partyId]);
+
+  if (!ready) return <div className="py-20 text-center text-gray-500">Loading…</div>;
   if (!party) return <Empty title="Contact not found" subtitle="It may have been cleared." />;
 
-  const net = partyNet(data, partyId);
-  const rows = partyStatement(data, partyId);
+  const { net, status } = summary;
+  const badge = STATUS[status];
 
   const startEdit = () => {
     setName(party.name);
@@ -39,65 +100,86 @@ export function PartyStatement({ partyId }: { partyId: string }) {
     setEditing(false);
   };
 
+  const shareStatement = async () => {
+    const lines = [
+      `Statement — ${party.name}`,
+      party.phone ? party.phone : "",
+      `Outstanding: ${net === 0 ? "Settled" : formatMoney(net)} (${balanceLabel(net)})`,
+      `Total credit: ${formatMoney(summary.totalCredit)} · Total paid: ${formatMoney(summary.totalPayment)}`,
+      "",
+      "Recent entries:",
+      ...rows
+        .slice(0, 8)
+        .map(
+          (r) =>
+            `${formatDate(r.date)} · ${r.label} · ${r.signedAmount > 0 ? "+" : "−"}${formatMoney(
+              r.amount
+            )} · bal ${formatMoney(r.runningNet)}`
+        ),
+    ].filter(Boolean);
+    const text = lines.join("\n");
+    try {
+      if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+        await navigator.share({ title: `Statement — ${party.name}`, text });
+      } else if (typeof navigator !== "undefined" && navigator.clipboard) {
+        await navigator.clipboard.writeText(text);
+        toast.info("Statement copied — paste into WhatsApp to send");
+      } else {
+        toast.info("Sharing isn't supported on this device");
+      }
+    } catch {
+      /* share cancelled — no-op */
+    }
+  };
+
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="rounded-2xl border border-gray-200 bg-white p-4">
+    <div className="space-y-4 pb-4">
+      {/* Header: name · phone · current balance · status badge */}
+      <Card>
         {editing ? (
-          <div className="space-y-2 print:hidden">
-            <input
+          <div className="space-y-2">
+            <TextInput
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Name"
-              className="w-full rounded-xl border-2 border-gray-200 px-3 py-2.5 outline-none focus:border-brand-500"
+              className="border-2 px-3 py-2.5"
             />
-            <input
+            <TextInput
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="Phone (optional)"
               inputMode="tel"
-              className="w-full rounded-xl border-2 border-gray-200 px-3 py-2.5 outline-none focus:border-brand-500"
+              className="border-2 px-3 py-2.5"
             />
             <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={saveEdit}
-                disabled={!name.trim()}
-                className="rounded-xl bg-brand-600 px-4 py-2 font-semibold text-white disabled:opacity-50"
-              >
+              <Button variant="primary" size="sm" onClick={saveEdit} disabled={!name.trim()}>
                 Save
-              </button>
-              <button
-                type="button"
-                onClick={() => setEditing(false)}
-                className="rounded-xl border-2 border-gray-200 px-4 py-2 font-semibold text-gray-700"
-              >
+              </Button>
+              <Button variant="secondary" size="sm" onClick={() => setEditing(false)}>
                 Cancel
-              </button>
+              </Button>
             </div>
           </div>
         ) : (
-          <div className="flex items-start justify-between">
+          <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <h1 className="truncate text-lg font-bold text-gray-900">{party.name}</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="truncate text-lg font-bold text-gray-900">{party.name}</h1>
+                <span
+                  className={`shrink-0 rounded-lg px-1.5 py-0.5 text-[11px] font-bold ${badge.cls}`}
+                >
+                  {badge.label}
+                </span>
+              </div>
               {party.phone && <p className="text-sm text-gray-500">{party.phone}</p>}
             </div>
-            <div className="flex shrink-0 gap-2 print:hidden">
-              <button
-                type="button"
-                onClick={startEdit}
-                className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-              >
-                Edit
-              </button>
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-              >
-                🖨 PDF
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={startEdit}
+              className="shrink-0 rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-600"
+            >
+              Edit
+            </button>
           </div>
         )}
         <div className="mt-3">
@@ -108,56 +190,87 @@ export function PartyStatement({ partyId }: { partyId: string }) {
             {net === 0 ? "Settled" : formatMoney(net)}
           </div>
         </div>
+      </Card>
+
+      {/* Sticky summary — Outstanding always visible */}
+      <div className="sticky top-[52px] z-10 -mx-4 flex items-center justify-between border-y border-gray-200 bg-gray-50/95 px-4 py-2 backdrop-blur print:hidden">
+        <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+          Outstanding
+        </span>
+        <span className={`text-base font-bold tabular-nums ${balanceColor(net)}`}>
+          {net === 0 ? "Settled" : formatMoney(net)}
+        </span>
       </div>
 
-      {/* Act from the statement — record a payment (recovery) or a credit for this contact */}
-      <div className="grid grid-cols-2 gap-3 print:hidden">
-        <Link
-          href={`/vyora/payment?party=${partyId}`}
-          className="rounded-xl bg-positive py-3 text-center font-semibold text-white hover:bg-positive-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-positive-strong"
-        >
-          ＋ Record payment
-        </Link>
-        <Link
-          href={`/vyora/credit?party=${partyId}`}
-          className="rounded-xl bg-brand-600 py-3 text-center font-semibold text-white hover:bg-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700"
-        >
-          ＋ Record credit
-        </Link>
+      {/* Summary: total credit / payment / outstanding / oldest due */}
+      <div className="grid grid-cols-2 gap-3">
+        <Card className="p-3">
+          <div className="text-[11px] uppercase tracking-wide text-gray-500">Total credit</div>
+          <div className="text-lg font-bold tabular-nums text-gray-900">
+            {formatMoney(summary.totalCredit)}
+          </div>
+        </Card>
+        <Card className="p-3">
+          <div className="text-[11px] uppercase tracking-wide text-gray-500">Total payment</div>
+          <div className="text-lg font-bold tabular-nums text-gray-900">
+            {formatMoney(summary.totalPayment)}
+          </div>
+        </Card>
+        <Card className="p-3">
+          <div className="text-[11px] uppercase tracking-wide text-gray-500">Outstanding</div>
+          <div className={`text-lg font-bold tabular-nums ${balanceColor(net)}`}>
+            {net === 0 ? "Settled" : formatMoney(net)}
+          </div>
+        </Card>
+        <Card className="p-3">
+          <div className="text-[11px] uppercase tracking-wide text-gray-500">Oldest due</div>
+          <div
+            className={`text-lg font-bold tabular-nums ${summary.overdue ? "text-negative" : "text-gray-900"}`}
+          >
+            {summary.oldestDue ? formatDate(summary.oldestDue) : "—"}
+          </div>
+        </Card>
       </div>
 
-      {/* Statement */}
+      {/* Timeline — newest first */}
       {rows.length === 0 ? (
         <Empty title="No entries for this contact yet" />
       ) : (
         <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
-          <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 border-b border-gray-100 bg-gray-50 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-            <span>Entry</span>
-            <span className="text-right">Amount</span>
-            <span className="text-right">Balance</span>
-            <span className="print:hidden" />
+          <div className="border-b border-gray-100 bg-gray-50 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+            Timeline · newest first
           </div>
           <div className="divide-y divide-gray-100">
             {rows.map((r) => (
-              <div
-                key={r.id}
-                className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-3 px-4 py-3"
-              >
+              <div key={r.id} className="flex items-center justify-between gap-3 px-4 py-3">
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-medium text-gray-800">{r.label}</div>
-                  <div className="text-xs text-gray-500">
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className={`rounded px-1 py-0.5 text-[10px] font-bold uppercase ${
+                        r.type === "payment"
+                          ? "bg-positive-tint text-positive-strong"
+                          : "bg-brand-50 text-brand-700"
+                      }`}
+                    >
+                      {r.type === "payment" ? "Payment" : "Credit"}
+                    </span>
+                    <span className="truncate text-sm font-medium text-gray-800">{r.label}</span>
+                  </div>
+                  <div className="mt-0.5 text-xs text-gray-500">
                     {formatDate(r.date)}
                     {r.note ? ` · ${r.note}` : ""}
                   </div>
                 </div>
-                <div
-                  className={`text-right text-sm font-semibold tabular-nums ${balanceColor(r.signedAmount)}`}
-                >
-                  {r.signedAmount > 0 ? "+" : "−"}
-                  {formatMoney(r.amount)}
-                </div>
-                <div className={`text-right text-sm tabular-nums ${balanceColor(r.runningNet)}`}>
-                  {formatMoney(r.runningNet)}
+                <div className="shrink-0 text-right">
+                  <div
+                    className={`text-sm font-semibold tabular-nums ${balanceColor(r.signedAmount)}`}
+                  >
+                    {r.signedAmount > 0 ? "+" : "−"}
+                    {formatMoney(r.amount)}
+                  </div>
+                  <div className="text-xs tabular-nums text-gray-500">
+                    Bal {formatMoney(r.runningNet)}
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -166,7 +279,7 @@ export function PartyStatement({ partyId }: { partyId: string }) {
                     if (confirm(`Delete this entry (${r.label})? You can undo right after.`))
                       deleteEntry(r.id);
                   }}
-                  className="flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-500 print:hidden"
+                  className="flex min-h-[44px] min-w-[36px] items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-500 print:hidden"
                 >
                   ✕
                 </button>
@@ -180,6 +293,29 @@ export function PartyStatement({ partyId }: { partyId: string }) {
         Positive = they owe you · Negative = you owe them · Balance is the running outstanding after
         each entry.
       </p>
+
+      {/* Bottom actions */}
+      <div className="grid grid-cols-3 gap-2 print:hidden">
+        <Link
+          href={`/vyora/credit?party=${partyId}`}
+          className="rounded-xl bg-brand-600 py-3 text-center text-sm font-semibold text-white hover:bg-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700"
+        >
+          ＋ Credit
+        </Link>
+        <Link
+          href={`/vyora/payment?party=${partyId}`}
+          className="rounded-xl bg-positive py-3 text-center text-sm font-semibold text-white hover:bg-positive-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-positive-strong"
+        >
+          ＋ Payment
+        </Link>
+        <button
+          type="button"
+          onClick={shareStatement}
+          className="rounded-xl border-2 border-gray-200 bg-white py-3 text-center text-sm font-semibold text-gray-700 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+        >
+          ↗ Share
+        </button>
+      </div>
     </div>
   );
 }
