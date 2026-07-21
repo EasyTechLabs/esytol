@@ -35,7 +35,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     (t: Omit<Toast, "id">) => {
       const id = ++seq.current;
       setToasts((ts) => [...ts.filter((x) => x.tone !== "success"), { ...t, id }]);
-      const ttl = t.actionLabel ? 6000 : 3000;
+      const ttl = t.actionLabel ? 10000 : 3000; // Undo stays available for 10s (P3-001)
       setTimeout(() => remove(id), ttl);
     },
     [remove]

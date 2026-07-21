@@ -32,6 +32,8 @@ import {
   addTransaction as addTxnMut,
   addPayment as addPayMut,
   deleteEntry as deleteEntryMut,
+  deleteContact as deleteContactMut,
+  restoreFromTrash as restoreFromTrashMut,
   backupNow as backupNowMut,
   restoreBackup as restoreBackupStore,
   hasBackup,
@@ -69,6 +71,8 @@ interface VyoraContextValue {
   createParty: (input: { name: string; phone?: string; note?: string }) => Party;
   editParty: (id: string, patch: { name?: string; phone?: string; note?: string }) => void;
   deleteEntry: (id: string) => void;
+  deleteContact: (id: string) => void;
+  restoreDeleted: (trashId: string) => void;
   backup: () => void;
   restore: () => void;
   exportData: () => void;
@@ -195,6 +199,24 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
     [data, commit, toast, undoTo]
   );
 
+  const deleteContact = useCallback(
+    (id: string) => {
+      const prev = data;
+      const name = data.parties.find((p) => p.id === id)?.name ?? "Contact";
+      commit(deleteContactMut(data, id));
+      toast.success(`${name} deleted`, { label: "Undo", onAction: () => undoTo(prev) });
+    },
+    [data, commit, toast, undoTo]
+  );
+
+  const restoreDeleted = useCallback(
+    (trashId: string) => {
+      commit(restoreFromTrashMut(data, trashId));
+      toast.success("✓ Restored to your ledger");
+    },
+    [data, commit, toast]
+  );
+
   const backup = useCallback(() => {
     const next = backupNowMut(data);
     commit(next);
@@ -245,6 +267,8 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
       createParty,
       editParty,
       deleteEntry,
+      deleteContact,
+      restoreDeleted,
       backup,
       restore,
       exportData,
@@ -261,6 +285,8 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
       createParty,
       editParty,
       deleteEntry,
+      deleteContact,
+      restoreDeleted,
       backup,
       restore,
       exportData,

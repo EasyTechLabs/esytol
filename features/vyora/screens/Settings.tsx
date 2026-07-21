@@ -8,8 +8,36 @@
 
 import { useRef } from "react";
 import { useVyora } from "../VyoraProvider";
-import { formatDateTime } from "@/lib/vyora/format";
+import { formatDateTime, formatMoney } from "@/lib/vyora/format";
+import type { TrashEntry, VyoraData } from "@/lib/vyora/types";
 import { Card, Button } from "../primitives";
+
+/** Human summary of a recently-deleted record (P3-001) for the Restore list. */
+function describeTrash(entry: TrashEntry, data: VyoraData): { title: string; sub: string } {
+  const nameOf = (id: string) => data.parties.find((x) => x.id === id)?.name ?? "Contact";
+  if (entry.kind === "contact") {
+    const count = entry.transactions.length + entry.payments.length;
+    return {
+      title: entry.parties[0]?.name ?? "Contact",
+      sub: `Contact · ${count} entr${count === 1 ? "y" : "ies"}`,
+    };
+  }
+  const t = entry.transactions[0];
+  if (t) {
+    return {
+      title: `${t.kind === "given" ? "Credit given" : "Credit taken"} · ${formatMoney(t.amount)}`,
+      sub: nameOf(t.partyId),
+    };
+  }
+  const p = entry.payments[0];
+  if (p) {
+    return {
+      title: `${p.kind === "received" ? "Payment received" : "Payment made"} · ${formatMoney(p.amount)}`,
+      sub: nameOf(p.partyId),
+    };
+  }
+  return { title: "Deleted entry", sub: "" };
+}
 
 export function Settings() {
   const {
@@ -21,9 +49,11 @@ export function Settings() {
     exportData,
     validateImport,
     applyImport,
+    restoreDeleted,
     reset,
   } = useVyora();
   const fileRef = useRef<HTMLInputElement>(null);
+  const trash = data.trash ?? [];
 
   if (!ready) return <div className="py-20 text-center text-gray-500">Loading…</div>;
 
@@ -144,6 +174,49 @@ export function Settings() {
             className="hidden"
           />
         </div>
+      </Card>
+
+      {/* Recently deleted — restore anything removed in the last 30 days (P3-001) */}
+      <Card as="section" className="space-y-3">
+        <div>
+          <h2 className="font-semibold text-gray-900">Recently deleted</h2>
+          <p className="text-sm text-gray-600">
+            Deleted contacts and entries are kept here for 30 days. Restore anything you removed by
+            mistake.
+          </p>
+        </div>
+        {trash.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-gray-200 px-4 py-6 text-center text-sm text-gray-500">
+            Nothing deleted in the last 30 days.
+          </p>
+        ) : (
+          <div className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200">
+            {trash.map((entry) => {
+              const { title, sub } = describeTrash(entry, data);
+              return (
+                <div
+                  key={entry.id}
+                  className="flex items-center justify-between gap-3 bg-white px-4 py-3"
+                >
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-medium text-gray-800">{title}</div>
+                    <div className="truncate text-xs text-gray-500">
+                      {sub ? `${sub} · ` : ""}Deleted {formatDateTime(entry.deletedAt)}
+                    </div>
+                  </div>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="shrink-0"
+                    onClick={() => restoreDeleted(entry.id)}
+                  >
+                    Restore
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </Card>
 
       {/* Danger */}

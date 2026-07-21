@@ -18,6 +18,17 @@ import { AmountField, PartyPicker, Segmented, BigButton, type PartySelection } f
 import { TextInput } from "../primitives";
 
 const emptyParty: PartySelection = { text: "", ref: null };
+const DRAFT_KEY = "vyora.draft.payment"; // crash-recovery: an unfinished payment survives a browser close
+
+interface PaymentDraft {
+  amount: string;
+  party: PartySelection;
+  kind: PaymentKind;
+  mode: PaymentMode;
+  reference: string;
+  date: string;
+  showMore: boolean;
+}
 
 const MODES: { value: PaymentMode; label: string }[] = [
   { value: "cash", label: "Cash" },
@@ -38,6 +49,9 @@ export function PaymentEntry() {
   const [showMore, setShowMore] = useState(false);
   const [date, setDate] = useState(todayISO());
   const [prefilled, setPrefilled] = useState(false);
+  const [saving, setSaving] = useState(false); // prevent a double-tap double-save (P3-001)
+  const [restored, setRestored] = useState(false); // a draft was recovered
+  const [hydrated, setHydrated] = useState(false); // gate the draft-saver until restore has run
 
   // Pre-select the contact when arriving from a statement (…/payment?party=<id>).
   useEffect(() => {
@@ -54,11 +68,65 @@ export function PaymentEntry() {
     }
   }, [data.parties, prefilled]);
 
+  // Crash recovery: on a fresh visit (no ?party deep-link) restore an unfinished draft.
+  useEffect(() => {
+    const hasParam = new URLSearchParams(window.location.search).get("party");
+    if (!hasParam) {
+      try {
+        const raw = localStorage.getItem(DRAFT_KEY);
+        if (raw) {
+          const d = JSON.parse(raw) as Partial<PaymentDraft>;
+          if (d && typeof d.amount === "string" && d.amount.trim()) {
+            setAmount(d.amount);
+            if (d.party && typeof d.party === "object") setParty(d.party as PartySelection);
+            if (d.kind === "received" || d.kind === "paid") setKind(d.kind);
+            if (d.mode) setMode(d.mode);
+            if (typeof d.reference === "string") setReference(d.reference);
+            if (typeof d.date === "string" && d.date) setDate(d.date);
+            if (d.showMore) setShowMore(true);
+            setRestored(true);
+          }
+        }
+      } catch {
+        /* malformed draft — ignore */
+      }
+    }
+    setHydrated(true);
+  }, []);
+
+  // Persist the in-progress payment after every change (only once hydrated, only if worth keeping).
+  useEffect(() => {
+    if (!hydrated || !amount.trim()) return;
+    try {
+      const draft: PaymentDraft = { amount, party, kind, mode, reference, date, showMore };
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    } catch {
+      /* storage unavailable — best effort */
+    }
+  }, [hydrated, amount, party, kind, mode, reference, date, showMore]);
+
+  const clearDraft = () => {
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch {
+      /* ignore */
+    }
+  };
+
   const amountNum = Number(amount);
   const canSave = amountNum > 0 && party.ref !== null;
 
+  const discardDraft = () => {
+    setAmount("");
+    setParty(emptyParty);
+    setReference("");
+    clearDraft();
+    setRestored(false);
+  };
+
   const save = () => {
-    if (!canSave || !party.ref) return;
+    if (saving || !canSave || !party.ref) return;
+    setSaving(true);
     const partyId = recordPayment({
       party: party.ref,
       amount: amountNum,
@@ -67,6 +135,8 @@ export function PaymentEntry() {
       reference: reference || undefined,
       date,
     });
+    clearDraft();
+    setRestored(false);
     // Save → return to Statement; balance + dashboard/recovery/collect update live.
     router.push(`/vyora/parties/${partyId}`);
   };
@@ -74,6 +144,17 @@ export function PaymentEntry() {
   return (
     <div className="space-y-4">
       <h1 className="text-lg font-semibold text-gray-900">Record payment</h1>
+
+      {restored && (
+        <div className="text-brand-800 flex items-center justify-between gap-2 rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-sm">
+          <span>
+            <span aria-hidden>↩</span> Restored your unsaved entry.
+          </span>
+          <button type="button" onClick={discardDraft} className="shrink-0 font-semibold underline">
+            Discard
+          </button>
+        </div>
+      )}
 
       <Segmented<PaymentKind>
         value={kind}
@@ -140,8 +221,8 @@ export function PaymentEntry() {
       )}
 
       <div className="pt-2">
-        <BigButton type="button" onClick={save} disabled={!canSave} tone="emerald">
-          Save
+        <BigButton type="button" onClick={save} disabled={!canSave || saving} tone="emerald">
+          {saving ? "Saving…" : "Save"}
         </BigButton>
       </div>
     </div>

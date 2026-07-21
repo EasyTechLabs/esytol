@@ -74,12 +74,29 @@ export interface Meta {
 }
 
 /** The entire Vyora Alpha dataset — lives in one localStorage key on the device. */
+/**
+ * A soft-deleted record (P3-001). Deleting a contact or an entry moves it here
+ * instead of erasing it: recoverable from Settings → Recently Deleted for 30 days.
+ * An entry delete keeps `parties: []` (the contact stays); a contact delete carries
+ * the contact plus its whole history so Restore brings everything back together.
+ */
+export interface TrashEntry {
+  id: string;
+  deletedAt: string; // ISO
+  kind: "entry" | "contact";
+  parties: Party[];
+  transactions: Transaction[];
+  payments: Payment[];
+}
+
 export interface VyoraData {
   version: number;
   parties: Party[];
   transactions: Transaction[];
   payments: Payment[];
   meta: Meta;
+  /** Recently-deleted records, newest first (P3-001). Optional for migration safety. */
+  trash?: TrashEntry[];
 }
 
 /**

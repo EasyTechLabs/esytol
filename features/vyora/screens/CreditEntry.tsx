@@ -17,6 +17,18 @@ import { AmountField, PartyPicker, Segmented, BigButton, type PartySelection } f
 import { TextInput, Button } from "../primitives";
 
 const emptyParty: PartySelection = { text: "", ref: null };
+const DRAFT_KEY = "vyora.draft.credit"; // crash-recovery: an unfinished entry survives a browser close
+
+interface CreditDraft {
+  amount: string;
+  party: PartySelection;
+  kind: EntryKind;
+  reference: string;
+  description: string;
+  date: string;
+  dueDate: string;
+  showMore: boolean;
+}
 
 export function CreditEntry() {
   const router = useRouter();
@@ -31,6 +43,9 @@ export function CreditEntry() {
   const [dueDate, setDueDate] = useState("");
   const [showMore, setShowMore] = useState(false);
   const [prefilled, setPrefilled] = useState(false);
+  const [saving, setSaving] = useState(false); // prevent a double-tap double-save (P3-001)
+  const [restored, setRestored] = useState(false); // a draft was recovered
+  const [hydrated, setHydrated] = useState(false); // gate the draft-saver until restore has run
 
   // Pre-select the contact when arriving from a statement (…/credit?party=<id>).
   useEffect(() => {
@@ -47,6 +62,61 @@ export function CreditEntry() {
     }
   }, [data.parties, prefilled]);
 
+  // Crash recovery: on a fresh visit (no ?party deep-link) restore an unfinished draft.
+  useEffect(() => {
+    const hasParam = new URLSearchParams(window.location.search).get("party");
+    if (!hasParam) {
+      try {
+        const raw = localStorage.getItem(DRAFT_KEY);
+        if (raw) {
+          const d = JSON.parse(raw) as Partial<CreditDraft>;
+          if (d && typeof d.amount === "string" && d.amount.trim()) {
+            setAmount(d.amount);
+            if (d.party && typeof d.party === "object") setParty(d.party as PartySelection);
+            if (d.kind === "given" || d.kind === "taken") setKind(d.kind);
+            if (typeof d.reference === "string") setReference(d.reference);
+            if (typeof d.description === "string") setDescription(d.description);
+            if (typeof d.date === "string" && d.date) setDate(d.date);
+            if (typeof d.dueDate === "string") setDueDate(d.dueDate);
+            if (d.showMore) setShowMore(true);
+            setRestored(true);
+          }
+        }
+      } catch {
+        /* malformed draft — ignore */
+      }
+    }
+    setHydrated(true);
+  }, []);
+
+  // Persist the in-progress entry after every change (only once hydrated, only if worth keeping).
+  useEffect(() => {
+    if (!hydrated || !amount.trim()) return;
+    try {
+      const draft: CreditDraft = {
+        amount,
+        party,
+        kind,
+        reference,
+        description,
+        date,
+        dueDate,
+        showMore,
+      };
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    } catch {
+      /* storage unavailable — best effort */
+    }
+  }, [hydrated, amount, party, kind, reference, description, date, dueDate, showMore]);
+
+  const clearDraft = () => {
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch {
+      /* ignore */
+    }
+  };
+
   const amountNum = Number(amount);
   const canSave = amountNum > 0 && party.ref !== null;
 
@@ -58,8 +128,15 @@ export function CreditEntry() {
     setDueDate("");
   };
 
+  const discardDraft = () => {
+    resetForm();
+    clearDraft();
+    setRestored(false);
+  };
+
   const save = (again: boolean) => {
-    if (!canSave || !party.ref) return;
+    if (saving || !canSave || !party.ref) return;
+    setSaving(true);
     const partyId = recordCredit({
       party: party.ref,
       amount: amountNum,
@@ -69,8 +146,11 @@ export function CreditEntry() {
       date,
       dueDate: dueDate || undefined,
     });
+    clearDraft();
+    setRestored(false);
     if (again) {
       resetForm();
+      setSaving(false);
     } else {
       // Save → return to Statement; outstanding + dashboard/recovery/collect update live.
       router.push(`/vyora/parties/${partyId}`);
@@ -80,6 +160,17 @@ export function CreditEntry() {
   return (
     <div className="space-y-4">
       <h1 className="text-lg font-semibold text-gray-900">Record credit</h1>
+
+      {restored && (
+        <div className="text-brand-800 flex items-center justify-between gap-2 rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-sm">
+          <span>
+            <span aria-hidden>↩</span> Restored your unsaved entry.
+          </span>
+          <button type="button" onClick={discardDraft} className="shrink-0 font-semibold underline">
+            Discard
+          </button>
+        </div>
+      )}
 
       <Segmented<EntryKind>
         value={kind}
@@ -144,13 +235,13 @@ export function CreditEntry() {
       )}
 
       <div className="space-y-2 pt-2">
-        <BigButton type="button" onClick={() => save(false)} disabled={!canSave}>
-          Save
+        <BigButton type="button" onClick={() => save(false)} disabled={!canSave || saving}>
+          {saving ? "Saving…" : "Save"}
         </BigButton>
         <Button
           type="button"
           onClick={() => save(true)}
-          disabled={!canSave}
+          disabled={!canSave || saving}
           variant="secondary"
           block
           className="rounded-2xl"

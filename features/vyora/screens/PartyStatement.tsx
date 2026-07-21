@@ -10,6 +10,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { useVyora } from "../VyoraProvider";
 import { useToast } from "../Toast";
@@ -48,7 +49,8 @@ function monthLabel(key: string): string {
 }
 
 export function PartyStatement({ partyId }: { partyId: string }) {
-  const { ready, data, editParty, deleteEntry } = useVyora();
+  const { ready, data, editParty, deleteEntry, deleteContact } = useVyora();
+  const router = useRouter();
   const toast = useToast();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState("");
@@ -177,6 +179,23 @@ export function PartyStatement({ partyId }: { partyId: string }) {
     setEditing(false);
   };
 
+  // Delete the whole contact — confirm shows EXACTLY what goes (entries + outstanding),
+  // and it's recoverable (10s Undo, or Settings → Recently Deleted for 30 days).
+  const onDeleteContact = () => {
+    const count =
+      data.transactions.filter((t) => t.partyId === partyId).length +
+      data.payments.filter((p) => p.partyId === partyId).length;
+    const ok = confirm(
+      `Delete ${party.name}?\n\n` +
+        `${count} transaction${count === 1 ? "" : "s"}\n` +
+        `Outstanding ${net === 0 ? "Settled" : formatMoney(net)}\n\n` +
+        `This cannot be recovered after Undo expires.`
+    );
+    if (!ok) return;
+    deleteContact(partyId);
+    router.push("/vyora/parties");
+  };
+
   const shareStatement = async () => {
     const lines = [
       `Statement — ${party.name}`,
@@ -237,6 +256,15 @@ export function PartyStatement({ partyId }: { partyId: string }) {
               <Button variant="secondary" size="sm" onClick={() => setEditing(false)}>
                 Cancel
               </Button>
+            </div>
+            <div className="mt-1 border-t border-gray-100 pt-3">
+              <button
+                type="button"
+                onClick={onDeleteContact}
+                className="text-sm font-medium text-red-700 hover:text-red-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-600"
+              >
+                Delete this contact
+              </button>
             </div>
           </div>
         ) : (
