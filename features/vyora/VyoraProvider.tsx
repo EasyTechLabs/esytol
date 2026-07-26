@@ -23,6 +23,7 @@ import type {
 import { partyNet } from "@/lib/vyora/selectors";
 import { formatMoney, configureFormat } from "@/lib/vyora/format";
 import { runIntegrity, type IntegrityReport } from "@/lib/vyora/integrity";
+import { applyImportPlan, type ImportPlan } from "@/lib/vyora/import";
 import { useToast } from "./Toast";
 
 const nowISO = () => new Date().toISOString();
@@ -77,6 +78,7 @@ interface VyoraContextValue {
   updateSettings: (patch: Partial<VyoraSettings>) => void;
   integrity: IntegrityReport | null;
   checkIntegrity: () => IntegrityReport;
+  importLedger: (plan: ImportPlan) => { contacts: number; entries: number };
   recordCredit: (input: CreditInput) => string;
   recordPayment: (input: PaymentInput) => string;
   createParty: (input: { name: string; phone?: string; note?: string }) => Party;
@@ -303,6 +305,22 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
     [ingest]
   );
 
+  // Import Wizard (P3-005) — MERGE another app's ledger in, then verify integrity.
+  const importLedger = useCallback(
+    (plan: ImportPlan) => {
+      const { data: merged, contacts, entries } = applyImportPlan(data, plan);
+      const { data: checked } = runIntegrity(merged, nowISO());
+      commit(checked);
+      toast.success(
+        `✓ Imported · ${entries} entr${entries === 1 ? "y" : "ies"} · ${contacts} new contact${
+          contacts === 1 ? "" : "s"
+        }`
+      );
+      return { contacts, entries };
+    },
+    [data, commit, toast]
+  );
+
   // Manual integrity check (Founder Mode) — verify + repair the current ledger.
   const checkIntegrity = useCallback((): IntegrityReport => {
     const { data: checked, report } = runIntegrity(data, nowISO());
@@ -330,6 +348,7 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
       updateSettings,
       integrity,
       checkIntegrity,
+      importLedger,
       recordCredit,
       recordPayment,
       createParty,
@@ -353,6 +372,7 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
       updateSettings,
       integrity,
       checkIntegrity,
+      importLedger,
       recordCredit,
       recordPayment,
       createParty,

@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { useVyora } from "../VyoraProvider";
 import { formatDateTime, formatMoney, CURRENCY_SYMBOLS } from "@/lib/vyora/format";
@@ -436,10 +437,10 @@ export function Settings() {
       {/* Export / Import file */}
       <Card as="section" className="space-y-3">
         <div>
-          <h2 className="font-semibold text-gray-900">Export &amp; import a file</h2>
+          <h2 className="font-semibold text-gray-900">Export &amp; import a Vyora backup</h2>
           <p className="text-sm text-gray-600">
             Export keeps your data safe <em>off</em> this device (share it to yourself, or save it).
-            Import restores from a file.
+            Import restores from a Vyora backup file (this replaces current data).
           </p>
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -447,7 +448,7 @@ export function Settings() {
             Export data
           </Button>
           <Button variant="secondary" block onClick={() => fileRef.current?.click()}>
-            Import file
+            Restore backup file
           </Button>
           <input
             ref={fileRef}
@@ -457,6 +458,23 @@ export function Settings() {
             className="hidden"
           />
         </div>
+      </Card>
+
+      {/* Import Wizard — move in from another app (P3-005) */}
+      <Card as="section" className="space-y-3">
+        <div>
+          <h2 className="font-semibold text-gray-900">Move in from another app</h2>
+          <p className="text-sm text-gray-600">
+            Coming from another khata app? Import your contacts and udhaar from a CSV or JSON file.
+            This <strong>adds</strong> to your ledger — it won&rsquo;t replace anything.
+          </p>
+        </div>
+        <Link
+          href="/vyora/import"
+          className="inline-flex items-center justify-center rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
+        >
+          Start import wizard
+        </Link>
       </Card>
 
       {/* Recently deleted — restore anything removed in the last 30 days (P3-001) */}
