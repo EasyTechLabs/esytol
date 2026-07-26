@@ -301,6 +301,12 @@ export function Home() {
             <Basis label="Overdue" value={`${Math.round(health.overduePct * 100)}%`} />
             <Basis label="Collected today" value={formatMoney(totals.collection)} />
           </div>
+          <Link
+            href="/vyora/insights"
+            className="hover:text-brand-800 mt-3 block text-center text-sm font-semibold text-brand-700"
+          >
+            View insights →
+          </Link>
         </Card>
       </section>
     </div>
