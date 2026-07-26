@@ -159,6 +159,8 @@ export function Settings() {
     restoreDeleted,
     settings,
     updateSettings,
+    seedDemo,
+    resetDemo,
     reset,
   } = useVyora();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -465,6 +467,42 @@ export function Settings() {
         >
           Start import wizard
         </Link>
+      </Card>
+
+      {/* Demo mode — explore with a realistic sample shop (V1-004) */}
+      <Card as="section" className="space-y-3">
+        <div>
+          <h2 className="font-semibold text-gray-900">Demo mode</h2>
+          <p className="text-sm text-gray-600">
+            Explore Vyora with a realistic sample shop — 120 customers and ~2,200 entries.
+            It&rsquo;s kept separate from your data and fully removable.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Button
+            variant="primary"
+            block
+            onClick={() => {
+              if (
+                confirm(
+                  "Load a demo shop?\n\n120 customers and ~2,200 entries are added (labelled 'demo'). Your real data is untouched."
+                )
+              )
+                seedDemo();
+            }}
+          >
+            Load demo shop
+          </Button>
+          <Button
+            variant="secondary"
+            block
+            onClick={() => {
+              if (confirm("Remove all demo data?\n\nYour real data is untouched.")) resetDemo();
+            }}
+          >
+            Reset demo
+          </Button>
+        </div>
       </Card>
 
       {/* Recently deleted — restore anything removed in the last 30 days (P3-001) */}

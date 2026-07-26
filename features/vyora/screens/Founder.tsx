@@ -143,7 +143,9 @@ export function Founder() {
 
   const onSeed = () => {
     if (
-      confirm("Add demo data to this device?\n\nIt's labelled 'demo' and removable via Reset Demo.")
+      confirm(
+        "Load a demo shop?\n\n120 customers and ~2,200 entries are added, labelled 'demo' and removable via Reset Demo. Your real data is untouched."
+      )
     )
       seedDemo();
   };
@@ -183,7 +185,7 @@ export function Founder() {
             Export logs
           </Button>
           <Button variant="secondary" onClick={onSeed}>
-            Seed demo data
+            Load demo shop
           </Button>
           <Button variant="danger" onClick={onResetDemo} className="col-span-2">
             Reset demo data

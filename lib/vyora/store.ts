@@ -351,92 +351,198 @@ export function restoreFromTrash(data: VyoraData, trashId: string): VyoraData {
   };
 }
 
-// ─── Demo data (Founder Mode, V1-003) ────────────────────────────────────────
+// ─── Demo data (Demo Mode, V1-004) ───────────────────────────────────────────
 
 /** All demo records carry this id prefix, so Reset Demo can remove exactly them. */
 export const DEMO_PREFIX = "demo_";
 
-/** Seed a small, realistic demo book (idempotent, merges) — dates relative to `today`. */
+/** How big a demo shop "Load Demo Shop" generates. */
+export const DEMO_CUSTOMERS = 120;
+export const DEMO_TRANSACTIONS = 2200;
+const DEMO_SUPPLIERS = 18; // of the 120 contacts, these are suppliers (I owe them)
+
+/** Deterministic PRNG (mulberry32) — the demo shop is realistic AND reproducible. */
+function mulberry32(seed: number): () => number {
+  let s = seed >>> 0;
+  return () => {
+    s = (s + 0x6d2b79f5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const FIRST = [
+  "Rajesh",
+  "Suresh",
+  "Amit",
+  "Priya",
+  "Geeta",
+  "Anil",
+  "Sunita",
+  "Vijay",
+  "Meena",
+  "Ravi",
+  "Kavita",
+  "Manoj",
+  "Deepak",
+  "Pooja",
+  "Rahul",
+  "Neha",
+  "Sanjay",
+  "Anita",
+  "Arun",
+  "Rekha",
+  "Sachin",
+  "Divya",
+  "Kiran",
+  "Lata",
+];
+const LAST = [
+  "Kumar",
+  "Sharma",
+  "Verma",
+  "Gupta",
+  "Singh",
+  "Patel",
+  "Yadav",
+  "Reddy",
+  "Nair",
+  "Das",
+  "Shah",
+  "Mehta",
+  "Joshi",
+  "Rao",
+  "Pillai",
+  "Iyer",
+];
+const SHOP_NAME = [
+  "Krishna",
+  "Balaji",
+  "Sri Sai",
+  "New India",
+  "Ganesh",
+  "Laxmi",
+  "Bombay",
+  "National",
+  "Sunrise",
+  "Royal",
+  "Metro",
+  "Anand",
+];
+const SHOP_KIND = ["Traders", "Store", "Enterprises", "Suppliers", "Agencies", "Distributors"];
+const GOODS = [
+  "rice 25kg",
+  "cement 3 bags",
+  "cooking oil 15L",
+  "sugar 10kg",
+  "wheat flour",
+  "tea packets",
+  "biscuit carton",
+  "soap case",
+  "detergent 5kg",
+  "spices box",
+  "dal 20kg",
+  "milk powder",
+  "cold drinks crate",
+  "wheat 50kg",
+  "ghee tin",
+  "salt bag",
+];
+const MODES: PaymentMode[] = ["cash", "upi", "bank", "cheque"];
+
+/**
+ * Load a realistic demo shop (V1-004): ~120 contacts (customers + suppliers) and
+ * ~2,200 credit transactions with mixed statuses (overdue / due-soon / settled /
+ * good / payable), plus payments and supplier cash flow spread across ~a year.
+ * Deterministic (fixed seed) and idempotent (fixed demo_ ids, merges — never
+ * touches real data). Dates are relative to `today`.
+ */
 export function seedDemoData(data: VyoraData, today: string): VyoraData {
+  const rng = mulberry32(0x5679_0726);
+  const rand = (min: number, max: number) => Math.floor(rng() * (max - min + 1)) + min;
+  const pick = <T>(arr: readonly T[]): T => arr[Math.floor(rng() * arr.length)]!;
+  const round10 = (n: number) => Math.round(n / 10) * 10;
   const shift = (n: number): string => {
     const [y, m, d] = today.split("-").map(Number);
     return new Date(Date.UTC(y!, m! - 1, d! + n)).toISOString().slice(0, 10);
   };
   const at = (n: number) => `${shift(n)}T00:00:00.000Z`;
 
-  const parties: Party[] = [
-    { id: "demo_p1", name: "Rajesh Kumar (demo)", phone: "9876500001", createdAt: at(-90) },
-    { id: "demo_p2", name: "Geeta Devi (demo)", phone: "9876500002", createdAt: at(-60) },
-    { id: "demo_p3", name: "Amit Store (demo)", phone: "9876500003", createdAt: at(-45) },
-    { id: "demo_p4", name: "Suresh Traders (demo)", createdAt: at(-30) },
-    { id: "demo_p5", name: "Meena Supplier (demo)", phone: "9876500005", createdAt: at(-20) },
-  ];
-  const transactions: Transaction[] = [
-    {
-      id: "demo_t1",
-      partyId: "demo_p1",
-      amount: 4250,
-      kind: "given",
-      date: shift(-40),
-      dueDate: shift(-25),
-      createdAt: at(-40),
-    }, // overdue
-    {
-      id: "demo_t2",
-      partyId: "demo_p2",
-      amount: 3200,
-      kind: "given",
-      date: shift(-10),
-      dueDate: shift(3),
-      createdAt: at(-10),
-    }, // due soon
-    {
-      id: "demo_t3",
-      partyId: "demo_p3",
-      amount: 1500,
-      kind: "given",
-      date: shift(-20),
-      dueDate: shift(-5),
-      createdAt: at(-20),
-    }, // settled
-    {
-      id: "demo_t4",
-      partyId: "demo_p4",
-      amount: 6000,
-      kind: "given",
-      date: shift(-5),
-      dueDate: shift(30),
-      createdAt: at(-5),
-    }, // good
-    {
-      id: "demo_t5",
-      partyId: "demo_p5",
-      amount: 2000,
-      kind: "taken",
-      date: shift(-8),
-      createdAt: at(-8),
-    }, // I owe them
-  ];
-  const payments: Payment[] = [
-    {
-      id: "demo_r1",
-      partyId: "demo_p2",
-      amount: 1000,
-      kind: "received",
-      mode: "upi",
-      date: shift(-2),
-      createdAt: at(-2),
-    },
-    {
-      id: "demo_r2",
-      partyId: "demo_p3",
-      amount: 1500,
-      kind: "received",
-      mode: "cash",
-      date: shift(-3),
-      createdAt: at(-3),
-    },
-  ];
+  const parties: Party[] = [];
+  const isSupplier = new Set<string>();
+  for (let i = 0; i < DEMO_CUSTOMERS; i++) {
+    const id = `demo_p${i}`;
+    const supplier = i >= DEMO_CUSTOMERS - DEMO_SUPPLIERS;
+    if (supplier) isSupplier.add(id);
+    const name = supplier
+      ? `${pick(SHOP_NAME)} ${pick(SHOP_KIND)}`
+      : `${pick(FIRST)} ${pick(LAST)}`;
+    const phone = rng() < 0.75 ? `9${rand(100000000, 899999999)}` : undefined;
+    parties.push({ id, name, phone, createdAt: at(-rand(30, 400)) });
+  }
+
+  // Credit transactions — distributed across contacts, spread across the year.
+  const transactions: Transaction[] = [];
+  const creditsByParty = new Map<string, Transaction[]>();
+  const earliestOffset = new Map<string, number>();
+  for (let i = 0; i < DEMO_TRANSACTIONS; i++) {
+    const party = parties[rand(0, DEMO_CUSTOMERS - 1)]!;
+    const supplier = isSupplier.has(party.id);
+    const offset = -rand(1, 360);
+    const amount = supplier ? round10(rand(1000, 40000)) : round10(rand(100, 8000));
+    const dueOffset = offset + rand(7, 45);
+    const txn: Transaction = {
+      id: `demo_t${i}`,
+      partyId: party.id,
+      amount,
+      kind: supplier ? "taken" : "given",
+      date: shift(offset),
+      dueDate: shift(dueOffset),
+      description: pick(GOODS),
+      reference: rng() < 0.4 ? `B${rand(1000, 9999)}` : undefined,
+      createdAt: at(offset),
+    };
+    transactions.push(txn);
+    const list = creditsByParty.get(party.id);
+    if (list) list.push(txn);
+    else creditsByParty.set(party.id, [txn]);
+    const prev = earliestOffset.get(party.id);
+    if (prev === undefined || offset < prev) earliestOffset.set(party.id, offset);
+  }
+
+  // Payments — each contact repays a realistic fraction (some 0 → overdue, some full → settled).
+  const payments: Payment[] = [];
+  let rc = 0;
+  for (const party of parties) {
+    const credits = creditsByParty.get(party.id) ?? [];
+    if (credits.length === 0) continue;
+    const total = credits.reduce((s, t) => s + t.amount, 0);
+    const roll = rng();
+    const fraction = roll < 0.18 ? 0 : roll < 0.55 ? 0.3 + rng() * 0.5 : roll < 0.9 ? 1 : 1.05;
+    const target = total * fraction;
+    if (target < 50) continue;
+    const supplier = isSupplier.has(party.id);
+    const startOffset = earliestOffset.get(party.id) ?? -30;
+    const n = rand(1, 3);
+    let paid = 0;
+    for (let k = 0; k < n && paid < target; k++) {
+      const chunk = k === n - 1 ? target - paid : round10((target / n) * (0.7 + rng() * 0.6));
+      const amt = Math.min(target - paid, chunk);
+      if (amt < 10) break;
+      paid += amt;
+      const off = Math.min(0, startOffset + rand(2, 50));
+      payments.push({
+        id: `demo_r${rc++}`,
+        partyId: party.id,
+        amount: round10(amt),
+        kind: supplier ? "paid" : "received",
+        mode: pick(MODES),
+        date: shift(off),
+        createdAt: at(off),
+      });
+    }
+  }
 
   const pIds = new Set(data.parties.map((p) => p.id));
   const tIds = new Set(data.transactions.map((t) => t.id));
