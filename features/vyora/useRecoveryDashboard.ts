@@ -11,7 +11,7 @@
 import { useMemo } from "react";
 import type { VyoraData } from "@/lib/vyora/types";
 import type { OverdueRow } from "@/lib/vyora/aging";
-import { allocateFifo, daysBetween, recoveryScore } from "@/lib/vyora/aging";
+import { allocateFifo, daysBetween, rankOverdue } from "@/lib/vyora/aging";
 import { partyNet, rupees, todayISO } from "@/lib/vyora/selectors";
 
 export interface RecoveryDashboard {
@@ -29,17 +29,17 @@ export function useRecoveryDashboard(
   today: string = todayISO()
 ): RecoveryDashboard {
   return useMemo(() => {
-    const temp: { row: OverdueRow; totalGiven: number; received: number; txnCount: number }[] = [];
+    // ONE FIFO sweep per contact produces the aggregate totals + the base overdue
+    // rows; ranking/scoring is delegated to the shared `rankOverdue` (ENG-007), so
+    // the dashboard and the Collect list can never disagree on priority or order.
+    const baseRows: OverdueRow[] = [];
     let overdueTotal = 0;
     let dueToday = 0;
     let outstanding = 0;
-    let maxOverdue = 0;
 
     for (const party of data.parties) {
       const given = data.transactions.filter((t) => t.partyId === party.id && t.kind === "given");
       let received = 0;
-      let totalGiven = 0;
-      for (const t of given) totalGiven += t.amount;
       for (const p of data.payments) {
         if (p.partyId === party.id && p.kind === "received") received += p.amount;
       }
@@ -66,39 +66,17 @@ export function useRecoveryDashboard(
       if (od > 0 && maxOverdueDays !== null) {
         const overdueAmount = rupees(od);
         overdueTotal += overdueAmount;
-        maxOverdue = Math.max(maxOverdue, overdueAmount);
-        temp.push({
-          row: {
-            partyId: party.id,
-            overdueAmount,
-            daysOverdue: maxOverdueDays,
-            openReceivable: rupees(open),
-            net: partyNet(data, party.id),
-          },
-          totalGiven,
-          received,
-          txnCount: given.length,
+        baseRows.push({
+          partyId: party.id,
+          overdueAmount,
+          daysOverdue: maxOverdueDays,
+          openReceivable: rupees(open),
+          net: partyNet(data, party.id),
         });
       }
     }
 
-    const overdue: OverdueRow[] = temp.map(({ row, totalGiven, received, txnCount }) => {
-      const paymentRatio = totalGiven > 0 ? received / totalGiven : 0;
-      const { score, priority } = recoveryScore({
-        overdueAmount: row.overdueAmount,
-        daysOverdue: row.daysOverdue,
-        paymentRatio,
-        txnCount,
-        maxOverdue,
-      });
-      return { ...row, score, priority };
-    });
-    overdue.sort(
-      (a, b) =>
-        (b.score ?? 0) - (a.score ?? 0) ||
-        b.overdueAmount * b.daysOverdue - a.overdueAmount * a.daysOverdue ||
-        b.daysOverdue - a.daysOverdue
-    );
+    const overdue = rankOverdue(data, baseRows);
 
     return {
       overdueTotal: rupees(overdueTotal),

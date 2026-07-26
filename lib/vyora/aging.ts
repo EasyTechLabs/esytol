@@ -375,3 +375,44 @@ export function collectList(data: VyoraData, today: string): CollectLists {
   });
   return { overdue, open };
 }
+
+/**
+ * THE single source of truth for recovery ranking (ENG-007). Scores each overdue
+ * row with `recoveryScore` and orders by the ONE canonical comparator —
+ * score desc → leverage (overdueAmount × daysOverdue) desc → most-overdue first.
+ * Every surface that ranks "who to chase" (the Collect list, the Recovery
+ * dashboard, Daily Closing's top-5) goes through this, so the priority pill and
+ * the ordering a merchant sees are identical everywhere.
+ */
+export function rankOverdue(data: VyoraData, overdue: OverdueRow[]): OverdueRow[] {
+  const maxOverdue = overdue.reduce((m, r) => Math.max(m, r.overdueAmount), 0);
+  const scored = overdue.map((r) => {
+    let given = 0;
+    let received = 0;
+    let txnCount = 0;
+    for (const t of data.transactions) {
+      if (t.partyId === r.partyId && t.kind === "given") {
+        given += t.amount;
+        txnCount += 1;
+      }
+    }
+    for (const p of data.payments) {
+      if (p.partyId === r.partyId && p.kind === "received") received += p.amount;
+    }
+    const paymentRatio = given > 0 ? received / given : 0;
+    const { score, priority } = recoveryScore({
+      overdueAmount: r.overdueAmount,
+      daysOverdue: r.daysOverdue,
+      paymentRatio,
+      txnCount,
+      maxOverdue,
+    });
+    return { ...r, score, priority };
+  });
+  return scored.sort(
+    (a, b) =>
+      (b.score ?? 0) - (a.score ?? 0) ||
+      b.overdueAmount * b.daysOverdue - a.overdueAmount * a.daysOverdue ||
+      b.daysOverdue - a.daysOverdue
+  );
+}

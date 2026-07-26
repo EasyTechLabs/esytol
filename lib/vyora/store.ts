@@ -141,6 +141,35 @@ export function clearData(): boolean {
   }
 }
 
+/** How many days old a backup may be before it's considered stale (ENG-007). */
+export const BACKUP_STALE_DAYS = 7;
+
+export interface BackupStatus {
+  /** Whole days since the last backup, or null if never backed up. */
+  ageDays: number | null;
+  stale: boolean;
+  /** "today" / "3 days ago" / "" when never — the one relative label. */
+  ago: string;
+}
+
+/**
+ * THE single source of truth for backup freshness (ENG-007). Both the Settings
+ * backup card and Daily Closing's backup reminder read this, so they can never
+ * disagree on whether a backup is stale or how long ago it was.
+ */
+export function backupStatus(lastBackupAt: string | null, nowMs: number): BackupStatus {
+  const t = lastBackupAt ? new Date(lastBackupAt).getTime() : Number.NaN;
+  const ageDays = lastBackupAt && !Number.isNaN(t) ? Math.floor((nowMs - t) / 86_400_000) : null;
+  const stale = ageDays === null || ageDays > BACKUP_STALE_DAYS;
+  const ago =
+    ageDays === null
+      ? ""
+      : ageDays === 0
+        ? "today"
+        : `${ageDays} day${ageDays === 1 ? "" : "s"} ago`;
+  return { ageDays, stale, ago };
+}
+
 /** Approximate on-device size of the saved dataset, in bytes (Founder Mode). */
 export function storageSizeBytes(): number {
   if (typeof window === "undefined") return 0;

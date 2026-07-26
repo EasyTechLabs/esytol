@@ -19,7 +19,7 @@ import type {
   DateFormatPref,
   NumberFormatPref,
 } from "@/lib/vyora/types";
-import { APP_VERSION, VERSION, storageSizeBytes } from "@/lib/vyora/store";
+import { APP_VERSION, VERSION, storageSizeBytes, backupStatus } from "@/lib/vyora/store";
 import { Card, Button, TextInput } from "../primitives";
 
 const CURRENCIES = Object.keys(CURRENCY_SYMBOLS);
@@ -193,17 +193,7 @@ export function Settings() {
   if (!ready) return <div className="py-20 text-center text-gray-500">Loading…</div>;
 
   const lastBackup = data.meta.lastBackupAt;
-  const backupAgeDays =
-    lastBackup && !Number.isNaN(new Date(lastBackup).getTime())
-      ? Math.floor((Date.now() - new Date(lastBackup).getTime()) / 86_400_000)
-      : null;
-  const backupStale = backupAgeDays === null || backupAgeDays > 7;
-  const ago =
-    backupAgeDays === null
-      ? ""
-      : backupAgeDays === 0
-        ? "today"
-        : `${backupAgeDays} day${backupAgeDays === 1 ? "" : "s"} ago`;
+  const { stale: backupStale, ago } = backupStatus(lastBackup, Date.now());
 
   const onImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

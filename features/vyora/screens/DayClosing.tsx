@@ -12,6 +12,7 @@ import Link from "next/link";
 import { useVyora } from "../VyoraProvider";
 import { useToast } from "../Toast";
 import { todayISO, rupees } from "@/lib/vyora/selectors";
+import { backupStatus } from "@/lib/vyora/store";
 import { formatMoney, formatDate, formatDateTime } from "@/lib/vyora/format";
 import { StatCard, Empty, PriorityBadge, LoadingList } from "../components";
 import { Card } from "../primitives";
@@ -87,11 +88,7 @@ export function DayClosing() {
     .slice(0, 30);
 
   const lastBackup = data.meta.lastBackupAt;
-  const backupAgeDays =
-    lastBackup && !Number.isNaN(new Date(lastBackup).getTime())
-      ? Math.floor((Date.now() - new Date(lastBackup).getTime()) / 86_400_000)
-      : null;
-  const backupStale = backupAgeDays === null || backupAgeDays > 7;
+  const { ageDays: backupAgeDays, stale: backupStale } = backupStatus(lastBackup, Date.now());
 
   const markCompleted = () => {
     const record: Closing = { date: today, ...summary, closedAt: new Date().toISOString() };
