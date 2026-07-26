@@ -22,7 +22,10 @@ import type {
 } from "@/lib/vyora/types";
 import { partyNet } from "@/lib/vyora/selectors";
 import { formatMoney, configureFormat } from "@/lib/vyora/format";
+import { runIntegrity, type IntegrityReport } from "@/lib/vyora/integrity";
 import { useToast } from "./Toast";
+
+const nowISO = () => new Date().toISOString();
 import {
   emptyData,
   loadData,
@@ -72,6 +75,8 @@ interface VyoraContextValue {
   settings: VyoraSettings;
   resolvedDark: boolean;
   updateSettings: (patch: Partial<VyoraSettings>) => void;
+  integrity: IntegrityReport | null;
+  checkIntegrity: () => IntegrityReport;
   recordCredit: (input: CreditInput) => string;
   recordPayment: (input: PaymentInput) => string;
   createParty: (input: { name: string; phone?: string; note?: string }) => Party;
@@ -108,13 +113,21 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const [backupExists, setBackupExists] = useState(false);
   const [systemDark, setSystemDark] = useState(false);
+  const [integrity, setIntegrity] = useState<IntegrityReport | null>(null);
 
   useEffect(() => {
     const loaded = loadData();
-    configureFormat(loaded.settings ?? defaultSettings()); // apply currency/number/date prefs
-    setData(loaded);
+    // Data Integrity (ENG-005): verify + safely repair at startup before anything reads it.
+    const { data: checked, report } = runIntegrity(loaded, nowISO());
+    if (report.repaired) saveData(checked); // persist repairs so the ledger stays consistent
+    configureFormat(checked.settings ?? defaultSettings()); // apply currency/number/date prefs
+    setData(checked);
+    setIntegrity(report);
     setBackupExists(hasBackup());
     setReady(true);
+    if (!report.ok)
+      toast.show({ message: "⚠ Data check found issues — see Founder Mode", tone: "warn" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Track the OS colour scheme so a "System" appearance choice resolves correctly.
@@ -246,6 +259,20 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
     [data, commit, toast]
   );
 
+  // Integrity gate (ENG-005): any dataset entering from outside (import / restore)
+  // is verified + safely repaired before it becomes the live ledger.
+  const ingest = useCallback(
+    (candidate: VyoraData, successMsg: string) => {
+      const { data: checked, report } = runIntegrity(candidate, nowISO());
+      configureFormat(checked.settings ?? defaultSettings());
+      commit(checked);
+      setIntegrity(report);
+      if (report.ok) toast.success(successMsg);
+      else toast.show({ message: "⚠ Data check found issues — see Founder Mode", tone: "warn" });
+    },
+    [commit, toast]
+  );
+
   const backup = useCallback(() => {
     const next = backupNowMut(data);
     commit(next);
@@ -259,9 +286,8 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
       toast.info("No backup found on this device");
       return;
     }
-    commit(restored);
-    toast.success("✓ Restored from your last backup");
-  }, [commit, toast]);
+    ingest(restored, "✓ Restored from your last backup");
+  }, [ingest, toast]);
 
   const exportData = useCallback(() => {
     const { data: withCount, text, filename } = exportToFile(data);
@@ -273,12 +299,17 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
   const validateImport = useCallback((text: string) => parseImportFile(text, data), [data]);
 
   const applyImport = useCallback(
-    (next: VyoraData) => {
-      commit(next);
-      toast.success(`✓ Imported · ${next.parties.length} contacts restored`);
-    },
-    [commit, toast]
+    (next: VyoraData) => ingest(next, `✓ Imported · ${next.parties.length} contacts restored`),
+    [ingest]
   );
+
+  // Manual integrity check (Founder Mode) — verify + repair the current ledger.
+  const checkIntegrity = useCallback((): IntegrityReport => {
+    const { data: checked, report } = runIntegrity(data, nowISO());
+    if (report.repaired) commit(checked);
+    setIntegrity(report);
+    return report;
+  }, [data, commit]);
 
   const reset = useCallback(() => {
     clearData();
@@ -297,6 +328,8 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
       settings,
       resolvedDark,
       updateSettings,
+      integrity,
+      checkIntegrity,
       recordCredit,
       recordPayment,
       createParty,
@@ -318,6 +351,8 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
       settings,
       resolvedDark,
       updateSettings,
+      integrity,
+      checkIntegrity,
       recordCredit,
       recordPayment,
       createParty,
