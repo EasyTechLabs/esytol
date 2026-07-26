@@ -12,11 +12,9 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { useVyora } from "../VyoraProvider";
-import { todayISO, todayTotals, allActivity } from "@/lib/vyora/selectors";
+import { useVyora, useLedger } from "../VyoraProvider";
 import { businessHealth, type HealthLevel } from "@/lib/vyora/aging";
 import { formatMoney } from "@/lib/vyora/format";
-import { useRecoveryDashboard } from "../useRecoveryDashboard";
 import { Card } from "../primitives";
 import { LoadingList } from "../components";
 
@@ -46,10 +44,11 @@ const plural = (n: number, s = "s") => (n === 1 ? "" : s);
 
 export function Home() {
   const { ready, data, settings } = useVyora();
-  const rec = useRecoveryDashboard(data);
-  const today = todayISO();
-  const totals = useMemo(() => todayTotals(data, today), [data, today]);
-  const timeline = useMemo(() => allActivity(data).filter((a) => a.date === today), [data, today]);
+  const engine = useLedger();
+  const rec = engine.recovery;
+  const today = engine.today;
+  const totals = engine.statistics.today;
+  const timeline = useMemo(() => engine.timeline.filter((a) => a.date === today), [engine, today]);
 
   if (!ready) return <LoadingList />;
 

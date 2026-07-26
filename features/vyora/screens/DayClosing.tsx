@@ -41,7 +41,7 @@ const signed = (n: number) => (n < 0 ? `−${formatMoney(n)}` : formatMoney(n));
 export function DayClosing() {
   const { ready, data, backup } = useVyora();
   const toast = useToast();
-  const rec = useRecoveryDashboard(data);
+  const rec = useRecoveryDashboard();
 
   const [closings, setClosings] = useState<Closing[]>([]);
   const [loaded, setLoaded] = useState(false);

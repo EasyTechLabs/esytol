@@ -75,8 +75,8 @@ const STATUS_META: Record<ContactStatus, { label: string; cls: string }> = {
 const INACTIVE_DAYS = 30;
 
 export function Parties() {
-  const { ready, data, createParty } = useVyora();
-  const rows = useContactsWorkspace(data);
+  const { ready, createParty } = useVyora();
+  const rows = useContactsWorkspace();
 
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<Sort>("outstanding");

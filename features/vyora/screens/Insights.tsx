@@ -7,20 +7,17 @@
  * to their Customer 360.
  */
 
-import { useMemo } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
-import { useVyora } from "../VyoraProvider";
-import { todayISO } from "@/lib/vyora/selectors";
-import { merchantInsights, type InsightRow } from "@/lib/vyora/insights";
+import { useVyora, useLedger } from "../VyoraProvider";
+import type { InsightRow } from "@/lib/vyora/insights";
 import { formatMoney } from "@/lib/vyora/format";
 import { Card } from "../primitives";
 import { Empty, LoadingList } from "../components";
 
 export function Insights() {
   const { ready, data } = useVyora();
-  const today = todayISO();
-  const ins = useMemo(() => merchantInsights(data, today), [data, today]);
+  const ins = useLedger().statistics.insights;
 
   if (!ready) return <LoadingList />;
   if (data.parties.length === 0)

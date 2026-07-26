@@ -29,7 +29,7 @@ function reminderText(name: string, amount: number): string {
 export function Collect() {
   const { ready, data } = useVyora();
   const toast = useToast();
-  const { overdue, open } = useCollect(data);
+  const { overdue, open } = useCollect();
   const nameById = useMemo(() => new Map(data.parties.map((p) => [p.id, p.name])), [data.parties]);
 
   if (!ready) return <LoadingList />;

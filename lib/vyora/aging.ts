@@ -205,14 +205,17 @@ export function allocateFifo(credits: Transaction[], paidPool: number): Allocati
   });
 }
 
-/** A party's receivable aging as of `today`. */
-export function agingForParty(data: VyoraData, partyId: string, today: string): PartyAging {
-  const credits = data.transactions.filter((t) => t.partyId === partyId && t.kind === "given");
-  let paidPool = 0;
-  for (const p of data.payments) {
-    if (p.partyId === partyId && p.kind === "received") paidPool += p.amount;
-  }
-
+/**
+ * A party's receivable aging from PRE-GROUPED credits + received pool (ARCH-001).
+ * The pure core shared by `agingForParty` (which filters) and the LedgerEngine
+ * (which passes its one-pass grouped data) — so both produce identical aging.
+ */
+export function agingFromCredits(
+  partyId: string,
+  credits: Transaction[],
+  paidPool: number,
+  today: string
+): PartyAging {
   const buckets = emptyBuckets();
   const lots: OpenLot[] = [];
   let openReceivable = 0;
@@ -253,6 +256,16 @@ export function agingForParty(data: VyoraData, partyId: string, today: string): 
     buckets,
     lots,
   };
+}
+
+/** A party's receivable aging as of `today`. */
+export function agingForParty(data: VyoraData, partyId: string, today: string): PartyAging {
+  const credits = data.transactions.filter((t) => t.partyId === partyId && t.kind === "given");
+  let paidPool = 0;
+  for (const p of data.payments) {
+    if (p.partyId === partyId && p.kind === "received") paidPool += p.amount;
+  }
+  return agingFromCredits(partyId, credits, paidPool, today);
 }
 
 /**
@@ -425,27 +438,33 @@ export function collectList(data: VyoraData, today: string): CollectLists {
  * dashboard, Daily Closing's top-5) goes through this, so the priority pill and
  * the ordering a merchant sees are identical everywhere.
  */
-export function rankOverdue(data: VyoraData, overdue: OverdueRow[]): OverdueRow[] {
+/** Per-party sums the recovery score needs — precomputable in one pass (ARCH-001). */
+export interface PartyRecoveryStats {
+  given: number;
+  received: number;
+  txnCount: number;
+}
+
+/**
+ * Score + rank overdue rows using PRE-COMPUTED per-party stats (ARCH-001) — the
+ * pure core of `rankOverdue`. The LedgerEngine feeds this its one-pass stats so
+ * ranking is O(overdue log overdue) with no ledger rescan; `rankOverdue` builds
+ * the same stats itself. Same comparator, same result.
+ */
+export function rankOverdueWith(
+  overdue: OverdueRow[],
+  statsById: Map<string, PartyRecoveryStats>
+): OverdueRow[] {
   const maxOverdue = overdue.reduce((m, r) => Math.max(m, r.overdueAmount), 0);
   const scored = overdue.map((r) => {
-    let given = 0;
-    let received = 0;
-    let txnCount = 0;
-    for (const t of data.transactions) {
-      if (t.partyId === r.partyId && t.kind === "given") {
-        given += t.amount;
-        txnCount += 1;
-      }
-    }
-    for (const p of data.payments) {
-      if (p.partyId === r.partyId && p.kind === "received") received += p.amount;
-    }
-    const paymentRatio = given > 0 ? received / given : 0;
+    const s = statsById.get(r.partyId);
+    const given = s?.given ?? 0;
+    const paymentRatio = given > 0 ? (s?.received ?? 0) / given : 0;
     const { score, priority } = recoveryScore({
       overdueAmount: r.overdueAmount,
       daysOverdue: r.daysOverdue,
       paymentRatio,
-      txnCount,
+      txnCount: s?.txnCount ?? 0,
       maxOverdue,
     });
     return { ...r, score, priority };
@@ -456,4 +475,31 @@ export function rankOverdue(data: VyoraData, overdue: OverdueRow[]): OverdueRow[
       b.overdueAmount * b.daysOverdue - a.overdueAmount * a.daysOverdue ||
       b.daysOverdue - a.daysOverdue
   );
+}
+
+/**
+ * THE single source of truth for recovery ranking (ENG-007). Now O(N): one grouped
+ * pass builds the per-party stats, then `rankOverdueWith` scores + orders by the ONE
+ * canonical comparator (score → leverage → most-overdue). Result is unchanged.
+ */
+export function rankOverdue(data: VyoraData, overdue: OverdueRow[]): OverdueRow[] {
+  const statsById = new Map<string, PartyRecoveryStats>();
+  const ensure = (id: string): PartyRecoveryStats => {
+    let s = statsById.get(id);
+    if (!s) {
+      s = { given: 0, received: 0, txnCount: 0 };
+      statsById.set(id, s);
+    }
+    return s;
+  };
+  for (const t of data.transactions) {
+    if (t.kind !== "given") continue;
+    const s = ensure(t.partyId);
+    s.given += t.amount;
+    s.txnCount += 1;
+  }
+  for (const p of data.payments) {
+    if (p.kind === "received") ensure(p.partyId).received += p.amount;
+  }
+  return rankOverdueWith(overdue, statsById);
 }

@@ -1,125 +1,16 @@
 "use client";
 
 /**
- * Vyora — Recovery Dashboard selector (P0-006) + Recovery Intelligence (P1-004).
- * ONE memoized sweep (a single FIFO pass per contact) feeds every recovery
- * section: the hero totals, the scored overdue top-5 ("top recovery
- * opportunities"), money due today, and total outstanding. Overdue contacts are
- * scored by a deterministic formula (no ML) and sorted by score.
+ * Vyora — Recovery dashboard selector. Now a thin read of the Ledger Engine's
+ * recovery index (ARCH-001) — no ledger rescan. Same numbers as before (the engine
+ * is proven byte-identical), served in O(1).
  */
 
-import { useMemo } from "react";
-import type { VyoraData } from "@/lib/vyora/types";
-import type { OverdueRow } from "@/lib/vyora/aging";
-import { allocateFifo, daysBetween, rankOverdue } from "@/lib/vyora/aging";
-import { partyNet, rupees, todayISO } from "@/lib/vyora/selectors";
+import { useLedger } from "./VyoraProvider";
+import type { RecoveryView } from "@/lib/vyora/engine";
 
-export interface RecoveryDashboard {
-  overdueTotal: number;
-  overdueContactCount: number;
-  highestPriority: OverdueRow | null;
-  top5: OverdueRow[];
-  /** The full ranked overdue list — Customer 360 reads a party's score/priority here. */
-  overdue: OverdueRow[];
-  /** Open receivable whose due date is exactly today (amount + contact count). */
-  dueToday: number;
-  dueTodayCount: number;
-  /** Open receivable due tomorrow (amount + contact count) — Merchant Home tasks. */
-  dueTomorrow: number;
-  dueTomorrowCount: number;
-  outstanding: number;
-  /** Lifetime totals for the business-health band. */
-  totalGiven: number;
-  totalReceived: number;
-}
+export type RecoveryDashboard = RecoveryView;
 
-/** The day after `today` (YYYY-MM-DD), computed without wall-clock drift. */
-function nextDay(today: string): string {
-  const [y, m, d] = today.split("-").map(Number);
-  return new Date(Date.UTC(y!, m! - 1, d! + 1)).toISOString().slice(0, 10);
-}
-
-export function useRecoveryDashboard(
-  data: VyoraData,
-  today: string = todayISO()
-): RecoveryDashboard {
-  return useMemo(() => {
-    // ONE FIFO sweep per contact produces every aggregate the Home + Dashboard need;
-    // ranking/scoring is delegated to the shared `rankOverdue` (ENG-007), so the
-    // Home, the Dashboard and the Collect list can never disagree on priority/order.
-    const tomorrow = nextDay(today);
-    const baseRows: OverdueRow[] = [];
-    let overdueTotal = 0;
-    let dueToday = 0;
-    let dueTodayCount = 0;
-    let dueTomorrow = 0;
-    let dueTomorrowCount = 0;
-    let outstanding = 0;
-    let totalGiven = 0;
-    let totalReceived = 0;
-
-    for (const party of data.parties) {
-      const given = data.transactions.filter((t) => t.partyId === party.id && t.kind === "given");
-      let received = 0;
-      for (const p of data.payments) {
-        if (p.partyId === party.id && p.kind === "received") received += p.amount;
-      }
-      for (const t of given) totalGiven += t.amount;
-      totalReceived += received;
-
-      let open = 0;
-      let od = 0;
-      let ddToday = 0;
-      let ddTomorrow = 0;
-      let maxOverdueDays: number | null = null;
-      for (const lot of allocateFifo(given, received)) {
-        if (lot.openAmount <= 0) continue;
-        open += lot.openAmount;
-        if (!lot.dueDate) continue;
-        if (lot.dueDate < today) {
-          od += lot.openAmount;
-          const d = daysBetween(lot.dueDate, today);
-          if (maxOverdueDays === null || d > maxOverdueDays) maxOverdueDays = d;
-        } else if (lot.dueDate === today) {
-          ddToday += lot.openAmount;
-        } else if (lot.dueDate === tomorrow) {
-          ddTomorrow += lot.openAmount;
-        }
-      }
-
-      outstanding += open;
-      dueToday += ddToday;
-      dueTomorrow += ddTomorrow;
-      if (ddToday > 0) dueTodayCount += 1;
-      if (ddTomorrow > 0) dueTomorrowCount += 1;
-      if (od > 0 && maxOverdueDays !== null) {
-        const overdueAmount = rupees(od);
-        overdueTotal += overdueAmount;
-        baseRows.push({
-          partyId: party.id,
-          overdueAmount,
-          daysOverdue: maxOverdueDays,
-          openReceivable: rupees(open),
-          net: partyNet(data, party.id),
-        });
-      }
-    }
-
-    const overdue = rankOverdue(data, baseRows);
-
-    return {
-      overdueTotal: rupees(overdueTotal),
-      overdueContactCount: overdue.length,
-      highestPriority: overdue[0] ?? null,
-      top5: overdue.slice(0, 5),
-      overdue,
-      dueToday: rupees(dueToday),
-      dueTodayCount,
-      dueTomorrow: rupees(dueTomorrow),
-      dueTomorrowCount,
-      outstanding: rupees(outstanding),
-      totalGiven: rupees(totalGiven),
-      totalReceived: rupees(totalReceived),
-    };
-  }, [data, today]);
+export function useRecoveryDashboard(): RecoveryView {
+  return useLedger().recovery;
 }

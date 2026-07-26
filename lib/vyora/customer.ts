@@ -10,9 +10,9 @@
  * longest delay are `null` until there is real evidence.
  */
 
-import type { VyoraData } from "./types";
+import type { VyoraData, Transaction, Payment } from "./types";
 import { partyNet } from "./selectors";
-import { agingForParty, allocateFifo, daysBetween } from "./aging";
+import { agingForParty, allocateFifo, daysBetween, type PartyAging } from "./aging";
 
 export type CustomerStatus = "settled" | "overdue" | "due-soon" | "good";
 
@@ -34,24 +34,21 @@ export interface CustomerProfile {
 const byDateThenId = <T extends { date: string; id: string }>(a: T, b: T) =>
   a.date < b.date ? -1 : a.date > b.date ? 1 : a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 
-export function customerProfile(
-  data: VyoraData,
-  partyId: string,
+/**
+ * Compute a customer profile from PRE-GROUPED, sorted entries (ARCH-001) — the pure
+ * core shared by `customerProfile` (which filters) and the LedgerEngine (which reads
+ * its one-pass grouped index). `given`/`received` must be this party's entries,
+ * sorted oldest-first; `net`/`aging`/`lastActivity`/`customerSince` are precomputed.
+ */
+export function customerProfileFrom(
+  given: Transaction[],
+  received: Payment[],
+  net: number,
+  aging: PartyAging,
+  lastActivity: string | null,
+  customerSince: string,
   today: string
-): CustomerProfile | null {
-  const party = data.parties.find((p) => p.id === partyId);
-  if (!party) return null;
-
-  const net = partyNet(data, partyId);
-  const aging = agingForParty(data, partyId, today);
-
-  const given = data.transactions
-    .filter((t) => t.partyId === partyId && t.kind === "given")
-    .sort(byDateThenId);
-  const received = data.payments
-    .filter((p) => p.partyId === partyId && p.kind === "received")
-    .sort(byDateThenId);
-
+): CustomerProfile {
   let lifetimeCredit = 0;
   let largestPurchase = 0;
   for (const t of given) {
@@ -64,14 +61,6 @@ export function customerProfile(
     lifetimePayment += p.amount;
     if (p.amount > largestPayment) largestPayment = p.amount;
   }
-
-  let lastActivity: string | null = null;
-  for (const t of data.transactions)
-    if (t.partyId === partyId && (lastActivity === null || t.date > lastActivity))
-      lastActivity = t.date;
-  for (const p of data.payments)
-    if (p.partyId === partyId && (lastActivity === null || p.date > lastActivity))
-      lastActivity = p.date;
 
   // FIFO cash application: each payment settles the oldest open credit first.
   const settledDays: number[] = [];
@@ -121,9 +110,43 @@ export function customerProfile(
     lifetimePayment,
     avgPaymentDays,
     lastActivity,
-    customerSince: party.createdAt.slice(0, 10),
+    customerSince,
     longestDelayDays,
     largestPurchase,
     largestPayment,
   };
+}
+
+/** A customer's full 360 profile as of `today` (filters + delegates to the core). */
+export function customerProfile(
+  data: VyoraData,
+  partyId: string,
+  today: string
+): CustomerProfile | null {
+  const party = data.parties.find((p) => p.id === partyId);
+  if (!party) return null;
+  const net = partyNet(data, partyId);
+  const aging = agingForParty(data, partyId, today);
+  const given = data.transactions
+    .filter((t) => t.partyId === partyId && t.kind === "given")
+    .sort(byDateThenId);
+  const received = data.payments
+    .filter((p) => p.partyId === partyId && p.kind === "received")
+    .sort(byDateThenId);
+  let lastActivity: string | null = null;
+  for (const t of data.transactions)
+    if (t.partyId === partyId && (lastActivity === null || t.date > lastActivity))
+      lastActivity = t.date;
+  for (const p of data.payments)
+    if (p.partyId === partyId && (lastActivity === null || p.date > lastActivity))
+      lastActivity = p.date;
+  return customerProfileFrom(
+    given,
+    received,
+    net,
+    aging,
+    lastActivity,
+    party.createdAt.slice(0, 10),
+    today
+  );
 }

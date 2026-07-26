@@ -12,22 +12,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
-import { useVyora } from "./VyoraProvider";
-import { partyNet } from "@/lib/vyora/selectors";
-import { formatMoney, formatDate } from "@/lib/vyora/format";
+import { useLedger } from "./VyoraProvider";
+import type { SearchItem } from "@/lib/vyora/engine";
 
 const RECENT_KEY = "vyora.recent.searches";
-
-type Kind = "contact" | "credit" | "payment";
-interface SearchItem {
-  kind: Kind;
-  /** entry id (credit/payment) or party id (contact) — the thing selected. */
-  id: string;
-  partyId: string;
-  title: string;
-  subtitle: string;
-  text: string; // lowercased searchable blob
-}
 
 function loadRecent(): string[] {
   try {
@@ -48,65 +36,16 @@ function saveRecent(q: string) {
 
 export function GlobalSearch({ showBar }: { showBar: boolean }) {
   const router = useRouter();
-  const { data } = useVyora();
+  const engine = useLedger();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [sel, setSel] = useState(0);
   const [recent, setRecent] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Build the index ONCE per data change (fast local indexing).
-  const index = useMemo<SearchItem[]>(() => {
-    if (!open) return []; // only build the index while the overlay is open — no cost during data entry
-    const nameById = new Map(data.parties.map((p) => [p.id, p.name]));
-    const nameOf = (id: string) => nameById.get(id) ?? "Contact";
-    const items: SearchItem[] = [];
-    for (const p of data.parties) {
-      const net = partyNet(data, p.id);
-      items.push({
-        kind: "contact",
-        id: p.id,
-        partyId: p.id,
-        title: p.name,
-        subtitle: p.phone || (net === 0 ? "Settled" : formatMoney(net)),
-        text: [p.name, p.phone, p.note, String(Math.abs(net))]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase(),
-      });
-    }
-    for (const t of data.transactions) {
-      const name = nameOf(t.partyId);
-      const label = t.kind === "given" ? "Credit given" : "Credit taken";
-      items.push({
-        kind: "credit",
-        id: t.id,
-        partyId: t.partyId,
-        title: `${label} · ${formatMoney(t.amount)}`,
-        subtitle: `${name} · ${formatDate(t.date)}${t.reference ? ` · Ref ${t.reference}` : ""}`,
-        text: [name, t.reference, t.description, String(t.amount)]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase(),
-      });
-    }
-    for (const p of data.payments) {
-      const name = nameOf(p.partyId);
-      const label = p.kind === "received" ? "Payment received" : "Payment made";
-      items.push({
-        kind: "payment",
-        id: p.id,
-        partyId: p.partyId,
-        title: `${label} · ${formatMoney(p.amount)}`,
-        subtitle: `${name} · ${formatDate(p.date)}${p.mode ? ` · ${p.mode.toUpperCase()}` : ""}`,
-        text: [name, p.reference, p.note, p.mode, String(p.amount)]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase(),
-      });
-    }
-    return items;
-  }, [data, open]);
+  // The search index comes from the Ledger Engine (ARCH-001) — built once, on
+  // demand, from O(1) indexes (no ledger rescan). Only accessed while open.
+  const index = useMemo<SearchItem[]>(() => (open ? engine.getSearchIndex() : []), [engine, open]);
 
   const results = useMemo(() => {
     const needle = q.trim().toLowerCase();

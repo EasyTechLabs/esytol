@@ -13,15 +13,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
-import { useVyora } from "../VyoraProvider";
+import { useVyora, useLedger } from "../VyoraProvider";
 import { useToast } from "../Toast";
-import { partyStatement, todayISO } from "@/lib/vyora/selectors";
-import { customerProfile, type CustomerStatus } from "@/lib/vyora/customer";
+import { partyStatement } from "@/lib/vyora/selectors";
+import type { CustomerStatus } from "@/lib/vyora/customer";
 import type { Priority } from "@/lib/vyora/aging";
 import { formatMoney, formatDate, balanceLabel, balanceColor } from "@/lib/vyora/format";
 import { Card, Button, TextInput } from "../primitives";
 import { Empty, LoadingList } from "../components";
-import { useRecoveryDashboard } from "../useRecoveryDashboard";
 
 const STATUS: Record<CustomerStatus, { label: string; cls: string }> = {
   overdue: { label: "Overdue", cls: "bg-negative-tint text-negative-strong" },
@@ -90,14 +89,14 @@ export function PartyStatement({ partyId }: { partyId: string }) {
   const { ready, data, editParty, deleteEntry, deleteContact, settings } = useVyora();
   const router = useRouter();
   const toast = useToast();
-  const rec = useRecoveryDashboard(data);
+  const engine = useLedger();
+  const rec = engine.recovery;
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
 
   const party = data.parties.find((p) => p.id === partyId);
-  const today = todayISO();
-  const profile = useMemo(() => customerProfile(data, partyId, today), [data, partyId, today]);
+  const profile = useMemo(() => engine.getProfile(partyId), [engine, partyId]);
 
   const rows = useMemo(() => [...partyStatement(data, partyId)].reverse(), [data, partyId]);
   const events = useMemo<TLEvent[]>(() => {

@@ -24,6 +24,7 @@ import { partyNet, todayISO } from "@/lib/vyora/selectors";
 import { formatMoney, configureFormat } from "@/lib/vyora/format";
 import { runIntegrity, type IntegrityReport } from "@/lib/vyora/integrity";
 import { applyImportPlan, type ImportPlan } from "@/lib/vyora/import";
+import { buildLedgerEngine, type LedgerEngine } from "@/lib/vyora/engine";
 import { useToast } from "./Toast";
 
 const nowISO = () => new Date().toISOString();
@@ -77,6 +78,8 @@ interface VyoraContextValue {
   hasBackup: boolean;
   settings: VyoraSettings;
   resolvedDark: boolean;
+  /** The one normalized ledger index every screen reads from (ARCH-001). */
+  engine: LedgerEngine;
   updateSettings: (patch: Partial<VyoraSettings>) => void;
   integrity: IntegrityReport | null;
   checkIntegrity: () => IntegrityReport;
@@ -353,6 +356,10 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
   const settings = data.settings ?? defaultSettings();
   const resolvedDark = settings.theme === "dark" || (settings.theme === "system" && systemDark);
 
+  // The Ledger Engine (ARCH-001) — rebuilt once per data change, in O(N). Every
+  // screen reads its indexes instead of rescanning the ledger.
+  const engine = useMemo(() => buildLedgerEngine(data, todayISO()), [data]);
+
   const value = useMemo<VyoraContextValue>(
     () => ({
       ready,
@@ -360,6 +367,7 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
       hasBackup: backupExists,
       settings,
       resolvedDark,
+      engine,
       updateSettings,
       integrity,
       checkIntegrity,
@@ -386,6 +394,7 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
       backupExists,
       settings,
       resolvedDark,
+      engine,
       updateSettings,
       integrity,
       checkIntegrity,
@@ -415,4 +424,9 @@ export function useVyora(): VyoraContextValue {
   const ctx = useContext(VyoraContext);
   if (!ctx) throw new Error("useVyora must be used within <VyoraProvider>");
   return ctx;
+}
+
+/** The shared Ledger Engine (ARCH-001) — the one index every screen reads from. */
+export function useLedger(): LedgerEngine {
+  return useVyora().engine;
 }
