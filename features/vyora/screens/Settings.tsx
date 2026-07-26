@@ -246,6 +246,34 @@ export function Settings() {
     <div className="space-y-6">
       <h1 className="text-lg font-semibold text-gray-900">Settings</h1>
 
+      {/* Data safety at a glance — Settings' first job is to answer "Is my data safe?" */}
+      <Card
+        as="section"
+        className={
+          backupStale
+            ? "flex items-center justify-between gap-3 border-amber-200 bg-amber-50"
+            : "flex items-center justify-between gap-3 border-positive-line bg-positive-tint"
+        }
+      >
+        <div className="min-w-0">
+          <p
+            className={`text-sm font-semibold ${backupStale ? "text-amber-800" : "text-positive-strong"}`}
+          >
+            {!lastBackup
+              ? "Your data isn't backed up yet"
+              : backupStale
+                ? `Back up your data${ago ? ` — last ${ago}` : ""}`
+                : `Your data is safe — backed up ${ago}`}
+          </p>
+          <p className="text-xs text-gray-600">
+            It&rsquo;s stored only on this device. Keep an exported copy to be safe.
+          </p>
+        </div>
+        <Button variant="primary" size="sm" className="shrink-0" onClick={backup}>
+          Back up
+        </Button>
+      </Card>
+
       {/* Business profile — brands shared statements (P3-002) */}
       <Card as="section" className="space-y-3">
         <div>
