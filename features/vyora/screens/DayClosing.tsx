@@ -11,7 +11,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useVyora } from "../VyoraProvider";
 import { useToast } from "../Toast";
-import { todayISO, rupees } from "@/lib/vyora/selectors";
+import { todayISO, todayTotals } from "@/lib/vyora/selectors";
 import { backupStatus } from "@/lib/vyora/store";
 import { formatMoney, formatDate, formatDateTime } from "@/lib/vyora/format";
 import { StatCard, Empty, PriorityBadge, LoadingList } from "../components";
@@ -58,25 +58,7 @@ export function DayClosing() {
     }
   }, [closings, loaded]);
 
-  const summary = useMemo(() => {
-    const t = todayISO();
-    let credit = 0;
-    let collection = 0;
-    let payment = 0;
-    for (const tx of data.transactions)
-      if (tx.date === t && tx.kind === "given") credit += tx.amount;
-    for (const p of data.payments) {
-      if (p.date !== t) continue;
-      if (p.kind === "received") collection += p.amount;
-      else payment += p.amount;
-    }
-    return {
-      credit: rupees(credit),
-      collection: rupees(collection),
-      payment: rupees(payment),
-      netCash: rupees(collection - payment),
-    };
-  }, [data]);
+  const summary = useMemo(() => todayTotals(data, todayISO()), [data]);
 
   if (!ready) return <LoadingList />;
 

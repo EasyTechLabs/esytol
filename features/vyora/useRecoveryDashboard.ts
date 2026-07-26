@@ -19,9 +19,22 @@ export interface RecoveryDashboard {
   overdueContactCount: number;
   highestPriority: OverdueRow | null;
   top5: OverdueRow[];
-  /** Open receivable whose due date is exactly today. */
+  /** Open receivable whose due date is exactly today (amount + contact count). */
   dueToday: number;
+  dueTodayCount: number;
+  /** Open receivable due tomorrow (amount + contact count) — Merchant Home tasks. */
+  dueTomorrow: number;
+  dueTomorrowCount: number;
   outstanding: number;
+  /** Lifetime totals for the business-health band. */
+  totalGiven: number;
+  totalReceived: number;
+}
+
+/** The day after `today` (YYYY-MM-DD), computed without wall-clock drift. */
+function nextDay(today: string): string {
+  const [y, m, d] = today.split("-").map(Number);
+  return new Date(Date.UTC(y!, m! - 1, d! + 1)).toISOString().slice(0, 10);
 }
 
 export function useRecoveryDashboard(
@@ -29,13 +42,19 @@ export function useRecoveryDashboard(
   today: string = todayISO()
 ): RecoveryDashboard {
   return useMemo(() => {
-    // ONE FIFO sweep per contact produces the aggregate totals + the base overdue
-    // rows; ranking/scoring is delegated to the shared `rankOverdue` (ENG-007), so
-    // the dashboard and the Collect list can never disagree on priority or order.
+    // ONE FIFO sweep per contact produces every aggregate the Home + Dashboard need;
+    // ranking/scoring is delegated to the shared `rankOverdue` (ENG-007), so the
+    // Home, the Dashboard and the Collect list can never disagree on priority/order.
+    const tomorrow = nextDay(today);
     const baseRows: OverdueRow[] = [];
     let overdueTotal = 0;
     let dueToday = 0;
+    let dueTodayCount = 0;
+    let dueTomorrow = 0;
+    let dueTomorrowCount = 0;
     let outstanding = 0;
+    let totalGiven = 0;
+    let totalReceived = 0;
 
     for (const party of data.parties) {
       const given = data.transactions.filter((t) => t.partyId === party.id && t.kind === "given");
@@ -43,10 +62,13 @@ export function useRecoveryDashboard(
       for (const p of data.payments) {
         if (p.partyId === party.id && p.kind === "received") received += p.amount;
       }
+      for (const t of given) totalGiven += t.amount;
+      totalReceived += received;
 
       let open = 0;
       let od = 0;
       let ddToday = 0;
+      let ddTomorrow = 0;
       let maxOverdueDays: number | null = null;
       for (const lot of allocateFifo(given, received)) {
         if (lot.openAmount <= 0) continue;
@@ -58,11 +80,16 @@ export function useRecoveryDashboard(
           if (maxOverdueDays === null || d > maxOverdueDays) maxOverdueDays = d;
         } else if (lot.dueDate === today) {
           ddToday += lot.openAmount;
+        } else if (lot.dueDate === tomorrow) {
+          ddTomorrow += lot.openAmount;
         }
       }
 
       outstanding += open;
       dueToday += ddToday;
+      dueTomorrow += ddTomorrow;
+      if (ddToday > 0) dueTodayCount += 1;
+      if (ddTomorrow > 0) dueTomorrowCount += 1;
       if (od > 0 && maxOverdueDays !== null) {
         const overdueAmount = rupees(od);
         overdueTotal += overdueAmount;
@@ -84,7 +111,12 @@ export function useRecoveryDashboard(
       highestPriority: overdue[0] ?? null,
       top5: overdue.slice(0, 5),
       dueToday: rupees(dueToday),
+      dueTodayCount,
+      dueTomorrow: rupees(dueTomorrow),
+      dueTomorrowCount,
       outstanding: rupees(outstanding),
+      totalGiven: rupees(totalGiven),
+      totalReceived: rupees(totalReceived),
     };
   }, [data, today]);
 }

@@ -112,6 +112,47 @@ export function recoveryScore(i: RecoveryScoreInput): { score: number; priority:
   return { score, priority };
 }
 
+/** Business-health band (V1-001) — deterministic, no ML, no charts. */
+export type HealthLevel = "excellent" | "good" | "attention" | "critical";
+
+export interface BusinessHealthInput {
+  /** Total open receivable across the book. */
+  outstanding: number;
+  /** How much of that is overdue. */
+  overdueTotal: number;
+  /** Lifetime credit given. */
+  totalGiven: number;
+  /** Lifetime payments received. */
+  totalReceived: number;
+  /** Amount collected today. */
+  collectedToday: number;
+}
+
+export interface BusinessHealth {
+  level: HealthLevel;
+  score: number; // 0–100
+  recoveryRatio: number; // received ÷ given (0–1)
+  overduePct: number; // overdue ÷ outstanding (0–1)
+}
+
+/**
+ * Deterministic business health (V1-001) from three plain-language signals:
+ *  - 50%  overdue pressure  (less overdue of what's owed → healthier)
+ *  - 35%  recovery ratio    (more of the credit given has come back → healthier)
+ *  - 15%  collected today    (money moved today → a small positive signal)
+ * Bands: ≥75 Excellent · ≥55 Good · ≥35 Attention · else Critical.
+ */
+export function businessHealth(i: BusinessHealthInput): BusinessHealth {
+  const recoveryRatio = i.totalGiven > 0 ? Math.min(1, i.totalReceived / i.totalGiven) : 1;
+  const overduePct = i.outstanding > 0 ? Math.min(1, i.overdueTotal / i.outstanding) : 0;
+  const score = Math.round(
+    (1 - overduePct) * 50 + recoveryRatio * 35 + (i.collectedToday > 0 ? 15 : 0)
+  );
+  const level: HealthLevel =
+    score >= 75 ? "excellent" : score >= 55 ? "good" : score >= 35 ? "attention" : "critical";
+  return { level, score, recoveryRatio, overduePct };
+}
+
 /** Portfolio-wide receivable aging totals. */
 export interface PortfolioAging {
   buckets: Record<AgingBucket, number>;

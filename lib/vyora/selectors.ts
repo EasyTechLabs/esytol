@@ -131,6 +131,31 @@ export function recentActivity(data: VyoraData, limit = 12): ActivityItem[] {
   return allActivity(data).slice(0, limit);
 }
 
+/** Today's cash movement — the single source for both Daily Closing and Merchant Home. */
+export interface TodayTotals {
+  credit: number;
+  collection: number;
+  payment: number;
+  netCash: number;
+}
+export function todayTotals(data: VyoraData, today: string): TodayTotals {
+  let credit = 0;
+  let collection = 0;
+  let payment = 0;
+  for (const t of data.transactions) if (t.date === today && t.kind === "given") credit += t.amount;
+  for (const p of data.payments) {
+    if (p.date !== today) continue;
+    if (p.kind === "received") collection += p.amount;
+    else payment += p.amount;
+  }
+  return {
+    credit: rupees(credit),
+    collection: rupees(collection),
+    payment: rupees(payment),
+    netCash: rupees(collection - payment),
+  };
+}
+
 /** A single party's full statement, OLDEST first, with a running balance. */
 export function partyStatement(
   data: VyoraData,
