@@ -63,6 +63,7 @@ export function emptyData(): VyoraData {
     meta: emptyMeta(),
     trash: [],
     settings: defaultSettings(),
+    events: [],
   };
 }
 
@@ -102,6 +103,9 @@ export function migrate(raw: unknown): VyoraData | null {
     trash: Array.isArray(r.trash) ? (r.trash as TrashEntry[]) : [],
     // Merchant settings (P3-002) — absent in older payloads; fill defaults.
     settings: { ...defaultSettings(), ...(r.settings ?? {}) },
+    // Event log (ARCH-002) — absent in older payloads; the provider seeds a
+    // checkpoint on first load so the log is self-sufficient.
+    events: Array.isArray(r.events) ? r.events : [],
   };
 }
 

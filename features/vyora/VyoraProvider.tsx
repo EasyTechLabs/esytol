@@ -25,13 +25,41 @@ import { formatMoney, configureFormat } from "@/lib/vyora/format";
 import { runIntegrity, type IntegrityReport } from "@/lib/vyora/integrity";
 import { applyImportPlan, type ImportPlan } from "@/lib/vyora/import";
 import { buildLedgerEngine, type LedgerEngine } from "@/lib/vyora/engine";
+import {
+  appendEvent,
+  compactEvents,
+  EVENT_LOG_CAP,
+  type LedgerEventSpec,
+  type LedgerEvent,
+} from "@/lib/vyora/events";
 import { useToast } from "./Toast";
 
 const nowISO = () => new Date().toISOString();
+
+/** Append a ledger event (ARCH-002), compacting to a checkpoint past the cap. */
+function logEvent(d: VyoraData, spec: LedgerEventSpec): VyoraData {
+  const withEvt = appendEvent(d, spec, newId("evt"), nowISO());
+  return (withEvt.events?.length ?? 0) > EVENT_LOG_CAP
+    ? compactEvents(withEvt, newId("evt"), nowISO())
+    : withEvt;
+}
+
+/** Reset the log to a single checkpoint carrying the current active ledger (bulk ops). */
+function checkpoint(
+  d: VyoraData,
+  spec:
+    | { type: "RestoreCompleted" | "Checkpoint" }
+    | { type: "ImportCompleted"; summary: { contacts: number; entries: number } }
+): VyoraData {
+  const snapshot = { parties: d.parties, transactions: d.transactions, payments: d.payments };
+  const event = { ...spec, snapshot, id: newId("evt"), at: nowISO() } as LedgerEvent;
+  return { ...d, events: [event] };
+}
 import {
   emptyData,
   loadData,
   saveData,
+  newId,
   defaultSettings,
   updateSettings as updateSettingsMut,
   addParty as addPartyMut,
@@ -128,9 +156,17 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
     const loaded = loadData();
     // Data Integrity (ENG-005): verify + safely repair at startup before anything reads it.
     const { data: checked, report } = runIntegrity(loaded, nowISO());
-    if (report.repaired) saveData(checked); // persist repairs so the ledger stays consistent
-    configureFormat(checked.settings ?? defaultSettings()); // apply currency/number/date prefs
-    setData(checked);
+    // Event log (ARCH-002): seed a checkpoint for pre-event data so the log is
+    // self-sufficient (state derivable) from the first load.
+    const hasRecords =
+      checked.parties.length > 0 || checked.transactions.length > 0 || checked.payments.length > 0;
+    const seeded =
+      (checked.events?.length ?? 0) === 0 && hasRecords
+        ? compactEvents(checked, newId("evt"), nowISO())
+        : checked;
+    if (report.repaired || seeded !== checked) saveData(seeded); // persist repairs / seed
+    configureFormat(seeded.settings ?? defaultSettings()); // apply currency/number/date prefs
+    setData(seeded);
     setIntegrity(report);
     setBackupExists(hasBackup());
     setReady(true);
@@ -167,7 +203,7 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
     (input: CreditInput): string => {
       const prev = data;
       const { data: withParty, partyId } = resolvePartyRef(data, input.party);
-      const { data: next } = addTxnMut(withParty, {
+      const { data: next, transaction } = addTxnMut(withParty, {
         partyId,
         amount: input.amount,
         kind: input.kind,
@@ -176,8 +212,14 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
         date: input.date,
         dueDate: input.dueDate,
       });
-      commit(next);
-      const net = partyNet(next, partyId);
+      let logged = next;
+      if (input.party.kind === "new") {
+        const created = withParty.parties.find((p) => p.id === partyId);
+        if (created) logged = logEvent(logged, { type: "ContactCreated", party: created });
+      }
+      logged = logEvent(logged, { type: "CreditRecorded", transaction });
+      commit(logged);
+      const net = partyNet(logged, partyId);
       toast.success(
         `✓ Credit recorded · Outstanding ${net >= 0 ? formatMoney(net) : `−${formatMoney(net)}`}`,
         { label: "Undo", onAction: () => undoTo(prev) }
@@ -191,7 +233,7 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
     (input: PaymentInput): string => {
       const prev = data;
       const { data: withParty, partyId } = resolvePartyRef(data, input.party);
-      const { data: next } = addPayMut(withParty, {
+      const { data: next, payment } = addPayMut(withParty, {
         partyId,
         amount: input.amount,
         kind: input.kind,
@@ -200,8 +242,14 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
         note: input.note,
         date: input.date,
       });
-      commit(next);
-      const net = partyNet(next, partyId);
+      let logged = next;
+      if (input.party.kind === "new") {
+        const created = withParty.parties.find((p) => p.id === partyId);
+        if (created) logged = logEvent(logged, { type: "ContactCreated", party: created });
+      }
+      logged = logEvent(logged, { type: "PaymentRecorded", payment });
+      commit(logged);
+      const net = partyNet(logged, partyId);
       toast.success(
         net === 0
           ? "✓ Payment recorded · Account settled"
@@ -216,7 +264,7 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
   const createParty = useCallback(
     (input: { name: string; phone?: string; note?: string }): Party => {
       const { data: next, party } = addPartyMut(data, input);
-      commit(next);
+      commit(logEvent(next, { type: "ContactCreated", party }));
       toast.success(`✓ Contact added · ${party.name}`);
       return party;
     },
@@ -225,7 +273,17 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
 
   const editParty = useCallback(
     (id: string, patch: { name?: string; phone?: string; note?: string }) => {
-      commit(editPartyMut(data, id, patch));
+      const next = editPartyMut(data, id, patch);
+      const updated = next.parties.find((p) => p.id === id);
+      commit(
+        updated
+          ? logEvent(next, {
+              type: "ContactUpdated",
+              partyId: id,
+              patch: { name: updated.name, phone: updated.phone, note: updated.note },
+            })
+          : next
+      );
       toast.success("✓ Contact updated");
     },
     [data, commit, toast]
@@ -234,7 +292,7 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
   const deleteEntry = useCallback(
     (id: string) => {
       const prev = data;
-      commit(deleteEntryMut(data, id));
+      commit(logEvent(deleteEntryMut(data, id), { type: "EntryDeleted", entryId: id }));
       toast.success("Entry deleted", { label: "Undo", onAction: () => undoTo(prev) });
     },
     [data, commit, toast, undoTo]
@@ -244,7 +302,7 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
     (id: string) => {
       const prev = data;
       const name = data.parties.find((p) => p.id === id)?.name ?? "Contact";
-      commit(deleteContactMut(data, id));
+      commit(logEvent(deleteContactMut(data, id), { type: "ContactDeleted", partyId: id }));
       toast.success(`${name} deleted`, { label: "Undo", onAction: () => undoTo(prev) });
     },
     [data, commit, toast, undoTo]
@@ -252,7 +310,16 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
 
   const restoreDeleted = useCallback(
     (trashId: string) => {
-      commit(restoreFromTrashMut(data, trashId));
+      const entry = (data.trash ?? []).find((t) => t.id === trashId);
+      let next = restoreFromTrashMut(data, trashId);
+      if (entry) {
+        for (const p of entry.parties) next = logEvent(next, { type: "ContactCreated", party: p });
+        for (const t of entry.transactions)
+          next = logEvent(next, { type: "CreditRecorded", transaction: t });
+        for (const p of entry.payments)
+          next = logEvent(next, { type: "PaymentRecorded", payment: p });
+      }
+      commit(next);
       toast.success("✓ Restored to your ledger");
     },
     [data, commit, toast]
@@ -271,11 +338,27 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
   // Integrity gate (ENG-005): any dataset entering from outside (import / restore)
   // is verified + safely repaired before it becomes the live ledger.
   const ingest = useCallback(
-    (candidate: VyoraData, successMsg: string) => {
+    (
+      candidate: VyoraData,
+      successMsg: string,
+      eventType: "RestoreCompleted" | "ImportCompleted"
+    ) => {
       const { data: checked, report } = runIntegrity(candidate, nowISO());
       configureFormat(checked.settings ?? defaultSettings());
       // Stamp when data last came in from outside (Last Restore, V1-003).
-      commit({ ...checked, meta: { ...checked.meta, lastRestoreAt: nowISO() } });
+      const stamped = { ...checked, meta: { ...checked.meta, lastRestoreAt: nowISO() } };
+      // A wholesale replace/merge is a checkpoint — the event carries the snapshot (ARCH-002).
+      commit(
+        eventType === "ImportCompleted"
+          ? checkpoint(stamped, {
+              type: "ImportCompleted",
+              summary: {
+                contacts: stamped.parties.length,
+                entries: stamped.transactions.length + stamped.payments.length,
+              },
+            })
+          : checkpoint(stamped, { type: "RestoreCompleted" })
+      );
       setIntegrity(report);
       if (report.ok) toast.success(successMsg);
       else toast.show({ message: "⚠ Data check found issues — see Founder Mode", tone: "warn" });
@@ -285,7 +368,7 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
 
   const backup = useCallback(() => {
     const next = backupNowMut(data);
-    commit(next);
+    commit(logEvent(next, { type: "BackupCreated" }));
     setBackupExists(true);
     toast.success("✓ Backup saved on this device");
   }, [data, commit, toast]);
@@ -296,7 +379,7 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
       toast.info("No backup found on this device");
       return;
     }
-    ingest(restored, "✓ Restored from your last backup");
+    ingest(restored, "✓ Restored from your last backup", "RestoreCompleted");
   }, [ingest, toast]);
 
   const exportData = useCallback(() => {
@@ -309,7 +392,8 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
   const validateImport = useCallback((text: string) => parseImportFile(text, data), [data]);
 
   const applyImport = useCallback(
-    (next: VyoraData) => ingest(next, `✓ Imported · ${next.parties.length} contacts restored`),
+    (next: VyoraData) =>
+      ingest(next, `✓ Imported · ${next.parties.length} contacts restored`, "ImportCompleted"),
     [ingest]
   );
 
@@ -318,7 +402,8 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
     (plan: ImportPlan) => {
       const { data: merged, contacts, entries } = applyImportPlan(data, plan);
       const { data: checked } = runIntegrity(merged, nowISO());
-      commit({ ...checked, meta: { ...checked.meta, lastRestoreAt: nowISO() } });
+      const stamped = { ...checked, meta: { ...checked.meta, lastRestoreAt: nowISO() } };
+      commit(checkpoint(stamped, { type: "ImportCompleted", summary: { contacts, entries } }));
       toast.success(
         `✓ Imported · ${entries} entr${entries === 1 ? "y" : "ies"} · ${contacts} new contact${
           contacts === 1 ? "" : "s"
@@ -332,18 +417,20 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
   // Manual integrity check (Founder Mode) — verify + repair the current ledger.
   const checkIntegrity = useCallback((): IntegrityReport => {
     const { data: checked, report } = runIntegrity(data, nowISO());
-    if (report.repaired) commit(checked);
+    // A repair rewrites records → checkpoint so the event log stays consistent.
+    if (report.repaired) commit(checkpoint(checked, { type: "Checkpoint" }));
     setIntegrity(report);
     return report;
   }, [data, commit]);
 
   // Founder Mode demo data (V1-003) — merge a demo book, or remove exactly it.
+  // Both are bulk ledger changes → checkpoint (ARCH-002).
   const seedDemo = useCallback(() => {
-    commit(seedDemoDataMut(data, todayISO()));
+    commit(checkpoint(seedDemoDataMut(data, todayISO()), { type: "Checkpoint" }));
     toast.success("✓ Demo data added");
   }, [data, commit, toast]);
   const resetDemo = useCallback(() => {
-    commit(clearDemoDataMut(data));
+    commit(checkpoint(clearDemoDataMut(data), { type: "Checkpoint" }));
     toast.info("Demo data removed");
   }, [data, commit, toast]);
 

@@ -8,6 +8,9 @@
  * merchant or the merchant owes them, so one party can be both over time.
  */
 
+// Type-only import (erased at runtime → no circular dependency with events.ts).
+import type { LedgerEvent } from "./events";
+
 /** A credit event's direction, from the MERCHANT's point of view. */
 export type EntryKind =
   | "given" // I gave goods/credit → THEY owe ME (receivable ↑)
@@ -125,6 +128,8 @@ export interface VyoraData {
   trash?: TrashEntry[];
   /** Merchant settings (P3-002). Optional for migration safety. */
   settings?: VyoraSettings;
+  /** Append-only event log (ARCH-002). The active ledger derives from this. */
+  events?: LedgerEvent[];
 }
 
 /**
