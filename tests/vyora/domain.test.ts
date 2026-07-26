@@ -147,7 +147,12 @@ describe("migration is non-destructive (v1 → v2)", () => {
     expect(m.version).toBe(VERSION);
     expect(m.parties).toHaveLength(3);
     expect(m.transactions).toHaveLength(4);
-    expect(m.meta).toEqual({ lastBackupAt: null, exportCount: 0, importCount: 0 });
+    expect(m.meta).toEqual({
+      lastBackupAt: null,
+      exportCount: 0,
+      importCount: 0,
+      lastRestoreAt: null,
+    });
     expect(partyNet(m, "p1")).toBe(500); // data intact after migration
   });
   it("rejects non-datasets (returns null, never throws)", () => {

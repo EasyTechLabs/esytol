@@ -20,7 +20,7 @@ import type {
   PartyRef,
   VyoraSettings,
 } from "@/lib/vyora/types";
-import { partyNet } from "@/lib/vyora/selectors";
+import { partyNet, todayISO } from "@/lib/vyora/selectors";
 import { formatMoney, configureFormat } from "@/lib/vyora/format";
 import { runIntegrity, type IntegrityReport } from "@/lib/vyora/integrity";
 import { applyImportPlan, type ImportPlan } from "@/lib/vyora/import";
@@ -41,6 +41,8 @@ import {
   deleteEntry as deleteEntryMut,
   deleteContact as deleteContactMut,
   restoreFromTrash as restoreFromTrashMut,
+  seedDemoData as seedDemoDataMut,
+  clearDemoData as clearDemoDataMut,
   backupNow as backupNowMut,
   restoreBackup as restoreBackupStore,
   hasBackup,
@@ -79,6 +81,8 @@ interface VyoraContextValue {
   integrity: IntegrityReport | null;
   checkIntegrity: () => IntegrityReport;
   importLedger: (plan: ImportPlan) => { contacts: number; entries: number };
+  seedDemo: () => void;
+  resetDemo: () => void;
   recordCredit: (input: CreditInput) => string;
   recordPayment: (input: PaymentInput) => string;
   createParty: (input: { name: string; phone?: string; note?: string }) => Party;
@@ -267,7 +271,8 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
     (candidate: VyoraData, successMsg: string) => {
       const { data: checked, report } = runIntegrity(candidate, nowISO());
       configureFormat(checked.settings ?? defaultSettings());
-      commit(checked);
+      // Stamp when data last came in from outside (Last Restore, V1-003).
+      commit({ ...checked, meta: { ...checked.meta, lastRestoreAt: nowISO() } });
       setIntegrity(report);
       if (report.ok) toast.success(successMsg);
       else toast.show({ message: "⚠ Data check found issues — see Founder Mode", tone: "warn" });
@@ -310,7 +315,7 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
     (plan: ImportPlan) => {
       const { data: merged, contacts, entries } = applyImportPlan(data, plan);
       const { data: checked } = runIntegrity(merged, nowISO());
-      commit(checked);
+      commit({ ...checked, meta: { ...checked.meta, lastRestoreAt: nowISO() } });
       toast.success(
         `✓ Imported · ${entries} entr${entries === 1 ? "y" : "ies"} · ${contacts} new contact${
           contacts === 1 ? "" : "s"
@@ -328,6 +333,16 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
     setIntegrity(report);
     return report;
   }, [data, commit]);
+
+  // Founder Mode demo data (V1-003) — merge a demo book, or remove exactly it.
+  const seedDemo = useCallback(() => {
+    commit(seedDemoDataMut(data, todayISO()));
+    toast.success("✓ Demo data added");
+  }, [data, commit, toast]);
+  const resetDemo = useCallback(() => {
+    commit(clearDemoDataMut(data));
+    toast.info("Demo data removed");
+  }, [data, commit, toast]);
 
   const reset = useCallback(() => {
     clearData();
@@ -349,6 +364,8 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
       integrity,
       checkIntegrity,
       importLedger,
+      seedDemo,
+      resetDemo,
       recordCredit,
       recordPayment,
       createParty,
@@ -373,6 +390,8 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
       integrity,
       checkIntegrity,
       importLedger,
+      seedDemo,
+      resetDemo,
       recordCredit,
       recordPayment,
       createParty,

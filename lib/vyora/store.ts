@@ -38,7 +38,7 @@ export const APP_VERSION = "0.2.0";
 export const TRASH_RETENTION_DAYS = 30;
 
 function emptyMeta(): Meta {
-  return { lastBackupAt: null, exportCount: 0, importCount: 0 };
+  return { lastBackupAt: null, exportCount: 0, importCount: 0, lastRestoreAt: null };
 }
 
 /** Default merchant settings (P3-002) — INR, Indian number format, no theme override. */
@@ -348,6 +348,116 @@ export function restoreFromTrash(data: VyoraData, trashId: string): VyoraData {
     transactions: [...data.transactions, ...entry.transactions.filter((t) => !txnIds.has(t.id))],
     payments: [...data.payments, ...entry.payments.filter((p) => !payIds.has(p.id))],
     trash: trash.filter((t) => t.id !== trashId),
+  };
+}
+
+// ─── Demo data (Founder Mode, V1-003) ────────────────────────────────────────
+
+/** All demo records carry this id prefix, so Reset Demo can remove exactly them. */
+export const DEMO_PREFIX = "demo_";
+
+/** Seed a small, realistic demo book (idempotent, merges) — dates relative to `today`. */
+export function seedDemoData(data: VyoraData, today: string): VyoraData {
+  const shift = (n: number): string => {
+    const [y, m, d] = today.split("-").map(Number);
+    return new Date(Date.UTC(y!, m! - 1, d! + n)).toISOString().slice(0, 10);
+  };
+  const at = (n: number) => `${shift(n)}T00:00:00.000Z`;
+
+  const parties: Party[] = [
+    { id: "demo_p1", name: "Rajesh Kumar (demo)", phone: "9876500001", createdAt: at(-90) },
+    { id: "demo_p2", name: "Geeta Devi (demo)", phone: "9876500002", createdAt: at(-60) },
+    { id: "demo_p3", name: "Amit Store (demo)", phone: "9876500003", createdAt: at(-45) },
+    { id: "demo_p4", name: "Suresh Traders (demo)", createdAt: at(-30) },
+    { id: "demo_p5", name: "Meena Supplier (demo)", phone: "9876500005", createdAt: at(-20) },
+  ];
+  const transactions: Transaction[] = [
+    {
+      id: "demo_t1",
+      partyId: "demo_p1",
+      amount: 4250,
+      kind: "given",
+      date: shift(-40),
+      dueDate: shift(-25),
+      createdAt: at(-40),
+    }, // overdue
+    {
+      id: "demo_t2",
+      partyId: "demo_p2",
+      amount: 3200,
+      kind: "given",
+      date: shift(-10),
+      dueDate: shift(3),
+      createdAt: at(-10),
+    }, // due soon
+    {
+      id: "demo_t3",
+      partyId: "demo_p3",
+      amount: 1500,
+      kind: "given",
+      date: shift(-20),
+      dueDate: shift(-5),
+      createdAt: at(-20),
+    }, // settled
+    {
+      id: "demo_t4",
+      partyId: "demo_p4",
+      amount: 6000,
+      kind: "given",
+      date: shift(-5),
+      dueDate: shift(30),
+      createdAt: at(-5),
+    }, // good
+    {
+      id: "demo_t5",
+      partyId: "demo_p5",
+      amount: 2000,
+      kind: "taken",
+      date: shift(-8),
+      createdAt: at(-8),
+    }, // I owe them
+  ];
+  const payments: Payment[] = [
+    {
+      id: "demo_r1",
+      partyId: "demo_p2",
+      amount: 1000,
+      kind: "received",
+      mode: "upi",
+      date: shift(-2),
+      createdAt: at(-2),
+    },
+    {
+      id: "demo_r2",
+      partyId: "demo_p3",
+      amount: 1500,
+      kind: "received",
+      mode: "cash",
+      date: shift(-3),
+      createdAt: at(-3),
+    },
+  ];
+
+  const pIds = new Set(data.parties.map((p) => p.id));
+  const tIds = new Set(data.transactions.map((t) => t.id));
+  const yIds = new Set(data.payments.map((p) => p.id));
+  return {
+    ...data,
+    parties: [...data.parties, ...parties.filter((p) => !pIds.has(p.id))],
+    transactions: [...data.transactions, ...transactions.filter((t) => !tIds.has(t.id))],
+    payments: [...data.payments, ...payments.filter((p) => !yIds.has(p.id))],
+  };
+}
+
+/** Remove every demo record (and any demo trash), leaving real data untouched. */
+export function clearDemoData(data: VyoraData): VyoraData {
+  const real = (id: string) => !id.startsWith(DEMO_PREFIX);
+  return {
+    ...data,
+    parties: data.parties.filter((p) => real(p.id)),
+    transactions: data.transactions.filter((t) => real(t.partyId) && real(t.id)),
+    payments: data.payments.filter((p) => real(p.partyId) && real(p.id)),
+    trash: (data.trash ?? []).filter((e) => real(e.id)),
   };
 }
 

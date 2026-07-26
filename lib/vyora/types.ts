@@ -71,6 +71,8 @@ export interface Meta {
   exportCount: number;
   /** How many times the merchant imported (device-local counter). */
   importCount: number;
+  /** When data was last restored/imported from outside (ISO), or null (V1-003). */
+  lastRestoreAt?: string | null;
 }
 
 /** The entire Vyora Alpha dataset — lives in one localStorage key on the device. */
