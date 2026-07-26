@@ -3,6 +3,8 @@ import { ToastProvider } from "@/features/vyora/Toast";
 import { VyoraProvider } from "@/features/vyora/VyoraProvider";
 import { AppShell } from "@/features/vyora/AppShell";
 import { ServiceWorkerManager } from "@/features/vyora/ServiceWorkerManager";
+import { InstallPrompt } from "@/features/vyora/InstallPrompt";
+import { WelcomeTour } from "@/features/vyora/WelcomeTour";
 
 /** Vyora Alpha — internal prototype. Not public, not indexed. Installable PWA (ENG-006). */
 export const metadata: Metadata = {
@@ -31,6 +33,8 @@ export default function VyoraLayout({ children }: { children: React.ReactNode })
       <VyoraProvider>
         <AppShell>{children}</AppShell>
         <ServiceWorkerManager />
+        <InstallPrompt />
+        <WelcomeTour />
       </VyoraProvider>
     </ToastProvider>
   );
