@@ -1,11 +1,12 @@
 "use client";
 
 /**
- * Vyora — Merchant Statement (P0-004). Replaces the paper ledger page for one
- * contact: header + status, a summary (total credit / paid / outstanding /
- * oldest due), a newest-first timeline with balance-after-transaction and
- * reference, and bottom actions (record credit / payment / share). Outstanding
- * stays visible via a sticky bar. Browser share only — no PDF, no backend.
+ * Vyora — Customer 360 (V1-002). The complete view of one customer: header
+ * (avatar · name · phone · WhatsApp · outstanding · status), a lifetime summary,
+ * recovery (score · risk · next action), one-tap actions (Call · WhatsApp · Credit
+ * · Payment · Statement), the full newest-first timeline, and the relationship
+ * stats. Every value comes from a single source — `customerProfile` and the shared
+ * recovery ranking — so nothing is re-derived. Browser share only, no backend.
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -14,19 +15,56 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { useVyora } from "../VyoraProvider";
 import { useToast } from "../Toast";
-import { partyNet, partyStatement, todayISO } from "@/lib/vyora/selectors";
-import { agingForParty, allocateFifo, daysBetween } from "@/lib/vyora/aging";
+import { partyStatement, todayISO } from "@/lib/vyora/selectors";
+import { customerProfile, type CustomerStatus } from "@/lib/vyora/customer";
+import type { Priority } from "@/lib/vyora/aging";
 import { formatMoney, formatDate, balanceLabel, balanceColor } from "@/lib/vyora/format";
 import { Card, Button, TextInput } from "../primitives";
 import { Empty, LoadingList } from "../components";
+import { useRecoveryDashboard } from "../useRecoveryDashboard";
 
-type Status = "OVERDUE" | "DUE_SOON" | "GOOD" | "SETTLED";
-const STATUS: Record<Status, { label: string; cls: string }> = {
-  OVERDUE: { label: "Overdue", cls: "bg-negative-tint text-negative-strong" },
-  DUE_SOON: { label: "Due soon", cls: "bg-amber-50 text-amber-800" },
-  GOOD: { label: "Good", cls: "bg-positive-tint text-positive-strong" },
-  SETTLED: { label: "Settled", cls: "bg-gray-100 text-gray-600" },
+const STATUS: Record<CustomerStatus, { label: string; cls: string }> = {
+  overdue: { label: "Overdue", cls: "bg-negative-tint text-negative-strong" },
+  "due-soon": { label: "Due soon", cls: "bg-amber-50 text-amber-800" },
+  good: { label: "Good", cls: "bg-positive-tint text-positive-strong" },
+  settled: { label: "Settled", cls: "bg-gray-100 text-gray-600" },
 };
+
+const RISK: Record<string, string> = {
+  Critical: "bg-negative-tint text-negative-strong",
+  High: "bg-amber-50 text-amber-800",
+  Medium: "bg-brand-50 text-brand-700",
+  Low: "bg-gray-100 text-gray-600",
+  None: "bg-gray-100 text-gray-500",
+};
+
+const plural = (n: number) => (n === 1 ? "" : "s");
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const two = [parts[0]?.[0], parts[1]?.[0]].filter(Boolean).join("");
+  return (two || "?").toUpperCase();
+}
+/** wa.me expects a country-coded number; assume +91 for a bare 10-digit Indian mobile. */
+function waNumber(phone: string): string {
+  const d = phone.replace(/\D/g, "");
+  return d.length === 10 ? `91${d}` : d;
+}
+function riskLabel(status: CustomerStatus, priority: Priority | null): string {
+  if (status === "settled") return "None";
+  if (priority) return priority[0]!.toUpperCase() + priority.slice(1);
+  return status === "due-soon" ? "Medium" : "Low";
+}
+function nextAction(status: CustomerStatus, priority: Priority | null, net: number): string {
+  if (net < 0) return `You owe them ${formatMoney(net)} — settle when you can.`;
+  if (status === "settled") return "Settled — nothing to do.";
+  if (status === "overdue")
+    return priority === "critical" || priority === "high"
+      ? "Call today and send a reminder."
+      : "Send a gentle reminder.";
+  if (status === "due-soon") return "Follow up before the due date.";
+  return "On track — no action needed.";
+}
 
 type TLType = "created" | "credit" | "payment";
 interface TLEvent {
@@ -52,61 +90,16 @@ export function PartyStatement({ partyId }: { partyId: string }) {
   const { ready, data, editParty, deleteEntry, deleteContact, settings } = useVyora();
   const router = useRouter();
   const toast = useToast();
+  const rec = useRecoveryDashboard(data);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
 
   const party = data.parties.find((p) => p.id === partyId);
+  const today = todayISO();
+  const profile = useMemo(() => customerProfile(data, partyId, today), [data, partyId, today]);
 
-  // Summary + status in one memoized pass (reuses the aging domain).
-  const summary = useMemo(() => {
-    const today = todayISO();
-    const net = partyNet(data, partyId);
-    const aging = agingForParty(data, partyId, today);
-
-    let totalCredit = 0;
-    let totalPayment = 0;
-    let received = 0;
-    for (const t of data.transactions) if (t.partyId === partyId) totalCredit += t.amount;
-    for (const p of data.payments) {
-      if (p.partyId !== partyId) continue;
-      totalPayment += p.amount;
-      if (p.kind === "received") received += p.amount;
-    }
-
-    const given = data.transactions.filter((t) => t.partyId === partyId && t.kind === "given");
-    let oldestDue: string | null = null;
-    let nearestFutureDueDays: number | null = null;
-    for (const lot of allocateFifo(given, received)) {
-      if (lot.openAmount <= 0 || !lot.dueDate) continue;
-      if (oldestDue === null || lot.dueDate < oldestDue) oldestDue = lot.dueDate;
-      if (lot.dueDate >= today) {
-        const d = daysBetween(today, lot.dueDate);
-        if (nearestFutureDueDays === null || d < nearestFutureDueDays) nearestFutureDueDays = d;
-      }
-    }
-
-    let status: Status;
-    if (net === 0) status = "SETTLED";
-    else if (aging.overdueAmount > 0) status = "OVERDUE";
-    else if (net > 0 && nearestFutureDueDays !== null && nearestFutureDueDays <= 7)
-      status = "DUE_SOON";
-    else status = "GOOD";
-
-    return {
-      net,
-      totalCredit,
-      totalPayment,
-      oldestDue,
-      overdue: aging.overdueAmount > 0,
-      status,
-    };
-  }, [data, partyId]);
-
-  // Timeline: newest first, each row carrying its balance-after-transaction.
   const rows = useMemo(() => [...partyStatement(data, partyId)].reverse(), [data, partyId]);
-
-  // Full timeline: credit/payment entries + the "Created contact" event, newest first.
   const events = useMemo<TLEvent[]>(() => {
     const evs: TLEvent[] = rows.map((r) => ({
       id: r.id,
@@ -121,7 +114,7 @@ export function PartyStatement({ partyId }: { partyId: string }) {
       note: r.note,
       mode: r.mode,
     }));
-    if (party) {
+    if (party)
       evs.push({
         id: `created-${party.id}`,
         date: party.createdAt.slice(0, 10),
@@ -129,11 +122,8 @@ export function PartyStatement({ partyId }: { partyId: string }) {
         type: "created",
         balanceAfter: 0,
       });
-    }
-    return evs; // rows are newest-first; "created" is the oldest, so it lands last
+    return evs;
   }, [rows, party]);
-
-  // Group by month (newest month first), preserving newest-first order within each.
   const groups = useMemo(() => {
     const map = new Map<string, TLEvent[]>();
     for (const e of events) {
@@ -145,7 +135,6 @@ export function PartyStatement({ partyId }: { partyId: string }) {
     return Array.from(map, ([key, items]) => ({ key, label: monthLabel(key), items }));
   }, [events]);
 
-  // Highlight a row when arriving from global search (…?highlight=<entryId>).
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const highlightRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -156,17 +145,20 @@ export function PartyStatement({ partyId }: { partyId: string }) {
     return () => clearTimeout(t);
   }, []);
   useEffect(() => {
-    if (highlightId && highlightRef.current) {
+    if (highlightId && highlightRef.current)
       highlightRef.current.scrollIntoView({ block: "center", behavior: "smooth" });
-    }
   }, [highlightId, rows]);
 
   if (!ready) return <LoadingList />;
-  if (!party)
+  if (!party || !profile)
     return <Empty icon="🔍" title="Contact not found" subtitle="It may have been cleared." />;
 
-  const { net, status } = summary;
-  const badge = STATUS[status];
+  const net = profile.outstanding;
+  const badge = STATUS[profile.status];
+  const recRow = rec.overdue.find((r) => r.partyId === partyId) ?? null;
+  const score = recRow?.score ?? null;
+  const priority = recRow?.priority ?? null;
+  const risk = riskLabel(profile.status, priority);
 
   const startEdit = () => {
     setName(party.name);
@@ -178,16 +170,12 @@ export function PartyStatement({ partyId }: { partyId: string }) {
     editParty(partyId, { name, phone });
     setEditing(false);
   };
-
-  // Delete the whole contact — confirm shows EXACTLY what goes (entries + outstanding),
-  // and it's recoverable (10s Undo, or Settings → Recently Deleted for 30 days).
   const onDeleteContact = () => {
     const count =
       data.transactions.filter((t) => t.partyId === partyId).length +
       data.payments.filter((p) => p.partyId === partyId).length;
     const ok = confirm(
-      `Delete ${party.name}?\n\n` +
-        `${count} transaction${count === 1 ? "" : "s"}\n` +
+      `Delete ${party.name}?\n\n${count} transaction${count === 1 ? "" : "s"}\n` +
         `Outstanding ${net === 0 ? "Settled" : formatMoney(net)}\n\n` +
         `This cannot be recovered after Undo expires.`
     );
@@ -199,21 +187,18 @@ export function PartyStatement({ partyId }: { partyId: string }) {
   const shareStatement = async () => {
     const lines = [
       `Statement — ${party.name}`,
-      party.phone ? party.phone : "",
+      party.phone || "",
       `Outstanding: ${net === 0 ? "Settled" : formatMoney(net)} (${balanceLabel(net)})`,
-      `Total credit: ${formatMoney(summary.totalCredit)} · Total paid: ${formatMoney(summary.totalPayment)}`,
+      `Lifetime credit: ${formatMoney(profile.lifetimeCredit)} · Lifetime paid: ${formatMoney(profile.lifetimePayment)}`,
       "",
       "Recent entries:",
       ...rows
         .slice(0, 8)
         .map(
           (r) =>
-            `${formatDate(r.date)} · ${r.label} · ${r.signedAmount > 0 ? "+" : "−"}${formatMoney(
-              r.amount
-            )} · bal ${formatMoney(r.runningNet)}`
+            `${formatDate(r.date)} · ${r.label} · ${r.signedAmount > 0 ? "+" : "−"}${formatMoney(r.amount)} · bal ${formatMoney(r.runningNet)}`
         ),
     ].filter(Boolean);
-    // Brand the shared statement with the merchant's own business profile (P3-002).
     const bizHeader = [
       settings.businessName,
       [settings.mobile, settings.gst ? `GST ${settings.gst}` : ""].filter(Boolean).join(" · "),
@@ -223,22 +208,22 @@ export function PartyStatement({ partyId }: { partyId: string }) {
       .join("\n");
     const text = (bizHeader ? `${bizHeader}\n\n` : "") + lines.join("\n");
     try {
-      if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+      if (typeof navigator !== "undefined" && typeof navigator.share === "function")
         await navigator.share({ title: `Statement — ${party.name}`, text });
-      } else if (typeof navigator !== "undefined" && navigator.clipboard) {
+      else if (typeof navigator !== "undefined" && navigator.clipboard) {
         await navigator.clipboard.writeText(text);
         toast.info("Statement copied — paste into WhatsApp to send");
-      } else {
-        toast.info("Sharing isn't supported on this device");
-      }
+      } else toast.info("Sharing isn't supported on this device");
     } catch {
-      /* share cancelled — no-op */
+      /* share cancelled */
     }
   };
 
+  const days = (n: number | null) => (n === null ? "—" : `${n} day${plural(n)}`);
+
   return (
     <div className="space-y-4 pb-4">
-      {/* Header: name · phone · current balance · status badge */}
+      {/* ── Header ── */}
       <Card>
         {editing ? (
           <div className="space-y-2">
@@ -276,38 +261,52 @@ export function PartyStatement({ partyId }: { partyId: string }) {
             </div>
           </div>
         ) : (
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h1 className="truncate text-lg font-bold text-gray-900">{party.name}</h1>
-                <span
-                  className={`shrink-0 rounded-lg px-1.5 py-0.5 text-[11px] font-bold ${badge.cls}`}
-                >
-                  {badge.label}
-                </span>
+          <>
+            <div className="flex items-start gap-3">
+              <span
+                aria-hidden
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-100 text-lg font-bold text-brand-700"
+              >
+                {initials(party.name)}
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <h1 className="truncate text-lg font-bold text-gray-900">{party.name}</h1>
+                  <span
+                    className={`shrink-0 rounded-lg px-1.5 py-0.5 text-[11px] font-bold ${badge.cls}`}
+                  >
+                    {badge.label}
+                  </span>
+                </div>
+                {party.phone ? (
+                  <p className="text-sm text-gray-500">{party.phone}</p>
+                ) : (
+                  <p className="text-sm text-gray-400">No phone</p>
+                )}
               </div>
-              {party.phone && <p className="text-sm text-gray-500">{party.phone}</p>}
+              <button
+                type="button"
+                onClick={startEdit}
+                className="shrink-0 rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-600"
+              >
+                Edit
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={startEdit}
-              className="shrink-0 rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-600"
-            >
-              Edit
-            </button>
-          </div>
+            <div className="mt-3">
+              <div className="text-xs uppercase tracking-wide text-gray-500">
+                {balanceLabel(net)}
+              </div>
+              <div
+                className={`break-words text-3xl font-bold tabular-nums leading-tight ${balanceColor(net)}`}
+              >
+                {net === 0 ? "Settled" : formatMoney(net)}
+              </div>
+            </div>
+          </>
         )}
-        <div className="mt-3">
-          <div className="text-xs uppercase tracking-wide text-gray-500">{balanceLabel(net)}</div>
-          <div
-            className={`break-words text-3xl font-bold tabular-nums leading-tight ${balanceColor(net)}`}
-          >
-            {net === 0 ? "Settled" : formatMoney(net)}
-          </div>
-        </div>
       </Card>
 
-      {/* Sticky summary — Outstanding always visible */}
+      {/* Sticky outstanding */}
       <div className="sticky top-[52px] z-10 -mx-4 flex items-center justify-between border-y border-gray-200 bg-gray-50/95 px-4 py-2 backdrop-blur print:hidden">
         <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
           Outstanding
@@ -317,37 +316,65 @@ export function PartyStatement({ partyId }: { partyId: string }) {
         </span>
       </div>
 
-      {/* Summary: total credit / payment / outstanding / oldest due */}
+      {/* ── Summary ── */}
       <div className="grid grid-cols-2 gap-3">
-        <Card className="p-3">
-          <div className="text-[11px] uppercase tracking-wide text-gray-500">Total credit</div>
-          <div className="text-lg font-bold tabular-nums text-gray-900">
-            {formatMoney(summary.totalCredit)}
-          </div>
-        </Card>
-        <Card className="p-3">
-          <div className="text-[11px] uppercase tracking-wide text-gray-500">Total payment</div>
-          <div className="text-lg font-bold tabular-nums text-gray-900">
-            {formatMoney(summary.totalPayment)}
-          </div>
-        </Card>
-        <Card className="p-3">
-          <div className="text-[11px] uppercase tracking-wide text-gray-500">Outstanding</div>
-          <div className={`text-lg font-bold tabular-nums ${balanceColor(net)}`}>
-            {net === 0 ? "Settled" : formatMoney(net)}
-          </div>
-        </Card>
-        <Card className="p-3">
-          <div className="text-[11px] uppercase tracking-wide text-gray-500">Oldest due</div>
-          <div
-            className={`text-lg font-bold tabular-nums ${summary.overdue ? "text-negative" : "text-gray-900"}`}
-          >
-            {summary.oldestDue ? formatDate(summary.oldestDue) : "—"}
-          </div>
-        </Card>
+        <Stat label="Lifetime credit" value={formatMoney(profile.lifetimeCredit)} />
+        <Stat label="Lifetime payment" value={formatMoney(profile.lifetimePayment)} />
+        <Stat
+          label="Outstanding"
+          value={net === 0 ? "Settled" : formatMoney(net)}
+          cls={balanceColor(net)}
+        />
+        <Stat label="Avg payment time" value={days(profile.avgPaymentDays)} />
+        <div className="col-span-2">
+          <Stat
+            label="Last activity"
+            value={profile.lastActivity ? formatDate(profile.lastActivity) : "—"}
+          />
+        </div>
       </div>
 
-      {/* Timeline — grouped by month, newest first, with sticky month headers */}
+      {/* ── Recovery ── */}
+      <Card as="section" className="space-y-2">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Recovery</h2>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="text-[11px] uppercase tracking-wide text-gray-500">Score</div>
+            <div className="text-2xl font-bold tabular-nums text-gray-900">
+              {score === null ? "—" : `${score}`}
+              {score !== null && <span className="text-sm font-medium text-gray-400">/100</span>}
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-[11px] uppercase tracking-wide text-gray-500">Risk</div>
+            <span className={`inline-flex rounded-lg px-2 py-0.5 text-sm font-bold ${RISK[risk]}`}>
+              {risk}
+            </span>
+          </div>
+        </div>
+        <div className="rounded-xl bg-gray-50 px-3 py-2">
+          <div className="text-[11px] uppercase tracking-wide text-gray-500">Next action</div>
+          <div className="text-sm font-medium text-gray-800">
+            {nextAction(profile.status, priority, net)}
+          </div>
+        </div>
+      </Card>
+
+      {/* ── Actions ── */}
+      <div className="grid grid-cols-5 gap-2 print:hidden">
+        <ActionBtn label="Call" icon="📞" href={party.phone ? `tel:${party.phone}` : undefined} />
+        <ActionBtn
+          label="WhatsApp"
+          icon="💬"
+          href={party.phone ? `https://wa.me/${waNumber(party.phone)}` : undefined}
+          external
+        />
+        <ActionBtn label="Credit" icon="📝" href={`/vyora/credit?party=${partyId}`} internal />
+        <ActionBtn label="Payment" icon="💰" href={`/vyora/payment?party=${partyId}`} internal />
+        <ActionBtn label="Statement" icon="↗" onClick={shareStatement} />
+      </div>
+
+      {/* ── Timeline ── */}
       <section className="space-y-2">
         <h2 className="px-1 text-sm font-semibold uppercase tracking-wide text-gray-600">
           Timeline
@@ -436,33 +463,79 @@ export function PartyStatement({ partyId }: { partyId: string }) {
         ))}
       </section>
 
-      <p className="px-1 text-xs text-gray-500">
-        Positive = they owe you · Negative = you owe them · Balance is the running outstanding after
-        each entry.
-      </p>
-
-      {/* Bottom actions */}
-      <div className="grid grid-cols-3 gap-2 print:hidden">
-        <Link
-          href={`/vyora/credit?party=${partyId}`}
-          className="rounded-xl bg-brand-600 py-3 text-center text-sm font-semibold text-white hover:bg-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700"
-        >
-          ＋ Credit
-        </Link>
-        <Link
-          href={`/vyora/payment?party=${partyId}`}
-          className="rounded-xl bg-positive py-3 text-center text-sm font-semibold text-white hover:bg-positive-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-positive-strong"
-        >
-          ＋ Payment
-        </Link>
-        <button
-          type="button"
-          onClick={shareStatement}
-          className="rounded-xl border-2 border-gray-200 bg-white py-3 text-center text-sm font-semibold text-gray-700 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
-        >
-          ↗ Share
-        </button>
-      </div>
+      {/* ── Relationship ── */}
+      <section className="space-y-2">
+        <h2 className="px-1 text-sm font-semibold uppercase tracking-wide text-gray-600">
+          Relationship
+        </h2>
+        <div className="grid grid-cols-2 gap-3">
+          <Stat label="Customer since" value={formatDate(profile.customerSince)} />
+          <Stat label="Longest delay" value={days(profile.longestDelayDays)} />
+          <Stat label="Largest purchase" value={formatMoney(profile.largestPurchase)} />
+          <Stat label="Largest payment" value={formatMoney(profile.largestPayment)} />
+        </div>
+      </section>
     </div>
+  );
+}
+
+function Stat({ label, value, cls }: { label: string; value: string; cls?: string }) {
+  return (
+    <Card className="p-3">
+      <div className="text-[11px] uppercase tracking-wide text-gray-500">{label}</div>
+      <div className={cn("text-lg font-bold tabular-nums", cls ?? "text-gray-900")}>{value}</div>
+    </Card>
+  );
+}
+
+function ActionBtn({
+  label,
+  icon,
+  href,
+  onClick,
+  external,
+  internal,
+}: {
+  label: string;
+  icon: string;
+  href?: string;
+  onClick?: () => void;
+  external?: boolean;
+  internal?: boolean;
+}) {
+  const cls =
+    "flex flex-col items-center gap-1 rounded-2xl border border-gray-200 bg-white py-2.5 text-[11px] font-semibold text-gray-700 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-600";
+  const disabledCls =
+    "flex flex-col items-center gap-1 rounded-2xl border border-gray-200 bg-white py-2.5 text-[11px] font-semibold text-gray-300";
+  const inner = (
+    <>
+      <span aria-hidden className="text-lg">
+        {icon}
+      </span>
+      {label}
+    </>
+  );
+  if (!href && !onClick)
+    return (
+      <span className={disabledCls} aria-disabled>
+        {inner}
+      </span>
+    );
+  if (onClick)
+    return (
+      <button type="button" onClick={onClick} className={cls}>
+        {inner}
+      </button>
+    );
+  if (internal)
+    return (
+      <Link href={href!} className={cls}>
+        {inner}
+      </Link>
+    );
+  return (
+    <a href={href} className={cls} {...(external ? { target: "_blank", rel: "noopener" } : {})}>
+      {inner}
+    </a>
   );
 }

@@ -19,6 +19,8 @@ export interface RecoveryDashboard {
   overdueContactCount: number;
   highestPriority: OverdueRow | null;
   top5: OverdueRow[];
+  /** The full ranked overdue list — Customer 360 reads a party's score/priority here. */
+  overdue: OverdueRow[];
   /** Open receivable whose due date is exactly today (amount + contact count). */
   dueToday: number;
   dueTodayCount: number;
@@ -110,6 +112,7 @@ export function useRecoveryDashboard(
       overdueContactCount: overdue.length,
       highestPriority: overdue[0] ?? null,
       top5: overdue.slice(0, 5),
+      overdue,
       dueToday: rupees(dueToday),
       dueTodayCount,
       dueTomorrow: rupees(dueTomorrow),
