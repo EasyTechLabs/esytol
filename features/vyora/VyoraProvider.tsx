@@ -23,7 +23,19 @@ import type {
 import { partyNet, todayISO } from "@/lib/vyora/selectors";
 import { formatMoney, configureFormat } from "@/lib/vyora/format";
 import { runIntegrity, type IntegrityReport } from "@/lib/vyora/integrity";
-import { applyImportPlan, type ImportPlan } from "@/lib/vyora/import";
+import { type ImportPlan } from "@/lib/vyora/import";
+import {
+  createContact,
+  recordCredit as recordCreditCmd,
+  recordPayment as recordPaymentCmd,
+  deleteEntry as deleteEntryCmd,
+  deleteContact as deleteContactCmd,
+  restoreEntry as restoreEntryCmd,
+  importLedger as importLedgerCmd,
+  exportLedger as exportLedgerCmd,
+  backupLedger as backupLedgerCmd,
+  type CommandCtx,
+} from "@/lib/vyora/commands";
 import { buildLedgerEngine, type LedgerEngine } from "@/lib/vyora/engine";
 import {
   appendEvent,
@@ -62,24 +74,18 @@ import {
   newId,
   defaultSettings,
   updateSettings as updateSettingsMut,
-  addParty as addPartyMut,
   editParty as editPartyMut,
-  resolvePartyRef,
-  addTransaction as addTxnMut,
-  addPayment as addPayMut,
-  deleteEntry as deleteEntryMut,
-  deleteContact as deleteContactMut,
-  restoreFromTrash as restoreFromTrashMut,
   seedDemoData as seedDemoDataMut,
   clearDemoData as clearDemoDataMut,
-  backupNow as backupNowMut,
   restoreBackup as restoreBackupStore,
   hasBackup,
-  exportToFile,
   parseImportFile,
   type ImportResult,
   clearData,
 } from "@/lib/vyora/store";
+
+/** Event id + timestamp source for commands (ARCH-003). */
+const cmdCtx: CommandCtx = { newId: () => newId("evt"), now: nowISO };
 
 interface CreditInput {
   party: PartyRef;
@@ -202,29 +208,18 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
   const recordCredit = useCallback(
     (input: CreditInput): string => {
       const prev = data;
-      const { data: withParty, partyId } = resolvePartyRef(data, input.party);
-      const { data: next, transaction } = addTxnMut(withParty, {
-        partyId,
-        amount: input.amount,
-        kind: input.kind,
-        description: input.description,
-        reference: input.reference,
-        date: input.date,
-        dueDate: input.dueDate,
-      });
-      let logged = next;
-      if (input.party.kind === "new") {
-        const created = withParty.parties.find((p) => p.id === partyId);
-        if (created) logged = logEvent(logged, { type: "ContactCreated", party: created });
+      const r = recordCreditCmd(data, input, cmdCtx);
+      if (!r.ok) {
+        toast.info(r.error);
+        return "";
       }
-      logged = logEvent(logged, { type: "CreditRecorded", transaction });
-      commit(logged);
-      const net = partyNet(logged, partyId);
+      commit(r.data);
+      const net = partyNet(r.data, r.value);
       toast.success(
         `✓ Credit recorded · Outstanding ${net >= 0 ? formatMoney(net) : `−${formatMoney(net)}`}`,
         { label: "Undo", onAction: () => undoTo(prev) }
       );
-      return partyId;
+      return r.value;
     },
     [data, commit, toast, undoTo]
   );
@@ -232,41 +227,34 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
   const recordPayment = useCallback(
     (input: PaymentInput): string => {
       const prev = data;
-      const { data: withParty, partyId } = resolvePartyRef(data, input.party);
-      const { data: next, payment } = addPayMut(withParty, {
-        partyId,
-        amount: input.amount,
-        kind: input.kind,
-        mode: input.mode,
-        reference: input.reference,
-        note: input.note,
-        date: input.date,
-      });
-      let logged = next;
-      if (input.party.kind === "new") {
-        const created = withParty.parties.find((p) => p.id === partyId);
-        if (created) logged = logEvent(logged, { type: "ContactCreated", party: created });
+      const r = recordPaymentCmd(data, input, cmdCtx);
+      if (!r.ok) {
+        toast.info(r.error);
+        return "";
       }
-      logged = logEvent(logged, { type: "PaymentRecorded", payment });
-      commit(logged);
-      const net = partyNet(logged, partyId);
+      commit(r.data);
+      const net = partyNet(r.data, r.value);
       toast.success(
         net === 0
           ? "✓ Payment recorded · Account settled"
           : `✓ Payment recorded · Balance ${formatMoney(net)}`,
         { label: "Undo", onAction: () => undoTo(prev) }
       );
-      return partyId;
+      return r.value;
     },
     [data, commit, toast, undoTo]
   );
 
   const createParty = useCallback(
     (input: { name: string; phone?: string; note?: string }): Party => {
-      const { data: next, party } = addPartyMut(data, input);
-      commit(logEvent(next, { type: "ContactCreated", party }));
-      toast.success(`✓ Contact added · ${party.name}`);
-      return party;
+      const r = createContact(data, input, cmdCtx);
+      if (!r.ok) {
+        toast.info(r.error);
+        return { id: "", name: input.name, createdAt: nowISO() };
+      }
+      commit(r.data);
+      toast.success(`✓ Contact added · ${r.value.name}`);
+      return r.value;
     },
     [data, commit, toast]
   );
@@ -292,7 +280,12 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
   const deleteEntry = useCallback(
     (id: string) => {
       const prev = data;
-      commit(logEvent(deleteEntryMut(data, id), { type: "EntryDeleted", entryId: id }));
+      const r = deleteEntryCmd(data, id, cmdCtx);
+      if (!r.ok) {
+        toast.info(r.error);
+        return;
+      }
+      commit(r.data);
       toast.success("Entry deleted", { label: "Undo", onAction: () => undoTo(prev) });
     },
     [data, commit, toast, undoTo]
@@ -302,7 +295,12 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
     (id: string) => {
       const prev = data;
       const name = data.parties.find((p) => p.id === id)?.name ?? "Contact";
-      commit(logEvent(deleteContactMut(data, id), { type: "ContactDeleted", partyId: id }));
+      const r = deleteContactCmd(data, id, cmdCtx);
+      if (!r.ok) {
+        toast.info(r.error);
+        return;
+      }
+      commit(r.data);
       toast.success(`${name} deleted`, { label: "Undo", onAction: () => undoTo(prev) });
     },
     [data, commit, toast, undoTo]
@@ -310,16 +308,12 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
 
   const restoreDeleted = useCallback(
     (trashId: string) => {
-      const entry = (data.trash ?? []).find((t) => t.id === trashId);
-      let next = restoreFromTrashMut(data, trashId);
-      if (entry) {
-        for (const p of entry.parties) next = logEvent(next, { type: "ContactCreated", party: p });
-        for (const t of entry.transactions)
-          next = logEvent(next, { type: "CreditRecorded", transaction: t });
-        for (const p of entry.payments)
-          next = logEvent(next, { type: "PaymentRecorded", payment: p });
+      const r = restoreEntryCmd(data, trashId, cmdCtx);
+      if (!r.ok) {
+        toast.info(r.error);
+        return;
       }
-      commit(next);
+      commit(r.data);
       toast.success("✓ Restored to your ledger");
     },
     [data, commit, toast]
@@ -367,8 +361,12 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
   );
 
   const backup = useCallback(() => {
-    const next = backupNowMut(data);
-    commit(logEvent(next, { type: "BackupCreated" }));
+    const r = backupLedgerCmd(data, cmdCtx);
+    if (!r.ok) {
+      toast.info(r.error);
+      return;
+    }
+    commit(r.data);
     setBackupExists(true);
     toast.success("✓ Backup saved on this device");
   }, [data, commit, toast]);
@@ -383,9 +381,13 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
   }, [ingest, toast]);
 
   const exportData = useCallback(() => {
-    const { data: withCount, text, filename } = exportToFile(data);
-    commit(withCount);
-    download(text, filename);
+    const r = exportLedgerCmd(data);
+    if (!r.ok) {
+      toast.info(r.error);
+      return;
+    }
+    commit(r.data);
+    download(r.value.text, r.value.filename);
     toast.success("✓ Exported — keep the file somewhere safe");
   }, [data, commit, toast]);
 
@@ -397,19 +399,22 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
     [ingest]
   );
 
-  // Import Wizard (P3-005) — MERGE another app's ledger in, then verify integrity.
+  // Import Wizard (P3-005) — MERGE another app's ledger in, via the ImportLedger command.
   const importLedger = useCallback(
     (plan: ImportPlan) => {
-      const { data: merged, contacts, entries } = applyImportPlan(data, plan);
-      const { data: checked } = runIntegrity(merged, nowISO());
-      const stamped = { ...checked, meta: { ...checked.meta, lastRestoreAt: nowISO() } };
-      commit(checkpoint(stamped, { type: "ImportCompleted", summary: { contacts, entries } }));
+      const r = importLedgerCmd(data, plan, cmdCtx);
+      if (!r.ok) {
+        toast.info(r.error);
+        return { contacts: 0, entries: 0 };
+      }
+      commit(r.data);
+      const { contacts, entries } = r.value;
       toast.success(
         `✓ Imported · ${entries} entr${entries === 1 ? "y" : "ies"} · ${contacts} new contact${
           contacts === 1 ? "" : "s"
         }`
       );
-      return { contacts, entries };
+      return r.value;
     },
     [data, commit, toast]
   );
