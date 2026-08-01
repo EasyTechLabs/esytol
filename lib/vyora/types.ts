@@ -8,9 +8,6 @@
  * merchant or the merchant owes them, so one party can be both over time.
  */
 
-// Type-only import (erased at runtime → no circular dependency with events.ts).
-import type { LedgerEvent } from "./events";
-
 /** A credit event's direction, from the MERCHANT's point of view. */
 export type EntryKind =
   | "given" // I gave goods/credit → THEY owe ME (receivable ↑)
@@ -20,9 +17,6 @@ export type EntryKind =
 export type PaymentKind =
   | "received" // THEY paid ME → they owe me less (receivable ↓)
   | "paid"; // I paid THEM → I owe them less (payable ↓)
-
-/** How a payment was made. */
-export type PaymentMode = "cash" | "upi" | "bank" | "cheque";
 
 export interface Party {
   id: string;
@@ -40,10 +34,7 @@ export interface Transaction {
   /** Rupees, positive. */
   amount: number;
   kind: EntryKind;
-  /** Free-text notes (e.g. "cement, 3 bags"). */
   description?: string;
-  /** Optional short reference — bill no., invoice, order id. */
-  reference?: string;
   /** Business date, YYYY-MM-DD. */
   date: string;
   /** Optional due date, YYYY-MM-DD. */
@@ -57,94 +48,17 @@ export interface Payment {
   partyId: string;
   amount: number;
   kind: PaymentKind;
-  /** How it was paid — cash / UPI / bank / cheque. */
-  mode?: PaymentMode;
-  /** Optional short reference — UPI txn id, cheque no., etc. */
-  reference?: string;
   note?: string;
   date: string;
   createdAt: string;
 }
 
-/** Local-only housekeeping — never tracked, never sent anywhere. Powers Founder Mode + the backup reminder. */
-export interface Meta {
-  /** When the merchant last made a local backup (ISO), or null. */
-  lastBackupAt: string | null;
-  /** How many times the merchant exported (device-local counter). */
-  exportCount: number;
-  /** How many times the merchant imported (device-local counter). */
-  importCount: number;
-  /** When data was last restored/imported from outside (ISO), or null (V1-003). */
-  lastRestoreAt?: string | null;
-}
-
 /** The entire Vyora Alpha dataset — lives in one localStorage key on the device. */
-/**
- * A soft-deleted record (P3-001). Deleting a contact or an entry moves it here
- * instead of erasing it: recoverable from Settings → Recently Deleted for 30 days.
- * An entry delete keeps `parties: []` (the contact stays); a contact delete carries
- * the contact plus its whole history so Restore brings everything back together.
- */
-export interface TrashEntry {
-  id: string;
-  deletedAt: string; // ISO
-  kind: "entry" | "contact";
-  parties: Party[];
-  transactions: Transaction[];
-  payments: Payment[];
-}
-
-export type ThemePref = "light" | "dark" | "system";
-export type DateFormatPref = "relative" | "dmy" | "iso";
-export type NumberFormatPref = "indian" | "international";
-
-/**
- * Merchant settings (P3-002) — makes Vyora feel like the shopkeeper's own ledger.
- * Business profile brands shared statements; ledger prefs seed new entries; format
- * prefs drive money/date display; theme drives appearance. All local, all optional.
- */
-export interface VyoraSettings {
-  businessName?: string;
-  ownerName?: string;
-  mobile?: string;
-  address?: string;
-  gst?: string;
-  currency: string; // ISO-ish code: "INR" | "USD" | …
-  language: string; // "en" | "hi" | … (stored; interface copy is English today)
-  defaultCreditDays: number | null; // seeds the due date on a new credit
-  defaultPaymentMode: PaymentMode; // seeds the mode on a new payment
-  dateFormat: DateFormatPref;
-  numberFormat: NumberFormatPref;
-  theme: ThemePref;
-}
-
 export interface VyoraData {
   version: number;
   parties: Party[];
   transactions: Transaction[];
   payments: Payment[];
-  meta: Meta;
-  /** Recently-deleted records, newest first (P3-001). Optional for migration safety. */
-  trash?: TrashEntry[];
-  /** Merchant settings (P3-002). Optional for migration safety. */
-  settings?: VyoraSettings;
-  /** Append-only event log (ARCH-002). The active ledger derives from this. */
-  events?: LedgerEvent[];
-}
-
-/**
- * How an entry names its party. Existing parties are bound by immutable **id**
- * (never by typed name) so a slightly different spelling can never silently
- * create a duplicate ledger. A brand-new party is created only on explicit intent.
- */
-export type PartyRef = { kind: "existing"; id: string } | { kind: "new"; name: string };
-
-/** The envelope written by Export / read by Import — human-readable, versioned, timestamped. */
-export interface ExportFile {
-  app: "vyora";
-  schemaVersion: number;
-  exportedAt: string;
-  data: VyoraData;
 }
 
 /** A party's computed position. `net > 0` = they owe the merchant; `net < 0` = the merchant owes them. */
@@ -180,9 +94,5 @@ export interface ActivityItem {
   amount: number;
   label: string; // e.g. "Credit given", "Payment received"
   note?: string;
-  /** Short reference — bill no. / invoice (credit) or UPI/cheque ref (payment). */
-  reference?: string;
-  /** Payment mode (payments only). */
-  mode?: PaymentMode;
   type: "transaction" | "payment";
 }

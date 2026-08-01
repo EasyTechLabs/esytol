@@ -1,608 +1,449 @@
 "use client";
 
 /**
- * Vyora Alpha — Data & backup. The merchant owns their data: back it up on the
- * device, export a file to keep it safe off-device, and import/restore to
- * recover. Every destructive action confirms first. No cloud, no accounts.
+ * Vyora — Settings: the merchant trust page (V2-002).
+ *
+ * Not a preferences screen. It exists to answer one question in three seconds:
+ * **"Is my business data safe?"** — which is why the honest status card is the
+ * first thing on it and everything else comes after.
+ *
+ * Two promises the code keeps:
+ *  - **"Backed up" is only ever claimed when a file actually left the app.** The
+ *    `BackupCreated` event is recorded after the download succeeds, never before.
+ *  - **"Restored" is only ever claimed when validation passed.** The file is
+ *    parsed and counted first; the merchant confirms real numbers before
+ *    anything is replaced.
+ *
+ * Everything local. No cloud, no login, no server, no sync.
  */
 
-import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
-import { cn } from "@/lib/cn";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useVyora } from "../VyoraProvider";
-import { formatDateTime, formatMoney, CURRENCY_SYMBOLS } from "@/lib/vyora/format";
-import type {
-  TrashEntry,
-  VyoraData,
-  PaymentMode,
-  ThemePref,
-  DateFormatPref,
-  NumberFormatPref,
-} from "@/lib/vyora/types";
-import { APP_VERSION, VERSION, storageSizeBytes, backupStatus } from "@/lib/vyora/store";
-import { Card, Button, TextInput } from "../primitives";
+import { SW_SCOPE, detectInstallState } from "@/lib/vyora/pwa";
+import { previewImport, type ImportPreview } from "@/lib/vyora/commands";
+import { runIntegrityChecks } from "@/lib/vyora/debug";
+import {
+  APP_VERSION,
+  BUILD_DATE,
+  backupStatus,
+  formatBytes,
+  type BackupReminder,
+  type MerchantSettings,
+} from "@/lib/vyora/settings";
+import { formatDate } from "@/lib/vyora/format";
 
-const CURRENCIES = Object.keys(CURRENCY_SYMBOLS);
-const LANGUAGES: { value: string; label: string }[] = [
-  { value: "en", label: "English" },
-  { value: "hi", label: "हिन्दी (Hindi)" },
-  { value: "mr", label: "मराठी (Marathi)" },
-  { value: "gu", label: "ગુજરાતી (Gujarati)" },
-  { value: "ta", label: "தமிழ் (Tamil)" },
-  { value: "te", label: "తెలుగు (Telugu)" },
-  { value: "bn", label: "বাংলা (Bengali)" },
-];
-const CREDIT_DAYS: { value: number | null; label: string }[] = [
-  { value: null, label: "No due date" },
-  { value: 7, label: "7 days" },
-  { value: 15, label: "15 days" },
-  { value: 30, label: "30 days" },
-  { value: 45, label: "45 days" },
-  { value: 60, label: "60 days" },
-  { value: 90, label: "90 days" },
-];
-const PAYMENT_MODES: { value: PaymentMode; label: string }[] = [
-  { value: "cash", label: "Cash" },
-  { value: "upi", label: "UPI" },
-  { value: "bank", label: "Bank" },
-  { value: "cheque", label: "Cheque" },
-];
-const DATE_FORMATS: { value: DateFormatPref; label: string }[] = [
-  { value: "relative", label: "Relative — Today, Yesterday, 12 Jul 2026" },
-  { value: "dmy", label: "Date — 12 Jul 2026" },
-  { value: "iso", label: "ISO — 2026-07-12" },
-];
-const NUMBER_FORMATS: { value: NumberFormatPref; label: string }[] = [
-  { value: "indian", label: "Indian — 1,80,000" },
-  { value: "international", label: "International — 180,000" },
-];
-const THEMES: { value: ThemePref; label: string }[] = [
-  { value: "light", label: "Light" },
-  { value: "dark", label: "Dark" },
-  { value: "system", label: "System" },
-];
-
-function formatBytes(n: number): string {
-  if (n < 1024) return `${n} B`;
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
-  return `${(n / 1024 / 1024).toFixed(2)} MB`;
-}
-
-/** A labelled form row. */
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <label className="block">
-      <span className="mb-1 block text-sm font-medium text-gray-700">{label}</span>
-      {children}
-    </label>
+    <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
+      <h2 className="border-b border-gray-100 bg-gray-50 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+        {title}
+      </h2>
+      <div className="p-4">{children}</div>
+    </section>
   );
 }
 
-/** A styled native <select> (keeps the whole page working with no extra deps). */
-function Select<T extends string | number | null>({
-  value,
-  options,
-  onChange,
-  ariaLabel,
-}: {
-  value: T;
-  options: { value: T; label: string }[];
-  onChange: (v: T) => void;
-  ariaLabel: string;
-}) {
+function Row({ label, value }: { label: string; value: string }) {
   return (
-    <select
-      aria-label={ariaLabel}
-      value={String(value)}
-      onChange={(e) => {
-        const picked = options.find((o) => String(o.value) === e.target.value);
-        if (picked) onChange(picked.value);
-      }}
-      className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-600"
-    >
-      {options.map((o) => (
-        <option key={String(o.value)} value={String(o.value)}>
-          {o.label}
-        </option>
-      ))}
-    </select>
-  );
-}
-
-/** A read-only About row (label · value). */
-function AboutRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between gap-3 py-1.5 text-sm">
-      <span className="text-gray-600">{label}</span>
-      <span className="font-medium tabular-nums text-gray-900">{value}</span>
+    <div className="flex items-baseline justify-between gap-3 py-1.5">
+      <span className="text-sm text-gray-600">{label}</span>
+      <span className="shrink-0 text-sm font-semibold tabular-nums text-gray-900">{value}</span>
     </div>
   );
 }
 
-/** Human summary of a recently-deleted record (P3-001) for the Restore list. */
-function describeTrash(entry: TrashEntry, data: VyoraData): { title: string; sub: string } {
-  const nameOf = (id: string) => data.parties.find((x) => x.id === id)?.name ?? "Contact";
-  if (entry.kind === "contact") {
-    const count = entry.transactions.length + entry.payments.length;
-    return {
-      title: entry.parties[0]?.name ?? "Contact",
-      sub: `Contact · ${count} entr${count === 1 ? "y" : "ies"}`,
-    };
-  }
-  const t = entry.transactions[0];
-  if (t) {
-    return {
-      title: `${t.kind === "given" ? "Credit given" : "Credit taken"} · ${formatMoney(t.amount)}`,
-      sub: nameOf(t.partyId),
-    };
-  }
-  const p = entry.payments[0];
-  if (p) {
-    return {
-      title: `${p.kind === "received" ? "Payment received" : "Payment made"} · ${formatMoney(p.amount)}`,
-      sub: nameOf(p.partyId),
-    };
-  }
-  return { title: "Deleted entry", sub: "" };
+function Field({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-xs font-medium text-gray-600">{label}</span>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full rounded-xl border-2 border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand-500"
+      />
+    </label>
+  );
+}
+
+/** Typed confirmation. "OK" is a reflex; typing DELETE is a decision. */
+function DangerAction({
+  title,
+  description,
+  confirmLabel,
+  onConfirm,
+  disabled,
+}: {
+  title: string;
+  description: string;
+  confirmLabel: string;
+  onConfirm: () => void;
+  disabled?: boolean;
+}) {
+  const [typed, setTyped] = useState("");
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="rounded-xl border-2 border-red-200 p-3">
+      <div className="text-sm font-semibold text-red-800">{title}</div>
+      <p className="mt-0.5 text-xs text-red-700">{description}</p>
+      {disabled ? (
+        <p className="mt-2 text-xs italic text-gray-500">Nothing to clear.</p>
+      ) : !open ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="mt-2 rounded-lg border-2 border-red-300 px-3 py-1.5 text-xs font-semibold text-red-700"
+        >
+          {confirmLabel}
+        </button>
+      ) : (
+        <div className="mt-2 space-y-2">
+          <input
+            value={typed}
+            onChange={(e) => setTyped(e.target.value)}
+            placeholder="Type DELETE to confirm"
+            aria-label="Type DELETE to confirm"
+            className="w-full rounded-lg border-2 border-red-200 px-3 py-2 text-sm outline-none focus:border-red-500"
+          />
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={typed !== "DELETE"}
+              onClick={() => {
+                onConfirm();
+                setTyped("");
+                setOpen(false);
+              }}
+              className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+            >
+              {confirmLabel}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                setTyped("");
+              }}
+              className="rounded-lg border-2 border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function Settings() {
-  const {
-    ready,
-    data,
-    hasBackup,
-    backup,
-    restore,
-    exportData,
-    validateImport,
-    applyImport,
-    restoreDeleted,
-    settings,
-    updateSettings,
-    seedDemo,
-    resetDemo,
-    reset,
-  } = useVyora();
-  const fileRef = useRef<HTMLInputElement>(null);
-  const trash = data.trash ?? [];
+  const { ready, ledger, events, dispatch, reset, storageBytes, settings, updateSettings } =
+    useVyora();
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [exportNote, setExportNote] = useState("");
+  const [exportFailed, setExportFailed] = useState(false);
+  const [pending, setPending] = useState<{ payload: string; preview: ImportPreview } | null>(null);
+  const [importNote, setImportNote] = useState("");
+  const [importFailed, setImportFailed] = useState(false);
 
-  // Business-profile text fields edit locally, then save in one commit.
-  const [biz, setBiz] = useState({
-    businessName: "",
-    ownerName: "",
-    mobile: "",
-    address: "",
-    gst: "",
-  });
+  const [pwa, setPwa] = useState(() => ({ installed: false, needsManualInstall: false }));
+  const [offlineReady, setOfflineReady] = useState(false);
+  const [swVersion, setSwVersion] = useState("not registered");
+
   useEffect(() => {
-    setBiz({
-      businessName: settings.businessName ?? "",
-      ownerName: settings.ownerName ?? "",
-      mobile: settings.mobile ?? "",
-      address: settings.address ?? "",
-      gst: settings.gst ?? "",
+    setPwa(detectInstallState(window, navigator));
+    if (!("serviceWorker" in navigator)) return;
+    navigator.serviceWorker.getRegistration(SW_SCOPE).then((reg) => {
+      setOfflineReady(Boolean(reg?.active));
+      if (!reg?.active) return;
+      // Ask the worker which build it is, rather than guessing from the app.
+      const channel = new MessageChannel();
+      channel.port1.onmessage = (event) => {
+        if (event.data?.type === "VYORA_VERSION") setSwVersion(event.data.version);
+      };
+      reg.active.postMessage("VYORA_VERSION", [channel.port2]);
     });
-  }, [settings.businessName, settings.ownerName, settings.mobile, settings.address, settings.gst]);
-  const saveProfile = () =>
-    updateSettings({
-      businessName: biz.businessName.trim() || undefined,
-      ownerName: biz.ownerName.trim() || undefined,
-      mobile: biz.mobile.trim() || undefined,
-      address: biz.address.trim() || undefined,
-      gst: biz.gst.trim() || undefined,
-    });
+  }, []);
 
-  if (!ready) return <div className="py-20 text-center text-gray-500">Loading…</div>;
+  const status = useMemo(() => backupStatus(events, settings), [events, settings]);
+  const integrity = useMemo(() => (ready ? runIntegrityChecks(ledger) : []), [ready, ledger]);
+  const integrityFailed = integrity.filter((c) => !c.ok).length;
 
-  const lastBackup = data.meta.lastBackupAt;
-  const { stale: backupStale, ago } = backupStatus(lastBackup, Date.now());
+  if (!ready) return <div className="py-20 text-center text-gray-400">Loading…</div>;
 
-  const onImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = ""; // allow re-importing the same file
-    if (!file) return;
-    let text = "";
+  const set = (patch: Partial<MerchantSettings>) => updateSettings(patch);
+
+  /** Generate, hand to the browser, and only THEN record that a backup happened. */
+  const exportLedger = () => {
+    setExportNote("");
+    setExportFailed(false);
+    const result = dispatch({ type: "BackupLedger" });
+    if (!result.ok) {
+      setExportFailed(true);
+      setExportNote(result.error.message);
+      return;
+    }
+    const file = result.value as { fileName: string; contents: string };
     try {
-      text = await file.text();
+      const blob = new Blob([file.contents], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = file.fileName;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      setExportNote(`Downloaded ${file.fileName}. Keep it somewhere safe.`);
     } catch {
-      alert("Could not read that file.");
-      return;
+      setExportFailed(true);
+      setExportNote("Could not save the file. Nothing was downloaded — try again.");
     }
-    const res = validateImport(text);
-    if (!res.ok) {
-      alert(res.error);
-      return;
-    }
-    const ok = confirm(
-      `Import will REPLACE everything currently on this device with:\n\n` +
-        `• ${res.summary.parties} contacts\n• ${res.summary.transactions} credit entries\n• ${res.summary.payments} payments\n\n` +
-        `Your current data will be overwritten. Continue?`
-    );
-    if (ok) applyImport(res.data);
   };
 
-  const onRestore = () => {
-    if (confirm("Restore your last on-device backup? This replaces the current data.")) restore();
+  const chooseFile = async (file: File | undefined) => {
+    setImportNote("");
+    setImportFailed(false);
+    setPending(null);
+    if (!file) return;
+    const payload = await file.text();
+    const preview = previewImport(payload);
+    if (!preview.ok) {
+      setImportFailed(true);
+      setImportNote(preview.error.message);
+      return;
+    }
+    setPending({ payload, preview: preview.value });
   };
-  const onReset = () => {
-    const parties = data.parties.length;
-    const entries = data.transactions.length + data.payments.length;
-    const note =
-      lastBackup && !backupStale
-        ? `You last backed up ${ago}.`
-        : "⚠️ You have NOT backed up recently. Export a backup first, or this data is gone for good.";
-    if (
-      confirm(
-        `Erase ALL Vyora data on this device?\n\n` +
-          `This permanently deletes ${parties} contact${parties === 1 ? "" : "s"} and ` +
-          `${entries} entr${entries === 1 ? "y" : "ies"}. It cannot be undone.\n\n` +
-          `${note}\n\nContinue?`
-      )
-    )
-      reset();
+
+  const confirmImport = () => {
+    if (!pending) return;
+    const result = dispatch({ type: "ImportLedger", payload: pending.payload });
+    setPending(null);
+    if (!result.ok) {
+      setImportFailed(true);
+      setImportNote(result.error.message);
+      return;
+    }
+    setImportNote("Restore completed. Your ledger now matches the file.");
   };
+
+  const heroTone =
+    status.health === "backed-up"
+      ? "from-emerald-500 to-emerald-700"
+      : status.health === "recommended"
+        ? "from-amber-500 to-orange-600"
+        : "from-red-500 to-red-700";
+  const heroIcon =
+    status.health === "backed-up" ? "✅" : status.health === "recommended" ? "⚠️" : "❌";
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-lg font-semibold text-gray-900">Settings</h1>
+    <div className="space-y-4 pb-4">
+      {/* 1 — Data safety hero */}
+      <div className={`rounded-2xl bg-gradient-to-br ${heroTone} p-5 text-white`}>
+        <div className="text-3xl leading-none">{heroIcon}</div>
+        <h1 className="mt-2 text-xl font-bold leading-tight">{status.headline}</h1>
+        <p className="mt-1 text-sm text-white/90">{status.detail}</p>
+        <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-white/90">
+          <div>
+            <div className="uppercase tracking-wide text-white/70">Last backup</div>
+            <div className="font-semibold">
+              {status.lastBackupAt ? formatDate(status.lastBackupAt.slice(0, 10)) : "never"}
+            </div>
+          </div>
+          <div>
+            <div className="uppercase tracking-wide text-white/70">Backup age</div>
+            <div className="font-semibold">
+              {status.ageDays === undefined ? "—" : `${status.ageDays}d`}
+            </div>
+          </div>
+          <div>
+            <div className="uppercase tracking-wide text-white/70">Database version</div>
+            <div className="font-semibold">v{ledger.data.version}</div>
+          </div>
+          <div>
+            <div className="uppercase tracking-wide text-white/70">Storage used</div>
+            <div className="font-semibold">{formatBytes(storageBytes())}</div>
+          </div>
+        </div>
+      </div>
 
-      {/* Data safety at a glance — Settings' first job is to answer "Is my data safe?" */}
-      <Card
-        as="section"
-        className={
-          backupStale
-            ? "flex items-center justify-between gap-3 border-amber-200 bg-amber-50"
-            : "flex items-center justify-between gap-3 border-positive-line bg-positive-tint"
-        }
-      >
-        <div className="min-w-0">
+      {/* 2 — Export */}
+      <Card title="Export data">
+        <p className="mb-3 text-sm text-gray-600">
+          Save your whole book as a file on this phone. That file is yours — keep a copy anywhere.
+        </p>
+        <button
+          type="button"
+          onClick={exportLedger}
+          className="w-full rounded-2xl bg-brand-600 py-3 text-base font-semibold text-white hover:bg-brand-700"
+        >
+          Export ledger
+        </button>
+        {exportNote && (
           <p
-            className={`text-sm font-semibold ${backupStale ? "text-amber-800" : "text-positive-strong"}`}
+            role="status"
+            className={`mt-2 text-xs font-medium ${exportFailed ? "text-red-700" : "text-emerald-700"}`}
           >
-            {!lastBackup
-              ? "Your data isn't backed up yet"
-              : backupStale
-                ? `Back up your data${ago ? ` — last ${ago}` : ""}`
-                : `Your data is safe — backed up ${ago}`}
-          </p>
-          <p className="text-xs text-gray-600">
-            It&rsquo;s stored only on this device. Keep an exported copy to be safe.
-          </p>
-        </div>
-        <Button variant="primary" size="sm" className="shrink-0" onClick={backup}>
-          Back up
-        </Button>
-      </Card>
-
-      {/* Business profile — brands shared statements (P3-002) */}
-      <Card as="section" className="space-y-3">
-        <div>
-          <h2 className="font-semibold text-gray-900">Business profile</h2>
-          <p className="text-sm text-gray-600">
-            Appears on the statements you share with customers.
-          </p>
-        </div>
-        <Field label="Business name">
-          <TextInput
-            value={biz.businessName}
-            onChange={(e) => setBiz({ ...biz, businessName: e.target.value })}
-            placeholder="e.g. Sharma Traders"
-          />
-        </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Owner name">
-            <TextInput
-              value={biz.ownerName}
-              onChange={(e) => setBiz({ ...biz, ownerName: e.target.value })}
-              placeholder="Owner"
-            />
-          </Field>
-          <Field label="Mobile">
-            <TextInput
-              value={biz.mobile}
-              onChange={(e) => setBiz({ ...biz, mobile: e.target.value })}
-              placeholder="Phone"
-              inputMode="tel"
-            />
-          </Field>
-        </div>
-        <Field label="Address">
-          <TextInput
-            value={biz.address}
-            onChange={(e) => setBiz({ ...biz, address: e.target.value })}
-            placeholder="Shop address (optional)"
-          />
-        </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="GST (optional)">
-            <TextInput
-              value={biz.gst}
-              onChange={(e) => setBiz({ ...biz, gst: e.target.value })}
-              placeholder="GSTIN"
-            />
-          </Field>
-          <Field label="Currency">
-            <Select
-              ariaLabel="Currency"
-              value={settings.currency}
-              options={CURRENCIES.map((c) => ({
-                value: c,
-                label: `${c} · ${CURRENCY_SYMBOLS[c]}`,
-              }))}
-              onChange={(v) => updateSettings({ currency: v })}
-            />
-          </Field>
-        </div>
-        <Field label="Language">
-          <Select
-            ariaLabel="Language"
-            value={settings.language}
-            options={LANGUAGES}
-            onChange={(v) => updateSettings({ language: v })}
-          />
-        </Field>
-        {settings.language !== "en" && (
-          <p className="text-xs text-gray-500">
-            The interface is in English today — your language choice is saved for upcoming
-            translations.
+            {exportNote}
           </p>
         )}
-        <Button variant="primary" onClick={saveProfile} className="px-4 py-2.5">
-          Save profile
-        </Button>
       </Card>
 
-      {/* Ledger preferences — seed new entries & drive display (P3-002) */}
-      <Card as="section" className="space-y-3">
-        <div>
-          <h2 className="font-semibold text-gray-900">Ledger preferences</h2>
-          <p className="text-sm text-gray-600">
-            Sensible defaults so entries are faster to record.
-          </p>
-        </div>
-        <Field label="Default credit days">
-          <Select
-            ariaLabel="Default credit days"
-            value={settings.defaultCreditDays}
-            options={CREDIT_DAYS}
-            onChange={(v) => updateSettings({ defaultCreditDays: v })}
-          />
-        </Field>
-        <Field label="Default payment mode">
-          <Select
-            ariaLabel="Default payment mode"
-            value={settings.defaultPaymentMode}
-            options={PAYMENT_MODES}
-            onChange={(v) => updateSettings({ defaultPaymentMode: v })}
-          />
-        </Field>
-        <Field label="Date format">
-          <Select
-            ariaLabel="Date format"
-            value={settings.dateFormat}
-            options={DATE_FORMATS}
-            onChange={(v) => updateSettings({ dateFormat: v })}
-          />
-        </Field>
-        <Field label="Number format">
-          <Select
-            ariaLabel="Number format"
-            value={settings.numberFormat}
-            options={NUMBER_FORMATS}
-            onChange={(v) => updateSettings({ numberFormat: v })}
-          />
-        </Field>
-      </Card>
-
-      {/* Appearance (P3-002) */}
-      <Card as="section" className="space-y-3">
-        <div>
-          <h2 className="font-semibold text-gray-900">Appearance</h2>
-          <p className="text-sm text-gray-600">How Vyora looks on this device.</p>
-        </div>
-        <div className="grid grid-cols-3 gap-2">
-          {THEMES.map((t) => {
-            const active = settings.theme === t.value;
-            return (
+      {/* 3 — Import */}
+      <Card title="Restore from backup">
+        <p className="mb-3 text-sm text-gray-600">
+          Bring back a file you exported earlier. You will see exactly what it contains before
+          anything is replaced.
+        </p>
+        <input
+          ref={fileInput}
+          type="file"
+          accept="application/json,.json"
+          onChange={(e) => chooseFile(e.target.files?.[0])}
+          className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-xl file:border-0 file:bg-gray-100 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-gray-700"
+        />
+        {pending && (
+          <div className="mt-3 rounded-xl border-2 border-amber-200 bg-amber-50 p-3">
+            <p className="text-sm font-semibold text-amber-900">
+              This file will replace everything
+            </p>
+            <ul className="mt-1 space-y-0.5 text-xs text-amber-800">
+              <li>{pending.preview.contacts} contacts</li>
+              <li>{pending.preview.transactions} credit entries</li>
+              <li>{pending.preview.payments} payments</li>
+            </ul>
+            <p className="mt-2 text-xs text-amber-800">
+              Your current book ({ledger.statistics.partyCount} contacts,{" "}
+              {ledger.statistics.entryCount} entries) will be replaced. Export it first if unsure.
+            </p>
+            <div className="mt-2 flex gap-2">
               <button
-                key={t.value}
                 type="button"
-                onClick={() => updateSettings({ theme: t.value })}
-                aria-pressed={active}
-                className={cn(
-                  "rounded-xl border-2 px-3 py-2.5 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600",
-                  active
-                    ? "border-brand-500 bg-brand-50 text-brand-700"
-                    : "border-gray-200 bg-white text-gray-600"
-                )}
+                onClick={confirmImport}
+                className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white"
               >
-                {t.label}
+                Restore this file
               </button>
-            );
-          })}
-        </div>
-      </Card>
-
-      {/* Backup on device */}
-      <Card as="section" className="space-y-3">
-        <div>
-          <h2 className="font-semibold text-gray-900">On-device backup</h2>
-          <p className="text-sm text-gray-600">
-            A safety copy on this phone — protects against an accidental change.
-          </p>
-          {lastBackup ? (
-            <p
-              className={`mt-1 text-sm ${backupStale ? "font-medium text-amber-700" : "text-gray-700"}`}
-            >
-              <span className={backupStale ? "" : "text-positive-strong"}>●</span> Last backup:{" "}
-              <span className="font-medium">{formatDateTime(lastBackup)}</span> · {ago}
-              {backupStale && " — back up again to stay safe."}
-            </p>
-          ) : (
-            <p className="mt-1 text-sm font-medium text-red-700">
-              ● Never backed up on this device — back up (and export a copy) now.
-            </p>
-          )}
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <Button variant="primary" block onClick={backup}>
-            Back up now
-          </Button>
-          <Button variant="secondary" block disabled={!hasBackup} onClick={onRestore}>
-            Restore backup
-          </Button>
-        </div>
-      </Card>
-
-      {/* Export / Import file */}
-      <Card as="section" className="space-y-3">
-        <div>
-          <h2 className="font-semibold text-gray-900">Export &amp; import a Vyora backup</h2>
-          <p className="text-sm text-gray-600">
-            Export keeps your data safe <em>off</em> this device (share it to yourself, or save it).
-            Import restores from a Vyora backup file (this replaces current data).
-          </p>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <Button variant="positive" block onClick={exportData}>
-            Export data
-          </Button>
-          <Button variant="secondary" block onClick={() => fileRef.current?.click()}>
-            Restore backup file
-          </Button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="application/json,.json"
-            onChange={onImportFile}
-            className="hidden"
-          />
-        </div>
-      </Card>
-
-      {/* Import Wizard — move in from another app (P3-005) */}
-      <Card as="section" className="space-y-3">
-        <div>
-          <h2 className="font-semibold text-gray-900">Move in from another app</h2>
-          <p className="text-sm text-gray-600">
-            Coming from another khata app? Import your contacts and udhaar from a CSV or JSON file.
-            This <strong>adds</strong> to your ledger — it won&rsquo;t replace anything.
-          </p>
-        </div>
-        <Link
-          href="/vyora/import"
-          className="inline-flex items-center justify-center rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
-        >
-          Start import wizard
-        </Link>
-      </Card>
-
-      {/* Demo mode — explore with a realistic sample shop (V1-004) */}
-      <Card as="section" className="space-y-3">
-        <div>
-          <h2 className="font-semibold text-gray-900">Demo mode</h2>
-          <p className="text-sm text-gray-600">
-            Explore Vyora with a realistic sample shop — 120 customers and ~2,200 entries.
-            It&rsquo;s kept separate from your data and fully removable.
-          </p>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <Button
-            variant="primary"
-            block
-            onClick={() => {
-              if (
-                confirm(
-                  "Load a demo shop?\n\n120 customers and ~2,200 entries are added (labelled 'demo'). Your real data is untouched."
-                )
-              )
-                seedDemo();
-            }}
-          >
-            Load demo shop
-          </Button>
-          <Button
-            variant="secondary"
-            block
-            onClick={() => {
-              if (confirm("Remove all demo data?\n\nYour real data is untouched.")) resetDemo();
-            }}
-          >
-            Reset demo
-          </Button>
-        </div>
-      </Card>
-
-      {/* Recently deleted — restore anything removed in the last 30 days (P3-001) */}
-      <Card as="section" className="space-y-3">
-        <div>
-          <h2 className="font-semibold text-gray-900">Recently deleted</h2>
-          <p className="text-sm text-gray-600">
-            Deleted contacts and entries are kept here for 30 days. Restore anything you removed by
-            mistake.
-          </p>
-        </div>
-        {trash.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-gray-200 px-4 py-6 text-center text-sm text-gray-500">
-            Nothing deleted in the last 30 days.
-          </p>
-        ) : (
-          <div className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200">
-            {trash.map((entry) => {
-              const { title, sub } = describeTrash(entry, data);
-              return (
-                <div
-                  key={entry.id}
-                  className="flex items-center justify-between gap-3 bg-white px-4 py-3"
-                >
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-medium text-gray-800">{title}</div>
-                    <div className="truncate text-xs text-gray-500">
-                      {sub ? `${sub} · ` : ""}Deleted {formatDateTime(entry.deletedAt)}
-                    </div>
-                  </div>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="shrink-0"
-                    onClick={() => restoreDeleted(entry.id)}
-                  >
-                    Restore
-                  </Button>
-                </div>
-              );
-            })}
+              <button
+                type="button"
+                onClick={() => setPending(null)}
+                className="rounded-lg border-2 border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         )}
+        {importNote && (
+          <p
+            role="status"
+            className={`mt-2 text-xs font-medium ${importFailed ? "text-red-700" : "text-emerald-700"}`}
+          >
+            {importNote}
+          </p>
+        )}
       </Card>
 
-      {/* About (P3-002) */}
-      <Card as="section" className="space-y-1">
-        <h2 className="mb-1 font-semibold text-gray-900">About</h2>
-        <AboutRow label="App version" value={APP_VERSION} />
-        <AboutRow label="Database version" value={`v${VERSION}`} />
-        <AboutRow
-          label="Backup status"
-          value={lastBackup ? `Last backed up ${ago}` : "Never backed up"}
-        />
-        <AboutRow label="Storage used" value={formatBytes(storageSizeBytes())} />
-      </Card>
-
-      {/* Danger */}
-      <Card as="section" tone="danger" className="space-y-2">
-        <h2 className="font-semibold text-red-800">Clear everything</h2>
-        <p className="text-sm text-red-700">
-          Permanently erase all data on this device. Export a backup first if you want to keep it.
+      {/* 4 — Backup reminder */}
+      <Card title="Backup reminder">
+        <p className="mb-2 text-sm text-gray-600">
+          How often should Vyora nudge you? Stays on this device.
         </p>
-        <Button variant="danger" onClick={onReset} className="px-4 py-2.5">
-          Clear all data
-        </Button>
+        <div className="flex gap-2">
+          {(["daily", "weekly", "never"] as BackupReminder[]).map((option) => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => set({ backupReminder: option })}
+              className={`flex-1 rounded-xl border-2 py-2 text-sm font-semibold capitalize ${
+                settings.backupReminder === option
+                  ? "border-brand-500 bg-brand-50 text-brand-700"
+                  : "border-gray-200 text-gray-500"
+              }`}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
       </Card>
 
-      <p className="px-1 text-xs text-gray-500">
-        Everything is stored only in this browser. Nothing is sent to any server. On iPhone, add
-        Vyora to your Home Screen so the browser doesn&rsquo;t clear your data.
-      </p>
+      {/* 5 — Business profile */}
+      <Card title="Business profile">
+        <div className="space-y-3">
+          <Field
+            label="Business name"
+            value={settings.businessName}
+            onChange={(v) => set({ businessName: v })}
+            placeholder="e.g. Sharma Stores"
+          />
+          <Field label="Owner" value={settings.ownerName} onChange={(v) => set({ ownerName: v })} />
+          <Field label="Phone" value={settings.phone} onChange={(v) => set({ phone: v })} />
+          <Field label="GST (optional)" value={settings.gst} onChange={(v) => set({ gst: v })} />
+          <Field label="Address" value={settings.address} onChange={(v) => set({ address: v })} />
+          <div className="grid grid-cols-2 gap-3">
+            <Field
+              label="Currency"
+              value={settings.currency}
+              onChange={(v) => set({ currency: v })}
+            />
+            <Field
+              label="Language"
+              value={settings.language}
+              onChange={(v) => set({ language: v })}
+            />
+          </div>
+          <p className="text-xs text-gray-500">
+            Your business name is added to reminder messages. Language does not change the app yet.
+          </p>
+        </div>
+      </Card>
+
+      {/* 6 — Danger zone */}
+      <Card title="Danger zone">
+        <div className="space-y-3">
+          <DangerAction
+            title="Clear all data"
+            description="Erases every contact, entry and payment on this device. This cannot be undone — export first."
+            confirmLabel="Clear all data"
+            onConfirm={reset}
+          />
+          <DangerAction
+            title="Clear demo data"
+            description="Vyora has no separate demo data, so there is nothing here to clear."
+            confirmLabel="Clear demo data"
+            onConfirm={() => undefined}
+            disabled
+          />
+        </div>
+      </Card>
+
+      {/* 7 — Version */}
+      <Card title="Version">
+        <Row label="App version" value={APP_VERSION} />
+        <Row label="Database version" value={`v${ledger.data.version}`} />
+        <Row label="Build date" value={BUILD_DATE} />
+        <Row label="Storage used" value={formatBytes(storageBytes())} />
+        <Row
+          label="Integrity"
+          value={
+            integrityFailed === 0
+              ? `all ${integrity.length} checks passed`
+              : `${integrityFailed} FAILED`
+          }
+        />
+        <Row label="App installed" value={pwa.installed ? "Yes" : "No"} />
+        <Row label="Offline ready" value={offlineReady ? "Yes" : "No"} />
+        <Row label="Service worker" value={swVersion} />
+      </Card>
     </div>
   );
 }

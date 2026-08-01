@@ -1,173 +1,65 @@
 "use client";
 
 /**
- * Vyora — Fast Credit Entry (P0-002). Record a credit sale in under 15 seconds:
- * the amount is autofocused (keyboard opens immediately), the date defaults to
- * today, and due date / reference / notes are optional and tucked out of the
- * fast path. Save returns to the contact's Statement, where outstanding — and
- * the dashboard, recovery, and collect list — update instantly, no reload.
+ * Vyora — Credit entry. The speed-critical screen. Target: faster than a
+ * notebook, under 10 seconds. Amount is autofocused; the party picker creates a
+ * new party inline (no separate step); everything else has a sensible default.
+ *
+ * Since ARCH-004 the write is driven by an explicit state machine — the screen
+ * holds no `isSaving` / `isValid` / `hasFailed` flags of its own, only the
+ * workflow's status and the draft it carries.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useVyora } from "../VyoraProvider";
 import type { EntryKind } from "@/lib/vyora/types";
 import { todayISO } from "@/lib/vyora/selectors";
-import { AmountField, PartyPicker, Segmented, BigButton, type PartySelection } from "../components";
-import { TextInput, Button } from "../primitives";
-
-const emptyParty: PartySelection = { text: "", ref: null };
-const DRAFT_KEY = "vyora.draft.credit"; // crash-recovery: an unfinished entry survives a browser close
-
-interface CreditDraft {
-  amount: string;
-  party: PartySelection;
-  kind: EntryKind;
-  reference: string;
-  description: string;
-  date: string;
-  dueDate: string;
-  showMore: boolean;
-}
+import { readPartyByName } from "@/lib/vyora/ledger";
+import { creditWorkflow } from "@/lib/vyora/workflow";
+import { CREDIT_PERIODS, addDays, periodLabel, previewDueDate } from "@/lib/vyora/duedates";
+import { creditDaysFor } from "@/lib/vyora/settings";
+import { useVyora } from "../VyoraProvider";
+import { useWorkflow } from "../useWorkflow";
+import { AmountField, PartyPicker, Segmented, BigButton } from "../components";
 
 export function CreditEntry() {
   const router = useRouter();
-  const { recordCredit, data, settings } = useVyora();
-
-  const [amount, setAmount] = useState("");
-  const [party, setParty] = useState<PartySelection>(emptyParty);
-  const [kind, setKind] = useState<EntryKind>("given"); // default: they owe me (a credit sale)
-  const [reference, setReference] = useState("");
-  const [description, setDescription] = useState("");
-  const [date, setDate] = useState(todayISO());
-  const [dueDate, setDueDate] = useState("");
-  const [dueTouched, setDueTouched] = useState(false); // user edited the due date
+  const today = todayISO();
+  const definition = useMemo(() => creditWorkflow(today), [today]);
+  const { draft, status, error, canSubmit, edit, submit, reset } = useWorkflow(definition);
+  const { ledger, settings, updateSettings } = useVyora();
+  // Presentation only — not part of the write, so not part of the machine.
   const [showMore, setShowMore] = useState(false);
-  const [prefilled, setPrefilled] = useState(false);
-  const [saving, setSaving] = useState(false); // prevent a double-tap double-save (P3-001)
-  const [restored, setRestored] = useState(false); // a draft was recovered
-  const [hydrated, setHydrated] = useState(false); // gate the draft-saver until restore has run
-  const restoredRef = useRef(false); // synchronous "a draft was restored" flag for the seeder
+  const [customOpen, setCustomOpen] = useState(false);
 
-  // Pre-select the contact when arriving from a statement (…/credit?party=<id>).
-  useEffect(() => {
-    if (prefilled) return;
-    const id = new URLSearchParams(window.location.search).get("party");
-    if (!id) {
-      setPrefilled(true);
-      return;
-    }
-    const p = data.parties.find((x) => x.id === id);
-    if (p) {
-      setParty({ text: p.name, ref: { kind: "existing", id: p.id } });
-      setPrefilled(true);
-    }
-  }, [data.parties, prefilled]);
+  // The contact typed so far, if we already know them.
+  const matched = readPartyByName(ledger, draft.contactName);
+  const suggestedDays = creditDaysFor(settings, matched?.id);
 
-  // Crash recovery: on a fresh visit (no ?party deep-link) restore an unfinished draft.
-  useEffect(() => {
-    const hasParam = new URLSearchParams(window.location.search).get("party");
-    if (!hasParam) {
-      try {
-        const raw = localStorage.getItem(DRAFT_KEY);
-        if (raw) {
-          const d = JSON.parse(raw) as Partial<CreditDraft>;
-          if (d && typeof d.amount === "string" && d.amount.trim()) {
-            setAmount(d.amount);
-            if (d.party && typeof d.party === "object") setParty(d.party as PartySelection);
-            if (d.kind === "given" || d.kind === "taken") setKind(d.kind);
-            if (typeof d.reference === "string") setReference(d.reference);
-            if (typeof d.description === "string") setDescription(d.description);
-            if (typeof d.date === "string" && d.date) setDate(d.date);
-            if (typeof d.dueDate === "string") setDueDate(d.dueDate);
-            if (d.showMore) setShowMore(true);
-            restoredRef.current = true;
-            setRestored(true);
-          }
-        }
-      } catch {
-        /* malformed draft — ignore */
-      }
-    }
-    setHydrated(true);
-  }, []);
+  // Which chip is lit: whatever due date is on the draft right now.
+  const activeDays = CREDIT_PERIODS.find((d) => addDays(today, d) === draft.dueDate);
+  const preview = draft.dueDate ? previewDueDate(draft.dueDate) : null;
 
-  // Persist the in-progress entry after every change (only once hydrated, only if worth keeping).
-  useEffect(() => {
-    if (!hydrated || !amount.trim()) return;
-    try {
-      const draft: CreditDraft = {
-        amount,
-        party,
-        kind,
-        reference,
-        description,
-        date,
-        dueDate,
-        showMore,
-      };
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-    } catch {
-      /* storage unavailable — best effort */
-    }
-  }, [hydrated, amount, party, kind, reference, description, date, dueDate, showMore]);
-
-  const clearDraft = () => {
-    try {
-      localStorage.removeItem(DRAFT_KEY);
-    } catch {
-      /* ignore */
-    }
-  };
-
-  // Seed the due date from the merchant's "default credit days" (P3-002) — unless a
-  // draft was restored or the merchant has already set one.
-  useEffect(() => {
-    if (restoredRef.current || dueTouched || dueDate) return;
-    const days = settings.defaultCreditDays;
-    if (days == null) return;
-    const d = new Date(`${todayISO()}T00:00:00`);
-    d.setDate(d.getDate() + days);
-    setDueDate(d.toISOString().slice(0, 10));
-  }, [settings.defaultCreditDays, dueTouched, dueDate]);
-
-  const amountNum = Number(amount);
-  const canSave = amountNum > 0 && party.ref !== null;
-
-  const resetForm = () => {
-    setAmount("");
-    setParty(emptyParty);
-    setReference("");
-    setDescription("");
-    setDueDate("");
-  };
-
-  const discardDraft = () => {
-    resetForm();
-    clearDraft();
-    setRestored(false);
+  const pickPeriod = (days: number) => {
+    setCustomOpen(false);
+    edit({ dueDate: addDays(today, days) });
+    updateSettings({
+      lastCreditDays: days,
+      // Remember it for THIS contact too, so their habit sticks next time.
+      ...(matched
+        ? { contactCreditDays: { ...settings.contactCreditDays, [matched.id]: days } }
+        : {}),
+    });
   };
 
   const save = (again: boolean) => {
-    if (saving || !canSave || !party.ref) return;
-    setSaving(true);
-    const partyId = recordCredit({
-      party: party.ref,
-      amount: amountNum,
-      kind,
-      reference: reference || undefined,
-      description: description || undefined,
-      date,
-      dueDate: dueDate || undefined,
-    });
-    clearDraft();
-    setRestored(false);
+    const result = submit();
+    if (!result?.ok) return; // the machine is now in `failure`; the reason renders below
     if (again) {
-      resetForm();
-      setSaving(false);
+      reset();
+      setCustomOpen(false);
     } else {
-      // Save → return to Statement; outstanding + dashboard/recovery/collect update live.
-      router.push(`/vyora/parties/${partyId}`);
+      router.push("/vyora");
     }
   };
 
@@ -175,96 +67,131 @@ export function CreditEntry() {
     <div className="space-y-4">
       <h1 className="text-lg font-semibold text-gray-900">Record credit</h1>
 
-      {restored && (
-        <div className="text-brand-800 flex items-center justify-between gap-2 rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-sm">
-          <span>
-            <span aria-hidden>↩</span> Restored your unsaved entry.
-          </span>
-          <button type="button" onClick={discardDraft} className="shrink-0 font-semibold underline">
-            Discard
-          </button>
-        </div>
-      )}
-
       <Segmented<EntryKind>
-        value={kind}
-        onChange={setKind}
+        value={draft.kind}
+        onChange={(kind) => edit({ kind })}
         options={[
           { value: "given", label: "They owe me", tone: "in" },
           { value: "taken", label: "I owe them", tone: "out" },
         ]}
       />
 
-      <AmountField value={amount} onChange={setAmount} />
-      <PartyPicker value={party} onChange={setParty} />
+      <AmountField value={draft.amount} onChange={(amount) => edit({ amount })} />
+      <PartyPicker value={draft.contactName} onChange={(contactName) => edit({ contactName })} />
 
-      {/* Optional details — kept out of the sub-15-second fast path */}
+      <label className="block">
+        <span className="mb-1 block text-sm font-medium text-gray-600">Note (optional)</span>
+        <input
+          value={draft.description}
+          onChange={(e) => edit({ description: e.target.value })}
+          placeholder="e.g. cement, 2 bags"
+          className="w-full rounded-2xl border-2 border-gray-200 bg-white px-4 py-3 outline-none focus:border-brand-500"
+        />
+      </label>
+
+      {/* One tap sets a due date. No calendar unless the merchant wants one. */}
+      <div>
+        <div className="mb-1.5 flex items-baseline justify-between">
+          <span className="text-sm font-medium text-gray-600">Pay back in</span>
+          {preview ? (
+            <span className="text-xs font-semibold text-brand-700">
+              Due {preview.short} · {preview.weekday}
+            </span>
+          ) : (
+            <span className="text-xs text-gray-400">no due date</span>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {CREDIT_PERIODS.map((days) => {
+            const active = activeDays === days;
+            return (
+              <button
+                key={days}
+                type="button"
+                onClick={() => pickPeriod(days)}
+                className={`rounded-xl border-2 px-3 py-2 text-sm font-semibold ${
+                  active
+                    ? "border-brand-500 bg-brand-50 text-brand-700"
+                    : "border-gray-200 bg-white text-gray-600"
+                }`}
+              >
+                {periodLabel(days)}
+                {!active && days === suggestedDays && !draft.dueDate ? " ·" : ""}
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => setCustomOpen(!customOpen)}
+            className={`rounded-xl border-2 px-3 py-2 text-sm font-semibold ${
+              customOpen || (draft.dueDate && activeDays === undefined)
+                ? "border-brand-500 bg-brand-50 text-brand-700"
+                : "border-gray-200 bg-white text-gray-600"
+            }`}
+          >
+            Custom
+          </button>
+          {draft.dueDate && (
+            <button
+              type="button"
+              onClick={() => {
+                setCustomOpen(false);
+                edit({ dueDate: "" });
+              }}
+              className="rounded-xl px-2 py-2 text-sm font-medium text-gray-400"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+        {customOpen && (
+          <input
+            type="date"
+            value={draft.dueDate}
+            onChange={(e) => edit({ dueDate: e.target.value })}
+            className="mt-2 w-full rounded-2xl border-2 border-gray-200 bg-white px-3 py-3 outline-none focus:border-brand-500"
+          />
+        )}
+      </div>
+
       {!showMore ? (
         <button
           type="button"
           onClick={() => setShowMore(true)}
           className="text-sm font-medium text-brand-700"
         >
-          ＋ Due date · reference · notes
+          + Change entry date
         </button>
       ) : (
-        <div className="space-y-3 rounded-2xl border border-gray-200 bg-white p-3">
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block">
-              <span className="mb-1 block text-sm font-medium text-gray-700">Date</span>
-              <TextInput
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="px-3"
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-sm font-medium text-gray-700">Due date</span>
-              <TextInput
-                type="date"
-                value={dueDate}
-                onChange={(e) => {
-                  setDueDate(e.target.value);
-                  setDueTouched(true);
-                }}
-                className="px-3"
-              />
-            </label>
-          </div>
-          <label className="block">
-            <span className="mb-1 block text-sm font-medium text-gray-700">Reference</span>
-            <TextInput
-              value={reference}
-              onChange={(e) => setReference(e.target.value)}
-              placeholder="Bill / invoice no. (optional)"
-            />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-sm font-medium text-gray-700">Notes</span>
-            <TextInput
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="e.g. cement, 3 bags (optional)"
-            />
-          </label>
-        </div>
+        <label className="block">
+          <span className="mb-1 block text-sm font-medium text-gray-600">Entry date</span>
+          <input
+            type="date"
+            value={draft.date}
+            onChange={(e) => edit({ date: e.target.value })}
+            className="w-full rounded-2xl border-2 border-gray-200 bg-white px-3 py-3 outline-none focus:border-brand-500"
+          />
+        </label>
+      )}
+
+      {status === "failure" && error && (
+        <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+          {error.message}
+        </p>
       )}
 
       <div className="space-y-2 pt-2">
-        <BigButton type="button" onClick={() => save(false)} disabled={!canSave || saving}>
-          {saving ? "Saving…" : "Save"}
+        <BigButton type="button" onClick={() => save(false)} disabled={!canSubmit}>
+          Save
         </BigButton>
-        <Button
+        <button
           type="button"
           onClick={() => save(true)}
-          disabled={!canSave || saving}
-          variant="secondary"
-          block
-          className="rounded-2xl"
+          disabled={!canSubmit}
+          className="w-full rounded-2xl border-2 border-gray-200 py-3 text-base font-semibold text-gray-700 disabled:opacity-50"
         >
           Save &amp; add another
-        </Button>
+        </button>
       </div>
     </div>
   );

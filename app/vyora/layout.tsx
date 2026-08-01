@@ -1,41 +1,40 @@
 import type { Metadata, Viewport } from "next";
-import { ToastProvider } from "@/features/vyora/Toast";
 import { VyoraProvider } from "@/features/vyora/VyoraProvider";
 import { AppShell } from "@/features/vyora/AppShell";
-import { ServiceWorkerManager } from "@/features/vyora/ServiceWorkerManager";
-import { InstallPrompt } from "@/features/vyora/InstallPrompt";
-import { WelcomeTour } from "@/features/vyora/WelcomeTour";
 
-/** Vyora Alpha — internal prototype. Not public, not indexed. Installable PWA (ENG-006). */
+/**
+ * Vyora Alpha — internal prototype. Not public, not indexed.
+ *
+ * The manifest and theme are declared HERE rather than in the root layout, so
+ * installability applies to /vyora only and the rest of the esytol site is
+ * untouched.
+ */
 export const metadata: Metadata = {
   title: "Vyora Alpha",
   robots: { index: false, follow: false },
   manifest: "/vyora/manifest.webmanifest",
-  appleWebApp: { capable: true, statusBarStyle: "default", title: "Vyora" },
+  applicationName: "Vyora",
+  appleWebApp: {
+    capable: true,
+    title: "Vyora",
+    statusBarStyle: "default",
+  },
   icons: {
-    icon: [
-      { url: "/vyora/icon.svg", type: "image/svg+xml" },
-      { url: "/vyora/icon-192.png", sizes: "192x192", type: "image/png" },
-    ],
-    apple: [{ url: "/vyora/apple-touch-icon.png", sizes: "180x180" }],
+    icon: "/vyora/icon.svg",
+    apple: "/icon-192.png",
   },
 };
 
-/** Cover the notch so the safe-area insets resolve on iOS; brand the status bar. */
 export const viewport: Viewport = {
-  viewportFit: "cover",
   themeColor: "#2563eb",
+  // Installed apps run under the notch and the home indicator.
+  viewportFit: "cover",
 };
 
 export default function VyoraLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ToastProvider>
-      <VyoraProvider>
-        <AppShell>{children}</AppShell>
-        <ServiceWorkerManager />
-        <InstallPrompt />
-        <WelcomeTour />
-      </VyoraProvider>
-    </ToastProvider>
+    <VyoraProvider>
+      <AppShell>{children}</AppShell>
+    </VyoraProvider>
   );
 }

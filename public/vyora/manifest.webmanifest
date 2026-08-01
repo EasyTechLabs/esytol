@@ -1,24 +1,58 @@
 {
-  "id": "/vyora",
-  "name": "Vyora — Credit Ledger",
+  "name": "Vyora — Udhaar Khata",
   "short_name": "Vyora",
-  "description": "Your shop's udhaar / bahi khata — works offline, stays on your phone.",
+  "description": "Record credit, know who to chase, and keep your book safe. Works offline.",
+  "id": "/vyora",
   "start_url": "/vyora",
-  "scope": "/vyora",
+  "scope": "/vyora/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#f9fafb",
   "theme_color": "#2563eb",
+  "background_color": "#f9fafb",
+  "lang": "en-IN",
+  "dir": "ltr",
   "categories": ["business", "finance", "productivity"],
   "icons": [
-    { "src": "/vyora/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
-    { "src": "/vyora/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/vyora/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
     {
-      "src": "/vyora/icon-maskable-512.png",
+      "src": "/vyora/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/vyora/icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Record credit",
+      "short_name": "Credit",
+      "url": "/vyora/credit"
+    },
+    {
+      "name": "Who to chase",
+      "short_name": "Chase",
+      "url": "/vyora/recovery"
+    },
+    {
+      "name": "Close the day",
+      "short_name": "Closing",
+      "url": "/vyora/closing"
     }
   ]
 }

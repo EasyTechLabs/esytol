@@ -1,5 +1,5 @@
-import { Home } from "@/features/vyora/screens/Home";
+import { Dashboard } from "@/features/vyora/screens/Dashboard";
 
 export default function VyoraHome() {
-  return <Home />;
+  return <Dashboard />;
 }

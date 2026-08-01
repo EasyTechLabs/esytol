@@ -1,524 +1,246 @@
 "use client";
 
 /**
- * Vyora Alpha — the one client store the whole app reads and writes through. v0.2.
+ * Vyora — the one client store the whole app reads and writes through.
  *
- * Loads the merchant's data from localStorage on mount, exposes it plus a small
- * set of actions, and persists after every change. Every action reassures the
- * merchant with a toast; the three undoable actions (credit, payment, delete)
- * carry an inline Undo. Entries bind to a party by immutable id (never by typed
- * name), so a duplicate ledger can never be created by accident.
+ * Since ARCH-003 the provider does not decide anything. It dispatches
+ * **commands**, and the command engine validates, executes and emits:
+ *
+ *     Command ──executeCommand──► LedgerEvent[] ──► VyoraData ──► Ledger
+ *
+ * The provider's remaining jobs are exactly three: hold the state, apply the
+ * events a command returned, and persist the log. Every business rule lives in
+ * `lib/vyora/commands.ts`; no rule lives in a component.
+ *
+ * Both derivations stay incremental on the capture path — a clean single-entry
+ * append folds into the previous projection and the previous indexes, so the
+ * log is never re-read and the ledger never re-derived just to record an entry.
  */
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import type {
-  VyoraData,
-  Party,
-  EntryKind,
-  PaymentKind,
-  PaymentMode,
-  PartyRef,
-  VyoraSettings,
-} from "@/lib/vyora/types";
-import { partyNet, todayISO } from "@/lib/vyora/selectors";
-import { formatMoney, configureFormat } from "@/lib/vyora/format";
-import { runIntegrity, type IntegrityReport } from "@/lib/vyora/integrity";
-import { type ImportPlan } from "@/lib/vyora/import";
+import type { VyoraData } from "@/lib/vyora/types";
+import type { Ledger, LedgerAppend } from "@/lib/vyora/ledger";
+import { appendToLedger } from "@/lib/vyora/ledger";
+import { cacheLedger, ledgerFor } from "@/lib/vyora/selectors";
+import type { LedgerEvent } from "@/lib/vyora/events";
+import { applyEvent, emptyData, reduceEvents } from "@/lib/vyora/events";
+import type { Command, CommandContext, CommandError, CommandResult } from "@/lib/vyora/commands";
+import { executeCommand, validateCommand } from "@/lib/vyora/commands";
+import type { MerchantSettings } from "@/lib/vyora/settings";
+import { DEFAULT_SETTINGS } from "@/lib/vyora/settings";
+import { touchRecent } from "@/lib/vyora/productivity";
+import type { Feedback } from "@/lib/vyora/feedback";
+import { successFeedback } from "@/lib/vyora/feedback";
+import { Toast } from "./Toast";
+import type { PwaFlags } from "@/lib/vyora/pwa";
+import { DEFAULT_PWA_FLAGS } from "@/lib/vyora/pwa";
 import {
-  createContact,
-  recordCredit as recordCreditCmd,
-  recordPayment as recordPaymentCmd,
-  deleteEntry as deleteEntryCmd,
-  deleteContact as deleteContactCmd,
-  restoreEntry as restoreEntryCmd,
-  importLedger as importLedgerCmd,
-  exportLedger as exportLedgerCmd,
-  backupLedger as backupLedgerCmd,
-  type CommandCtx,
-} from "@/lib/vyora/commands";
-import { buildLedgerEngine, type LedgerEngine } from "@/lib/vyora/engine";
-import {
-  appendEvent,
-  compactEvents,
-  EVENT_LOG_CAP,
-  type LedgerEventSpec,
-  type LedgerEvent,
-} from "@/lib/vyora/events";
-import { useToast } from "./Toast";
-
-const nowISO = () => new Date().toISOString();
-
-/** Append a ledger event (ARCH-002), compacting to a checkpoint past the cap. */
-function logEvent(d: VyoraData, spec: LedgerEventSpec): VyoraData {
-  const withEvt = appendEvent(d, spec, newId("evt"), nowISO());
-  return (withEvt.events?.length ?? 0) > EVENT_LOG_CAP
-    ? compactEvents(withEvt, newId("evt"), nowISO())
-    : withEvt;
-}
-
-/** Reset the log to a single checkpoint carrying the current active ledger (bulk ops). */
-function checkpoint(
-  d: VyoraData,
-  spec:
-    | { type: "RestoreCompleted" | "Checkpoint" }
-    | { type: "ImportCompleted"; summary: { contacts: number; entries: number } }
-): VyoraData {
-  const snapshot = { parties: d.parties, transactions: d.transactions, payments: d.payments };
-  const event = { ...spec, snapshot, id: newId("evt"), at: nowISO() } as LedgerEvent;
-  return { ...d, events: [event] };
-}
-import {
-  emptyData,
-  loadData,
-  saveData,
-  newId,
-  defaultSettings,
-  updateSettings as updateSettingsMut,
-  editParty as editPartyMut,
-  seedDemoData as seedDemoDataMut,
-  clearDemoData as clearDemoDataMut,
-  restoreBackup as restoreBackupStore,
-  hasBackup,
-  parseImportFile,
-  type ImportResult,
-  clearData,
+  clearLog,
+  loadLog,
+  loadPwaFlags,
+  loadSettings,
+  saveLog,
+  savePwaFlags,
+  saveSettings,
+  storageSizeBytes,
 } from "@/lib/vyora/store";
+import { time } from "@/lib/vyora/debug";
 
-/** Event id + timestamp source for commands (ARCH-003). */
-const cmdCtx: CommandCtx = { newId: () => newId("evt"), now: nowISO };
-
-interface CreditInput {
-  party: PartyRef;
-  amount: number;
-  kind: EntryKind;
-  description?: string;
-  reference?: string;
-  date?: string;
-  dueDate?: string;
-}
-interface PaymentInput {
-  party: PartyRef;
-  amount: number;
-  kind: PaymentKind;
-  mode?: PaymentMode;
-  reference?: string;
-  note?: string;
-  date?: string;
+interface VyoraState {
+  events: readonly LedgerEvent[];
+  ledger: Ledger;
 }
 
 interface VyoraContextValue {
+  /** True once the stored log has been read (avoids SSR/hydration flash). */
   ready: boolean;
+  /** Every derived index for the current projection — the only read surface. */
+  ledger: Ledger;
+  /** The current projection. Read indexes instead unless you need the raw rows. */
   data: VyoraData;
-  hasBackup: boolean;
-  settings: VyoraSettings;
-  resolvedDark: boolean;
-  /** The one normalized ledger index every screen reads from (ARCH-001). */
-  engine: LedgerEngine;
-  updateSettings: (patch: Partial<VyoraSettings>) => void;
-  integrity: IntegrityReport | null;
-  checkIntegrity: () => IntegrityReport;
-  importLedger: (plan: ImportPlan) => { contacts: number; entries: number };
-  seedDemo: () => void;
-  resetDemo: () => void;
-  recordCredit: (input: CreditInput) => string;
-  recordPayment: (input: PaymentInput) => string;
-  createParty: (input: { name: string; phone?: string; note?: string }) => Party;
-  editParty: (id: string, patch: { name?: string; phone?: string; note?: string }) => void;
-  deleteEntry: (id: string) => void;
-  deleteContact: (id: string) => void;
-  restoreDeleted: (trashId: string) => void;
-  backup: () => void;
-  restore: () => void;
-  exportData: () => void;
-  validateImport: (text: string) => ImportResult;
-  applyImport: (data: VyoraData) => void;
+  /** The append-only history this device holds. The audit trail. */
+  events: readonly LedgerEvent[];
+  /** Run a command. The ONLY way to change anything. */
+  dispatch: (command: Command) => CommandResult;
+  /** Why this command would be rejected, or null. Drives both buttons and messages. */
+  check: (command: Command) => CommandError | null;
+  /** Erase everything on this device (with confirmation in the UI). */
   reset: () => void;
+  /** Bytes this device is holding for Vyora. Founder Mode only. */
+  storageBytes: () => number;
+  /** The merchant's own profile and preferences. Local only. */
+  settings: MerchantSettings;
+  /** Persist a change to the profile. */
+  updateSettings: (patch: Partial<MerchantSettings>) => void;
+  /** Install-banner / tutorial state for THIS browser. Survives "clear all data". */
+  pwaFlags: PwaFlags;
+  setPwaFlags: (patch: Partial<PwaFlags>) => void;
 }
 
 const VyoraContext = createContext<VyoraContextValue | null>(null);
 
-function download(text: string, filename: string) {
-  if (typeof window === "undefined") return;
-  const blob = new Blob([text], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+/**
+ * The device refused the write. Reported as a command failure so every caller —
+ * screens, workflow machines, tests — handles it through the path they already
+ * use for rejections, rather than needing a second notion of "it failed".
+ */
+const STORAGE_FULL: CommandError = {
+  code: "STORAGE_FULL",
+  message: "This device is out of space, so nothing was saved. Export a backup, then try again.",
+};
+
+function initialState(): VyoraState {
+  return { events: [], ledger: ledgerFor(emptyData()) };
+}
+
+/**
+ * Recognise the one shape the index engine can fold incrementally: an entry
+ * being recorded, optionally preceded by the contact it was recorded against.
+ *
+ * Deriving this from the events rather than having each call site remember to
+ * pass it means a new command gets the fast path for free when it qualifies,
+ * and correctly misses it when it does not. `appendToLedger` re-checks anyway
+ * and rebuilds if anything is off — a restored entry, for instance, is not the
+ * newest and so correctly falls back.
+ */
+function toLedgerAppend(events: readonly LedgerEvent[]): LedgerAppend | undefined {
+  if (events.length === 0 || events.length > 2) return undefined;
+  const first = events.length === 2 ? events[0] : undefined;
+  if (first && first.type !== "ContactCreated") return undefined;
+  const party = first?.type === "ContactCreated" ? first.party : undefined;
+  const last = events[events.length - 1];
+  if (last.type === "CreditRecorded") return { party, transaction: last.transaction };
+  if (last.type === "PaymentRecorded") return { party, payment: last.payment };
+  return undefined;
 }
 
 export function VyoraProvider({ children }: { children: React.ReactNode }) {
-  const toast = useToast();
-  const [data, setData] = useState<VyoraData>(emptyData);
+  const [state, setState] = useState<VyoraState>(initialState);
   const [ready, setReady] = useState(false);
-  const [backupExists, setBackupExists] = useState(false);
-  const [systemDark, setSystemDark] = useState(false);
-  const [integrity, setIntegrity] = useState<IntegrityReport | null>(null);
+
+  const [settings, setSettings] = useState<MerchantSettings>(DEFAULT_SETTINGS);
+  const [pwaFlags, setPwaFlagsState] = useState<PwaFlags>(DEFAULT_PWA_FLAGS);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
 
   useEffect(() => {
-    const loaded = loadData();
-    // Data Integrity (ENG-005): verify + safely repair at startup before anything reads it.
-    const { data: checked, report } = runIntegrity(loaded, nowISO());
-    // Event log (ARCH-002): seed a checkpoint for pre-event data so the log is
-    // self-sufficient (state derivable) from the first load.
-    const hasRecords =
-      checked.parties.length > 0 || checked.transactions.length > 0 || checked.payments.length > 0;
-    const seeded =
-      (checked.events?.length ?? 0) === 0 && hasRecords
-        ? compactEvents(checked, newId("evt"), nowISO())
-        : checked;
-    if (report.repaired || seeded !== checked) saveData(seeded); // persist repairs / seed
-    configureFormat(seeded.settings ?? defaultSettings()); // apply currency/number/date prefs
-    setData(seeded);
-    setIntegrity(report);
-    setBackupExists(hasBackup());
+    const events = loadLog();
+    setState({ events, ledger: ledgerFor(reduceEvents(events)) });
+    setSettings(loadSettings());
+    setPwaFlagsState(loadPwaFlags());
     setReady(true);
-    if (!report.ok)
-      toast.show({ message: "⚠ Data check found issues — see Founder Mode", tone: "warn" });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Track the OS colour scheme so a "System" appearance choice resolves correctly.
-  useEffect(() => {
-    if (typeof window === "undefined" || !window.matchMedia) return;
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    setSystemDark(mq.matches);
-    const on = (e: MediaQueryListEvent) => setSystemDark(e.matches);
-    mq.addEventListener("change", on);
-    return () => mq.removeEventListener("change", on);
+  const updateSettings = useCallback((patch: Partial<MerchantSettings>) => {
+    setSettings((previous) => {
+      const next = { ...previous, ...patch };
+      saveSettings(next);
+      return next;
+    });
   }, []);
 
-  const commit = useCallback((next: VyoraData) => {
-    setData(next);
-    saveData(next);
+  const setPwaFlags = useCallback((patch: Partial<PwaFlags>) => {
+    setPwaFlagsState((previous) => {
+      const next = { ...previous, ...patch };
+      savePwaFlags(next);
+      return next;
+    });
   }, []);
 
-  /** Restore a pre-action snapshot (session Undo). */
-  const undoTo = useCallback(
-    (prev: VyoraData) => {
-      commit(prev);
-      toast.info("Undone");
-    },
-    [commit, toast]
+  const context = useMemo<CommandContext>(
+    () => ({ ledger: state.ledger, events: state.events }),
+    [state]
   );
 
-  const recordCredit = useCallback(
-    (input: CreditInput): string => {
-      const prev = data;
-      const r = recordCreditCmd(data, input, cmdCtx);
-      if (!r.ok) {
-        toast.info(r.error);
-        return "";
+  const dispatch = useCallback(
+    (command: Command): CommandResult => {
+      const result = time("command", command.type, () => executeCommand(context, command));
+
+      // One place decides what every completed action says. Screens never write
+      // their own confirmation, so there is exactly one toast in the app.
+      // A failed WRITE overrides this below — never confirm an unsaved entry.
+      setFeedback(successFeedback(command, result));
+
+      if (!result.ok || result.events.length === 0) return result;
+
+      const events = [...state.events, ...result.events];
+      const data = result.events.reduce(applyEvent, state.ledger.data);
+      const append = toLedgerAppend(result.events);
+      const ledger = append
+        ? time("selector", "appendToLedger", () => appendToLedger(state.ledger, data, append))
+        : ledgerFor(data);
+
+      setState({ events, ledger: cacheLedger(ledger) });
+
+      // The entry is in memory; whether it reached the device is a separate
+      // question. A quota-exhausted or blocked write used to return `false`
+      // silently while the merchant read a success toast — so the entry looked
+      // saved and vanished on the next open. Never confirm what was not stored.
+      if (!saveLog(events)) {
+        setFeedback({
+          message: "NOT SAVED — this device is out of space. Export a backup, then retry.",
+          tone: "warning",
+        });
+        return { ok: false, error: STORAGE_FULL };
       }
-      commit(r.data);
-      const net = partyNet(r.data, r.value);
-      toast.success(
-        `✓ Credit recorded · Outstanding ${net >= 0 ? formatMoney(net) : `−${formatMoney(net)}`}`,
-        { label: "Undo", onAction: () => undoTo(prev) }
+
+      // Remember what the merchant just used, so the next capture is fewer
+      // taps. Derived from the events, so any command that records an entry
+      // gets this for free.
+      const entry = result.events.find(
+        (e) => e.type === "CreditRecorded" || e.type === "PaymentRecorded"
       );
-      return r.value;
-    },
-    [data, commit, toast, undoTo]
-  );
-
-  const recordPayment = useCallback(
-    (input: PaymentInput): string => {
-      const prev = data;
-      const r = recordPaymentCmd(data, input, cmdCtx);
-      if (!r.ok) {
-        toast.info(r.error);
-        return "";
+      if (entry) {
+        const row = entry.type === "CreditRecorded" ? entry.transaction : entry.payment;
+        setSettings((previous) => {
+          const next: MerchantSettings = {
+            ...previous,
+            recentContactIds: touchRecent(previous.recentContactIds, row.partyId),
+            lastAmount: row.amount,
+          };
+          saveSettings(next);
+          return next;
+        });
       }
-      commit(r.data);
-      const net = partyNet(r.data, r.value);
-      toast.success(
-        net === 0
-          ? "✓ Payment recorded · Account settled"
-          : `✓ Payment recorded · Balance ${formatMoney(net)}`,
-        { label: "Undo", onAction: () => undoTo(prev) }
-      );
-      return r.value;
+      return result;
     },
-    [data, commit, toast, undoTo]
+    [context, state]
   );
 
-  const createParty = useCallback(
-    (input: { name: string; phone?: string; note?: string }): Party => {
-      const r = createContact(data, input, cmdCtx);
-      if (!r.ok) {
-        toast.info(r.error);
-        return { id: "", name: input.name, createdAt: nowISO() };
-      }
-      commit(r.data);
-      toast.success(`✓ Contact added · ${r.value.name}`);
-      return r.value;
-    },
-    [data, commit, toast]
-  );
-
-  const editParty = useCallback(
-    (id: string, patch: { name?: string; phone?: string; note?: string }) => {
-      const next = editPartyMut(data, id, patch);
-      const updated = next.parties.find((p) => p.id === id);
-      commit(
-        updated
-          ? logEvent(next, {
-              type: "ContactUpdated",
-              partyId: id,
-              patch: { name: updated.name, phone: updated.phone, note: updated.note },
-            })
-          : next
-      );
-      toast.success("✓ Contact updated");
-    },
-    [data, commit, toast]
-  );
-
-  const deleteEntry = useCallback(
-    (id: string) => {
-      const prev = data;
-      const r = deleteEntryCmd(data, id, cmdCtx);
-      if (!r.ok) {
-        toast.info(r.error);
-        return;
-      }
-      commit(r.data);
-      toast.success("Entry deleted", { label: "Undo", onAction: () => undoTo(prev) });
-    },
-    [data, commit, toast, undoTo]
-  );
-
-  const deleteContact = useCallback(
-    (id: string) => {
-      const prev = data;
-      const name = data.parties.find((p) => p.id === id)?.name ?? "Contact";
-      const r = deleteContactCmd(data, id, cmdCtx);
-      if (!r.ok) {
-        toast.info(r.error);
-        return;
-      }
-      commit(r.data);
-      toast.success(`${name} deleted`, { label: "Undo", onAction: () => undoTo(prev) });
-    },
-    [data, commit, toast, undoTo]
-  );
-
-  const restoreDeleted = useCallback(
-    (trashId: string) => {
-      const r = restoreEntryCmd(data, trashId, cmdCtx);
-      if (!r.ok) {
-        toast.info(r.error);
-        return;
-      }
-      commit(r.data);
-      toast.success("✓ Restored to your ledger");
-    },
-    [data, commit, toast]
-  );
-
-  const updateSettings = useCallback(
-    (patch: Partial<VyoraSettings>) => {
-      const next = updateSettingsMut(data, patch);
-      configureFormat(next.settings ?? defaultSettings());
-      commit(next);
-      toast.success("✓ Settings saved");
-    },
-    [data, commit, toast]
-  );
-
-  // Integrity gate (ENG-005): any dataset entering from outside (import / restore)
-  // is verified + safely repaired before it becomes the live ledger.
-  const ingest = useCallback(
-    (
-      candidate: VyoraData,
-      successMsg: string,
-      eventType: "RestoreCompleted" | "ImportCompleted"
-    ) => {
-      const { data: checked, report } = runIntegrity(candidate, nowISO());
-      configureFormat(checked.settings ?? defaultSettings());
-      // Stamp when data last came in from outside (Last Restore, V1-003).
-      const stamped = { ...checked, meta: { ...checked.meta, lastRestoreAt: nowISO() } };
-      // A wholesale replace/merge is a checkpoint — the event carries the snapshot (ARCH-002).
-      commit(
-        eventType === "ImportCompleted"
-          ? checkpoint(stamped, {
-              type: "ImportCompleted",
-              summary: {
-                contacts: stamped.parties.length,
-                entries: stamped.transactions.length + stamped.payments.length,
-              },
-            })
-          : checkpoint(stamped, { type: "RestoreCompleted" })
-      );
-      setIntegrity(report);
-      if (report.ok) toast.success(successMsg);
-      else toast.show({ message: "⚠ Data check found issues — see Founder Mode", tone: "warn" });
-    },
-    [commit, toast]
-  );
-
-  const backup = useCallback(() => {
-    const r = backupLedgerCmd(data, cmdCtx);
-    if (!r.ok) {
-      toast.info(r.error);
-      return;
-    }
-    commit(r.data);
-    setBackupExists(true);
-    toast.success("✓ Backup saved on this device");
-  }, [data, commit, toast]);
-
-  const restore = useCallback(() => {
-    const restored = restoreBackupStore();
-    if (!restored) {
-      toast.info("No backup found on this device");
-      return;
-    }
-    ingest(restored, "✓ Restored from your last backup", "RestoreCompleted");
-  }, [ingest, toast]);
-
-  const exportData = useCallback(() => {
-    const r = exportLedgerCmd(data);
-    if (!r.ok) {
-      toast.info(r.error);
-      return;
-    }
-    commit(r.data);
-    download(r.value.text, r.value.filename);
-    toast.success("✓ Exported — keep the file somewhere safe");
-  }, [data, commit, toast]);
-
-  const validateImport = useCallback((text: string) => parseImportFile(text, data), [data]);
-
-  const applyImport = useCallback(
-    (next: VyoraData) =>
-      ingest(next, `✓ Imported · ${next.parties.length} contacts restored`, "ImportCompleted"),
-    [ingest]
-  );
-
-  // Import Wizard (P3-005) — MERGE another app's ledger in, via the ImportLedger command.
-  const importLedger = useCallback(
-    (plan: ImportPlan) => {
-      const r = importLedgerCmd(data, plan, cmdCtx);
-      if (!r.ok) {
-        toast.info(r.error);
-        return { contacts: 0, entries: 0 };
-      }
-      commit(r.data);
-      const { contacts, entries } = r.value;
-      toast.success(
-        `✓ Imported · ${entries} entr${entries === 1 ? "y" : "ies"} · ${contacts} new contact${
-          contacts === 1 ? "" : "s"
-        }`
-      );
-      return r.value;
-    },
-    [data, commit, toast]
-  );
-
-  // Manual integrity check (Founder Mode) — verify + repair the current ledger.
-  const checkIntegrity = useCallback((): IntegrityReport => {
-    const { data: checked, report } = runIntegrity(data, nowISO());
-    // A repair rewrites records → checkpoint so the event log stays consistent.
-    if (report.repaired) commit(checkpoint(checked, { type: "Checkpoint" }));
-    setIntegrity(report);
-    return report;
-  }, [data, commit]);
-
-  // Founder Mode demo data (V1-003) — merge a demo book, or remove exactly it.
-  // Both are bulk ledger changes → checkpoint (ARCH-002).
-  const seedDemo = useCallback(() => {
-    commit(checkpoint(seedDemoDataMut(data, todayISO()), { type: "Checkpoint" }));
-    toast.success("✓ Demo data added");
-  }, [data, commit, toast]);
-  const resetDemo = useCallback(() => {
-    commit(checkpoint(clearDemoDataMut(data), { type: "Checkpoint" }));
-    toast.info("Demo data removed");
-  }, [data, commit, toast]);
+  const check = useCallback((command: Command) => validateCommand(context, command), [context]);
 
   const reset = useCallback(() => {
-    clearData();
-    setData(emptyData());
-    toast.info("All data cleared from this device");
-  }, [toast]);
-
-  const settings = data.settings ?? defaultSettings();
-  const resolvedDark = settings.theme === "dark" || (settings.theme === "system" && systemDark);
-
-  // The Ledger Engine (ARCH-001) — rebuilt once per data change, in O(N). Every
-  // screen reads its indexes instead of rescanning the ledger.
-  const engine = useMemo(() => buildLedgerEngine(data, todayISO()), [data]);
+    clearLog();
+    setState(initialState());
+  }, []);
 
   const value = useMemo<VyoraContextValue>(
     () => ({
       ready,
-      data,
-      hasBackup: backupExists,
-      settings,
-      resolvedDark,
-      engine,
-      updateSettings,
-      integrity,
-      checkIntegrity,
-      importLedger,
-      seedDemo,
-      resetDemo,
-      recordCredit,
-      recordPayment,
-      createParty,
-      editParty,
-      deleteEntry,
-      deleteContact,
-      restoreDeleted,
-      backup,
-      restore,
-      exportData,
-      validateImport,
-      applyImport,
+      ledger: state.ledger,
+      data: state.ledger.data,
+      events: state.events,
+      dispatch,
+      check,
       reset,
+      storageBytes: storageSizeBytes,
+      settings,
+      updateSettings,
+      pwaFlags,
+      setPwaFlags,
     }),
-    [
-      ready,
-      data,
-      backupExists,
-      settings,
-      resolvedDark,
-      engine,
-      updateSettings,
-      integrity,
-      checkIntegrity,
-      importLedger,
-      seedDemo,
-      resetDemo,
-      recordCredit,
-      recordPayment,
-      createParty,
-      editParty,
-      deleteEntry,
-      deleteContact,
-      restoreDeleted,
-      backup,
-      restore,
-      exportData,
-      validateImport,
-      applyImport,
-      reset,
-    ]
+    [ready, state, dispatch, check, reset, settings, updateSettings, pwaFlags, setPwaFlags]
   );
 
-  return <VyoraContext.Provider value={value}>{children}</VyoraContext.Provider>;
+  return (
+    <VyoraContext.Provider value={value}>
+      {children}
+      <Toast feedback={feedback} onDone={() => setFeedback(null)} />
+    </VyoraContext.Provider>
+  );
 }
 
 export function useVyora(): VyoraContextValue {
   const ctx = useContext(VyoraContext);
   if (!ctx) throw new Error("useVyora must be used within <VyoraProvider>");
   return ctx;
-}
-
-/** The shared Ledger Engine (ARCH-001) — the one index every screen reads from. */
-export function useLedger(): LedgerEngine {
-  return useVyora().engine;
 }
