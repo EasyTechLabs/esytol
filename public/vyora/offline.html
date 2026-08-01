@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#2563eb" />
+    <title>Vyora — offline</title>
+    <!--
+      Deliberately a plain static page with no framework and no network
+      dependency: it is the last thing standing between a merchant and a browser
+      error page, so it must render from cache with nothing else available.
+    -->
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+        padding: 24px; background: #f9fafb; color: #111827;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      }
+      .card { max-width: 22rem; text-align: center; }
+      .mark { width: 72px; height: 72px; margin: 0 auto 20px; display: block; }
+      h1 { font-size: 1.25rem; margin: 0 0 8px; }
+      p { margin: 0 0 20px; font-size: 0.9rem; line-height: 1.5; color: #4b5563; }
+      .note { font-size: 0.8rem; color: #6b7280; }
+      button {
+        width: 100%; padding: 14px; border: 0; border-radius: 16px;
+        background: #2563eb; color: #fff; font-size: 1rem; font-weight: 600; cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <img src="/vyora/icon.svg" alt="" class="mark" />
+      <h1>You're offline</h1>
+      <p>
+        Vyora couldn't reach the network. Your book is saved on this phone and nothing has been
+        lost — try again once you have signal.
+      </p>
+      <button type="button" onclick="location.replace('/vyora')">Open Vyora</button>
+      <p class="note" style="margin-top: 16px">
+        Your data never leaves this device, so it is safe whether you are online or not.
+      </p>
+    </div>
+  </body>
+</html>

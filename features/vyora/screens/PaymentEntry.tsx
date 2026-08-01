@@ -1,35 +1,29 @@
 "use client";
 
 /**
- * Vyora Alpha — Payment entry. Records money received or paid; balances update
+ * Vyora — Payment entry. Records money received or paid; balances update
  * automatically (they're always derived from entries, never stored). Same fast
- * shape as credit entry.
+ * shape as credit entry, and since ARCH-004 the same explicit state machine.
  */
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useVyora } from "../VyoraProvider";
 import type { PaymentKind } from "@/lib/vyora/types";
 import { todayISO } from "@/lib/vyora/selectors";
+import { paymentWorkflow } from "@/lib/vyora/workflow";
+import { useWorkflow } from "../useWorkflow";
 import { AmountField, PartyPicker, Segmented, BigButton } from "../components";
 
 export function PaymentEntry() {
   const router = useRouter();
-  const { recordPayment } = useVyora();
-
-  const [amount, setAmount] = useState("");
-  const [party, setParty] = useState("");
-  const [kind, setKind] = useState<PaymentKind>("received"); // default: they paid me
-  const [note, setNote] = useState("");
+  const definition = useMemo(() => paymentWorkflow(todayISO()), []);
+  const { draft, status, error, canSubmit, edit, submit } = useWorkflow(definition);
+  // Presentation only — not part of the write, so not part of the machine.
   const [showMore, setShowMore] = useState(false);
-  const [date, setDate] = useState(todayISO());
-
-  const amountNum = Number(amount);
-  const canSave = amountNum > 0 && party.trim().length > 0;
 
   const save = () => {
-    if (!canSave) return;
-    recordPayment({ partyName: party, amount: amountNum, kind, note: note || undefined, date });
+    const result = submit();
+    if (!result?.ok) return; // the machine is now in `failure`; the reason renders below
     router.push("/vyora");
   };
 
@@ -38,22 +32,22 @@ export function PaymentEntry() {
       <h1 className="text-lg font-semibold text-gray-900">Record payment</h1>
 
       <Segmented<PaymentKind>
-        value={kind}
-        onChange={setKind}
+        value={draft.kind}
+        onChange={(kind) => edit({ kind })}
         options={[
           { value: "received", label: "They paid me", tone: "in" },
           { value: "paid", label: "I paid them", tone: "out" },
         ]}
       />
 
-      <AmountField value={amount} onChange={setAmount} />
-      <PartyPicker value={party} onChange={setParty} />
+      <AmountField value={draft.amount} onChange={(amount) => edit({ amount })} />
+      <PartyPicker value={draft.contactName} onChange={(contactName) => edit({ contactName })} />
 
       <label className="block">
         <span className="mb-1 block text-sm font-medium text-gray-600">Note (optional)</span>
         <input
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
+          value={draft.note}
+          onChange={(e) => edit({ note: e.target.value })}
           placeholder="e.g. UPI, cash"
           className="w-full rounded-2xl border-2 border-gray-200 bg-white px-4 py-3 outline-none focus:border-brand-500"
         />
@@ -72,15 +66,21 @@ export function PaymentEntry() {
           <span className="mb-1 block text-sm font-medium text-gray-600">Date</span>
           <input
             type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
+            value={draft.date}
+            onChange={(e) => edit({ date: e.target.value })}
             className="w-full rounded-2xl border-2 border-gray-200 bg-white px-3 py-3 outline-none focus:border-brand-500"
           />
         </label>
       )}
 
+      {status === "failure" && error && (
+        <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+          {error.message}
+        </p>
+      )}
+
       <div className="pt-2">
-        <BigButton type="button" onClick={save} disabled={!canSave} tone="emerald">
+        <BigButton type="button" onClick={save} disabled={!canSubmit} tone="emerald">
           Save
         </BigButton>
       </div>

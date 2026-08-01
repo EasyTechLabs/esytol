@@ -16,13 +16,13 @@ import {
   findPartyByName,
 } from "@/lib/vyora/selectors";
 import {
+  applyEvent,
+  createContactCreated,
+  createCreditRecorded,
+  createEntryDeleted,
+  createPaymentRecorded,
   emptyData,
-  addParty,
-  addTransaction,
-  addPayment,
-  getOrCreateParty,
-  deleteEntry,
-} from "@/lib/vyora/store";
+} from "@/lib/vyora/events";
 
 // ─── Deterministic fixture ───────────────────────────────────────────────────
 const T = (n: number) => `2026-07-21T10:0${n}:00.000Z`; // ascending createdAt
@@ -93,34 +93,34 @@ describe("search", () => {
   });
 });
 
-describe("mutations", () => {
-  it("addTransaction records the amount + direction and defaults the date to today", () => {
-    const { data: d, transaction } = addTransaction(emptyData(), {
-      partyId: "px",
-      amount: 1850,
-      kind: "given",
-    });
-    expect(transaction.amount).toBe(1850);
-    expect(transaction.kind).toBe("given");
-    expect(transaction.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+describe("mutations (through the event log)", () => {
+  it("CreditRecorded carries the amount + direction and defaults the date to today", () => {
+    const event = createCreditRecorded({ partyId: "px", amount: 1850, kind: "given" });
+    const d = applyEvent(emptyData(), event);
+    expect(event.transaction.amount).toBe(1850);
+    expect(event.transaction.kind).toBe("given");
+    expect(event.transaction.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(d.transactions).toHaveLength(1);
   });
-  it("addPayment stores an absolute amount", () => {
-    const { payment } = addPayment(emptyData(), { partyId: "px", amount: -500, kind: "received" });
-    expect(payment.amount).toBe(500);
+  it("PaymentRecorded stores an absolute amount", () => {
+    const event = createPaymentRecorded({ partyId: "px", amount: -500, kind: "received" });
+    expect(event.payment.amount).toBe(500);
   });
-  it("deleteEntry removes an entry so the balance re-derives correctly", () => {
+  it("EntryDeleted removes an entry so the balance re-derives correctly", () => {
     expect(partyNet(data, "p1")).toBe(500);
-    const without = deleteEntry(data, "y1"); // remove the ₹200 received
+    const without = applyEvent(data, createEntryDeleted("y1")); // the ₹200 received
     expect(partyNet(without, "p1")).toBe(700); // 1000 − 300
     expect(without.payments.find((p) => p.id === "y1")).toBeUndefined();
   });
-  it("getOrCreateParty reuses by name (case-insensitive), else creates", () => {
-    const base = addParty(emptyData(), { name: "Ramesh" }).data;
-    const reuse = getOrCreateParty(base, "  ramesh ");
-    expect(reuse.data.parties).toHaveLength(1); // reused, not duplicated
-    const created = getOrCreateParty(base, "Vijay");
-    expect(created.data.parties).toHaveLength(2);
-    expect(findPartyByName(created.data, "vijay")?.name).toBe("Vijay");
+  it("create-or-reuse resolves an existing contact by name, case-insensitively", () => {
+    const base = applyEvent(emptyData(), createContactCreated({ name: "Ramesh" }));
+    // Reuse: the name already resolves, so no second contact is ever minted.
+    expect(findPartyByName(base, "  ramesh ")?.name).toBe("Ramesh");
+    expect(base.parties).toHaveLength(1);
+    // Create: an unknown name resolves to nothing, so the caller mints one.
+    expect(findPartyByName(base, "Vijay")).toBeUndefined();
+    const created = applyEvent(base, createContactCreated({ name: "Vijay" }));
+    expect(created.parties).toHaveLength(2);
+    expect(findPartyByName(created, "vijay")?.name).toBe("Vijay");
   });
 });

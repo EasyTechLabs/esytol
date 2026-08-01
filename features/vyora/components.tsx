@@ -9,7 +9,8 @@
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/cn";
 import { useVyora } from "./VyoraProvider";
-import { searchParties } from "@/lib/vyora/selectors";
+import { readPartyByName, readSearch } from "@/lib/vyora/ledger";
+import { quickAmounts, quickPickCustomers } from "@/lib/vyora/productivity";
 import { formatMoney, balanceColor } from "@/lib/vyora/format";
 
 /** A headline number card for the dashboard. */
@@ -73,8 +74,16 @@ export function Segmented<T extends string>({
   );
 }
 
-/** The big ₹ amount field — autofocused hero of every entry screen. */
+/**
+ * The big ₹ amount field — autofocused hero of every entry screen.
+ *
+ * The chips below it are the whole point of V2-006: four common amounts plus
+ * the merchant's own last one, so the most likely entry is a single tap rather
+ * than four.
+ */
 export function AmountField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { settings } = useVyora();
+  const chips = quickAmounts(settings.lastAmount);
   return (
     <label className="block">
       <span className="mb-1 block text-sm font-medium text-gray-600">Amount</span>
@@ -91,6 +100,23 @@ export function AmountField({ value, onChange }: { value: string; onChange: (v: 
           aria-label="Amount in rupees"
         />
       </div>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {chips.map((amount) => (
+          <button
+            key={amount}
+            type="button"
+            onClick={() => onChange(String(amount))}
+            className={cn(
+              "rounded-xl border-2 px-3 py-1.5 text-sm font-semibold",
+              value === String(amount)
+                ? "border-brand-500 bg-brand-50 text-brand-700"
+                : "border-gray-200 bg-white text-gray-600"
+            )}
+          >
+            ₹{amount}
+          </button>
+        ))}
+      </div>
     </label>
   );
 }
@@ -106,15 +132,16 @@ export function PartyPicker({
   value: string;
   onChange: (name: string) => void;
 }) {
-  const { data } = useVyora();
+  const { ledger, settings } = useVyora();
   const [open, setOpen] = useState(false);
-  const matches = useMemo(
-    () =>
-      value.trim() ? searchParties(data, value).slice(0, 6) : searchParties(data, "").slice(0, 6),
-    [data, value]
-  );
-  const exact = data.parties.some(
-    (p) => p.name.trim().toLowerCase() === value.trim().toLowerCase()
+  // Every keystroke used to re-derive every balance; it is now an index read.
+  const matches = useMemo(() => readSearch(ledger, value).slice(0, 6), [ledger, value]);
+  const exact = readPartyByName(ledger, value) !== undefined;
+  // Pinned first, then most recently used — the customer they want is nearly
+  // always one of these, so it should never need typing.
+  const quickPicks = useMemo(
+    () => (value.trim() ? [] : quickPickCustomers(ledger, settings, 10)),
+    [ledger, settings, value]
   );
 
   return (
@@ -135,6 +162,27 @@ export function PartyPicker({
           className="w-full rounded-2xl border-2 border-gray-200 bg-white px-4 py-3 text-lg outline-none focus:border-brand-500"
         />
       </label>
+
+      {quickPicks.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {quickPicks.map((party) => (
+            <button
+              key={party.id}
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                onChange(party.name);
+                setOpen(false);
+              }}
+              className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700"
+            >
+              {settings.favoriteContactIds.includes(party.id) ? "★ " : ""}
+              {party.name}
+            </button>
+          ))}
+        </div>
+      )}
+
       {open && (matches.length > 0 || value.trim()) && (
         <div className="absolute z-10 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-gray-200 bg-white shadow-lg">
           {matches.map(({ party, net }) => (

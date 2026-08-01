@@ -8,16 +8,20 @@
 
 import Link from "next/link";
 import { useVyora } from "../VyoraProvider";
-import { dashboardTotals, recentActivity } from "@/lib/vyora/selectors";
+import { readDashboardTotals, readRecentActivity } from "@/lib/vyora/ledger";
+import { todayISO } from "@/lib/vyora/selectors";
+import { dueSummary } from "@/lib/vyora/duedates";
 import { formatMoney, formatDate, balanceColor } from "@/lib/vyora/format";
 import { StatCard, Empty } from "../components";
 
 export function Dashboard() {
-  const { ready, data, reset } = useVyora();
+  const { ready, ledger, reset } = useVyora();
   if (!ready) return <div className="py-20 text-center text-gray-400">Loading…</div>;
 
-  const t = dashboardTotals(data);
-  const activity = recentActivity(data, 15);
+  const t = readDashboardTotals(ledger);
+  const activity = readRecentActivity(ledger, 15);
+  const due = dueSummary(ledger, todayISO());
+  const hasDueDates = due.todayCount + due.weekCount + due.overdueCount > 0;
 
   const onReset = () => {
     if (confirm("Erase all Vyora data on this device? This cannot be undone.")) reset();
@@ -53,6 +57,46 @@ export function Dashboard() {
         <StatCard label="Today's collections" value={formatMoney(t.todaysCollections)} tone="in" />
         <StatCard label="Today's payments" value={formatMoney(t.todaysPayments)} tone="out" />
       </div>
+
+      {/* What's coming due. Scheduled credit, not unpaid balances — Vyora does
+          not allocate payments to individual entries, so the caption says so. */}
+      {hasDueDates && (
+        <Link href="/vyora/recovery" className="block">
+          <section className="rounded-2xl border border-gray-200 bg-white p-4">
+            <div className="flex items-baseline justify-between">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+                Coming due
+              </h2>
+              <span className="text-xs font-medium text-brand-700">Who to chase →</span>
+            </div>
+            <div className="mt-2 grid grid-cols-3 gap-2 text-center">
+              <div>
+                <div className="text-base font-bold tabular-nums text-gray-900">
+                  {formatMoney(due.todayAmount)}
+                </div>
+                <div className="text-[10px] uppercase tracking-wide text-gray-400">Today</div>
+              </div>
+              <div>
+                <div className="text-base font-bold tabular-nums text-gray-900">
+                  {formatMoney(due.weekAmount)}
+                </div>
+                <div className="text-[10px] uppercase tracking-wide text-gray-400">This week</div>
+              </div>
+              <div>
+                <div className="text-base font-bold tabular-nums text-red-600">
+                  {formatMoney(due.overdueAmount)}
+                </div>
+                <div className="text-[10px] uppercase tracking-wide text-gray-400">
+                  Overdue ({due.overdueCount})
+                </div>
+              </div>
+            </div>
+            <p className="mt-2 text-[10px] text-gray-400">
+              Credit scheduled by due date, not unpaid balances.
+            </p>
+          </section>
+        </Link>
+      )}
 
       {/* Quick actions (also always in the bottom bar) */}
       <div className="grid grid-cols-2 gap-3">
@@ -112,8 +156,8 @@ export function Dashboard() {
       {/* Footer */}
       <div className="flex items-center justify-between pt-2 text-xs text-gray-400">
         <span>
-          {data.parties.length} parties · {data.transactions.length + data.payments.length} entries
-          · saved on this device only
+          {ledger.statistics.partyCount} parties · {ledger.statistics.entryCount} entries · saved on
+          this device only
         </span>
         <button type="button" onClick={onReset} className="text-red-500 hover:underline">
           Clear data

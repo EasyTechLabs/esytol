@@ -8,19 +8,29 @@
  */
 
 import { useVyora } from "../VyoraProvider";
-import { partyNet, partyStatement } from "@/lib/vyora/selectors";
+import { readParty, readPartyNet, readStatement } from "@/lib/vyora/ledger";
+import { todayISO } from "@/lib/vyora/selectors";
+import { isOverdue, remainingLabel } from "@/lib/vyora/duedates";
 import { formatMoney, formatDate, balanceLabel, balanceColor } from "@/lib/vyora/format";
 import { Empty } from "../components";
 
 export function PartyStatement({ partyId }: { partyId: string }) {
-  const { ready, data, deleteEntry } = useVyora();
+  const { ready, ledger, dispatch } = useVyora();
   if (!ready) return <div className="py-20 text-center text-gray-400">Loading…</div>;
 
-  const party = data.parties.find((p) => p.id === partyId);
+  const party = readParty(ledger, partyId);
   if (!party) return <Empty title="Party not found" subtitle="It may have been cleared." />;
 
-  const net = partyNet(data, partyId);
-  const rows = partyStatement(data, partyId);
+  const net = readPartyNet(ledger, partyId);
+  const rows = readStatement(ledger, partyId);
+  const today = todayISO();
+
+  // Due dates live on the transaction, not the statement row — read them off
+  // the existing transaction index rather than recomputing anything.
+  const dueDates = new Map<string, string>();
+  for (const t of ledger.transactions.transactionsByParty.get(partyId) ?? []) {
+    if (t.dueDate) dueDates.set(t.id, t.dueDate);
+  }
 
   return (
     <div className="space-y-4">
@@ -69,9 +79,21 @@ export function PartyStatement({ partyId }: { partyId: string }) {
                 <div className="min-w-0">
                   <div className="truncate text-sm font-medium text-gray-800">{r.label}</div>
                   <div className="text-xs text-gray-400">
-                    {formatDate(r.date)}
+                    Issued {formatDate(r.date)}
                     {r.note ? ` · ${r.note}` : ""}
                   </div>
+                  {dueDates.get(r.id) && (
+                    <div
+                      className={`text-xs font-medium ${
+                        isOverdue(dueDates.get(r.id) as string, today)
+                          ? "text-red-600"
+                          : "text-gray-500"
+                      }`}
+                    >
+                      Due {formatDate(dueDates.get(r.id) as string)} ·{" "}
+                      {remainingLabel(dueDates.get(r.id) as string, today)}
+                    </div>
+                  )}
                 </div>
                 <div
                   className={`text-right text-sm font-semibold tabular-nums ${balanceColor(r.signedAmount)}`}
@@ -86,7 +108,8 @@ export function PartyStatement({ partyId }: { partyId: string }) {
                   type="button"
                   aria-label="Delete entry"
                   onClick={() => {
-                    if (confirm(`Delete this entry (${r.label})?`)) deleteEntry(r.id);
+                    if (confirm(`Delete this entry (${r.label})?`))
+                      dispatch({ type: "DeleteEntry", entryId: r.id });
                   }}
                   className="rounded p-1 text-gray-300 hover:bg-red-50 hover:text-red-500 print:hidden"
                 >

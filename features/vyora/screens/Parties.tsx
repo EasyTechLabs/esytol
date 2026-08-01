@@ -8,24 +8,29 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useVyora } from "../VyoraProvider";
-import { searchParties } from "@/lib/vyora/selectors";
+import type { Party } from "@/lib/vyora/types";
+import { readSearch } from "@/lib/vyora/ledger";
+import { isFavorite, toggleFavorite, withFavoritesFirst } from "@/lib/vyora/productivity";
+import { ContactSheet, useLongPress } from "../ContactSheet";
 import { formatMoney, balanceLabel, balanceColor } from "@/lib/vyora/format";
 import { BigButton, Empty } from "../components";
 
 export function Parties() {
-  const { ready, data, createParty } = useVyora();
+  const { ready, ledger, dispatch, settings, updateSettings } = useVyora();
   const [q, setQ] = useState("");
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [sheetFor, setSheetFor] = useState<Party | null>(null);
 
   if (!ready) return <div className="py-20 text-center text-gray-400">Loading…</div>;
 
-  const results = searchParties(data, q);
+  // Pinned customers first; the ledger's exposure order survives within groups.
+  const results = withFavoritesFirst(readSearch(ledger, q), settings, (b) => b.party.id);
 
   const add = () => {
-    if (!name.trim()) return;
-    createParty({ name, phone: phone || undefined });
+    const result = dispatch({ type: "CreateContact", name, phone: phone || undefined });
+    if (!result.ok) return;
     setName("");
     setPhone("");
     setAdding(false);
@@ -96,26 +101,83 @@ export function Parties() {
       ) : (
         <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-200 bg-white">
           {results.map(({ party, net }) => (
-            <Link
+            <ContactRow
               key={party.id}
-              href={`/vyora/parties/${party.id}`}
-              className="flex items-center justify-between px-4 py-3 hover:bg-gray-50"
-            >
-              <div className="min-w-0">
-                <div className="truncate font-medium text-gray-800">{party.name}</div>
-                {party.phone && <div className="text-xs text-gray-400">{party.phone}</div>}
-              </div>
-              <div className="shrink-0 text-right">
-                <div className={`text-sm font-semibold tabular-nums ${balanceColor(net)}`}>
-                  {net === 0 ? "Settled" : formatMoney(net)}
-                </div>
-                <div className="text-[10px] uppercase tracking-wide text-gray-400">
-                  {balanceLabel(net)}
-                </div>
-              </div>
-            </Link>
+              party={party}
+              net={net}
+              pinned={isFavorite(settings, party.id)}
+              onPin={() =>
+                updateSettings({
+                  favoriteContactIds: toggleFavorite(settings.favoriteContactIds, party.id),
+                })
+              }
+              onLongPress={() => setSheetFor(party)}
+            />
           ))}
         </div>
+      )}
+      <ContactSheet party={sheetFor} onClose={() => setSheetFor(null)} />
+    </div>
+  );
+}
+
+/** One contact row. Long press anywhere on it opens the quick-action sheet. */
+function ContactRow({
+  party,
+  net,
+  pinned,
+  onPin,
+  onLongPress,
+}: {
+  party: Party;
+  net: number;
+  pinned: boolean;
+  onPin: () => void;
+  onLongPress: () => void;
+}) {
+  const press = useLongPress(onLongPress);
+  return (
+    <div className="flex items-stretch hover:bg-gray-50">
+      {/* Pin toggle sits outside the link so tapping it never navigates. */}
+      <button
+        type="button"
+        aria-label={pinned ? `Unpin ${party.name}` : `Pin ${party.name} to the top`}
+        aria-pressed={pinned}
+        onClick={onPin}
+        className={`px-3 text-lg ${pinned ? "text-amber-500" : "text-gray-200"}`}
+      >
+        ★
+      </button>
+      <Link
+        href={`/vyora/parties/${party.id}`}
+        {...press}
+        onClick={(event) => {
+          // A long press already opened the sheet — do not also navigate.
+          if (press.didFire()) event.preventDefault();
+        }}
+        className="flex flex-1 select-none items-center justify-between py-3 pr-4"
+      >
+        <div className="min-w-0">
+          <div className="truncate font-medium text-gray-800">{party.name}</div>
+          {party.phone && <div className="text-xs text-gray-400">{party.phone}</div>}
+        </div>
+        <div className="shrink-0 text-right">
+          <div className={`text-sm font-semibold tabular-nums ${balanceColor(net)}`}>
+            {net === 0 ? "Settled" : formatMoney(net)}
+          </div>
+          <div className="text-[10px] uppercase tracking-wide text-gray-400">
+            {balanceLabel(net)}
+          </div>
+        </div>
+      </Link>
+      {party.phone && (
+        <a
+          href={`tel:${party.phone}`}
+          aria-label={`Call ${party.name}`}
+          className="flex items-center px-3 text-lg text-brand-600"
+        >
+          📞
+        </a>
       )}
     </div>
   );
