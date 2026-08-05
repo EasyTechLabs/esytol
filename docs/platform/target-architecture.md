@@ -65,7 +65,13 @@ One deployable, internally partitioned. Modules communicate through function cal
 | `recovery`   | aging, priority, reminder history                   | D     |
 | `statements` | per-party statement projection                      | D     |
 | `sync`       | push/pull cursors, outbox reconciliation            | D     |
-| `auth`       | identity — **design not started**                   | E     |
+| `auth`       | token verification + tenant resolution              | B     |
+| `auth`       | real identity provider — **not chosen**             | E     |
+
+`auth` appears twice on purpose. The **scheme** ships in Phase B, because every endpoint except
+`/health` needs a token to resolve its tenant scope. The **identity provider** is a Phase E decision.
+VYORA-PLATFORM-003 exposed the earlier single-row version of this table as wrong: it placed all of
+`auth` in Phase E while Phase B endpoints already depended on it. See `auth-and-tenant-model.md`.
 
 **Not microservices.** Vyora has one tenant type, one write path and no independent scaling need. A
 service boundary now would buy nothing and cost distributed transactions across an event log.

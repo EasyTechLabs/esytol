@@ -35,20 +35,20 @@ in an offline-first system, is the normal case rather than the exception.
 
 Every event carries this envelope. The payload varies by type; the envelope never does.
 
-| Field            | Purpose                                                                                         |
-| ---------------- | ----------------------------------------------------------------------------------------------- |
-| `eventId`        | UUID. Globally unique, **client-generated**. The primary idempotency key.                       |
-| `merchantId`     | tenant boundary. Every query is scoped by it; there is no cross-merchant read path.             |
-| `deviceId`       | which device produced it. Required for cursors and debugging, never for authorisation.          |
-| `aggregateId`    | the party or entry the event concerns. Enables per-aggregate ordering.                          |
-| `type`           | e.g. `CreditRecorded`. Closed vocabulary; unknown types are stored and ignored, never rejected. |
-| `payload`        | type-specific body.                                                                             |
-| `payloadVersion` | integer. Lets one type evolve without a new type name.                                          |
-| `schemaVersion`  | envelope version. Currently `1`.                                                                |
-| `occurredAt`     | when the merchant did it, **device clock**. Displayed to the merchant.                          |
-| `recordedAt`     | when the server accepted it, **server clock**. Used for cursors and ordering.                   |
-| `causationId`    | the event that caused this one (e.g. a restore replaying an original). Nullable.                |
-| `idempotencyKey` | defaults to `eventId`; separate field so a retried _command_ can be deduped.                    |
+| Field            | Purpose                                                                                                                                                                                                       |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `eventId`        | UUID. Globally unique, **client-generated**. The primary idempotency key.                                                                                                                                     |
+| `merchantId`     | tenant boundary. Every query is scoped by it; there is no cross-merchant read path.                                                                                                                           |
+| `deviceId`       | which device produced it. Required for cursors and debugging, never for authorisation.                                                                                                                        |
+| `aggregateId`    | the party or entry the event concerns. Enables per-aggregate ordering.                                                                                                                                        |
+| `type`           | e.g. `CreditRecorded`. Closed vocabulary. **Superseded:** the client still tolerates unknown types when folding its own log, but the sync endpoint **rejects** them — `sync-protocol.md` §5 gives the reason. |
+| `payload`        | type-specific body.                                                                                                                                                                                           |
+| `payloadVersion` | integer. Lets one type evolve without a new type name.                                                                                                                                                        |
+| `schemaVersion`  | envelope version. Currently `1`.                                                                                                                                                                              |
+| `occurredAt`     | when the merchant did it, **device clock**. Displayed to the merchant.                                                                                                                                        |
+| `recordedAt`     | when the server accepted it, **server clock**. Used for cursors and ordering.                                                                                                                                 |
+| `causationId`    | the event that caused this one (e.g. a restore replaying an original). Nullable.                                                                                                                              |
+| `idempotencyKey` | defaults to `eventId`; separate field so a retried _command_ can be deduped.                                                                                                                                  |
 
 **`occurredAt` and `recordedAt` must both exist.** A merchant recording offline for three days has an
 `occurredAt` three days old and a `recordedAt` of now. Sorting a statement by `recordedAt` would show
