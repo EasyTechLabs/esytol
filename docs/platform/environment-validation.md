@@ -1,103 +1,129 @@
-# Environment Validation — VYORA-PLATFORM-001 Phase 1
+# Environment Validation
 
-> Inventory taken 2026-08-05 on the founder's Windows 10 machine (build 19045).
-> **No software was installed during this inventory.** Installation requires the founder actions
-> listed in §3.
+> Re-validated 2026-08-05 after the installation work in VYORA-PLATFORM-002 Phase 1.
+> Supersedes the VYORA-PLATFORM-001 inventory. Setup steps: `environment-setup.md`.
 
 ---
 
 ## 1. Status table
 
-| Prerequisite                 | Status         | Detected                            | Required                                  |
-| ---------------------------- | -------------- | ----------------------------------- | ----------------------------------------- |
-| Git                          | ✅ **PASS**    | `2.55.0.windows.3`                  | any recent                                |
-| Node.js                      | ⚠️ **PARTIAL** | `v24.19.0`                          | **LTS (22.x)** — 24.x is Current, not LTS |
-| npm                          | ✅ **PASS**    | `11.17.0`                           | —                                         |
-| **Java JDK 21**              | ❌ **BLOCKED** | **JRE 1.8.0_501 only — no `javac`** | JDK 21                                    |
-| Android Studio               | ✅ **PASS**    | `AI-261.26222.65.2613.15948027`     | —                                         |
-| Android SDK Platform         | ⚠️ **PARTIAL** | `android-37.0`                      | **API 35** not installed                  |
-| Android Build Tools          | ✅ **PASS**    | `36.0.0`                            | —                                         |
-| Android Platform-Tools / adb | ⚠️ **PARTIAL** | `adb.exe` present in SDK            | **not on PATH**                           |
-| Android Emulator             | ✅ **PASS**    | `emulator.exe` present              | AVD profile not yet created               |
-| **SDK command-line tools**   | ❌ **BLOCKED** | `cmdline-tools/` **empty**          | required by RN/Gradle                     |
-| Gradle wrapper               | ✅ **PASS**    | n/a — projects use `gradlew`        | no global install needed                  |
-| **Docker Desktop**           | ❌ **BLOCKED** | not installed                       | required for local PostgreSQL             |
-| **PostgreSQL 16+**           | ❌ **BLOCKED** | not installed                       | required                                  |
-| **psql CLI**                 | ❌ **BLOCKED** | not installed                       | required                                  |
-| `JAVA_HOME`                  | ❌ **BLOCKED** | not set                             | required                                  |
-| `ANDROID_HOME`               | ❌ **BLOCKED** | not set                             | required                                  |
-| winget                       | ✅ **PASS**    | available                           | —                                         |
+| Prerequisite               | Status         | Detected                                                            |
+| -------------------------- | -------------- | ------------------------------------------------------------------- |
+| Git                        | ✅ **PASS**    | `2.55.0.windows.3`                                                  |
+| Node.js                    | ✅ **PASS**    | `v24.19.0` — LTS                                                    |
+| npm                        | ✅ **PASS**    | `11.17.0`                                                           |
+| **Java JDK 21**            | ✅ **PASS**    | `openjdk 21.0.12 2026-07-21 LTS` (Temurin)                          |
+| **javac**                  | ✅ **PASS**    | `javac 21.0.12`                                                     |
+| `JAVA_HOME`                | ✅ **PASS**    | `C:\Program Files\Eclipse Adoptium\jdk-21.0.12.8-hotspot`           |
+| `ANDROID_HOME`             | ✅ **PASS**    | `C:\Users\dell\AppData\Local\Android\Sdk`                           |
+| `ANDROID_SDK_ROOT`         | ✅ **PASS**    | same                                                                |
+| PATH entries               | ✅ **PASS**    | JDK `bin`, `platform-tools`, `emulator`, `cmdline-tools\latest\bin` |
+| Android Studio             | ✅ **PASS**    | `AI-261.26222.65.2613.15948027`                                     |
+| **SDK command-line tools** | ✅ **PASS**    | `sdkmanager 12.0`, `avdmanager` — installed this milestone          |
+| **SDK licences**           | ✅ **PASS**    | _"All SDK package licenses accepted"_ (7 of 7)                      |
+| **Android SDK API 35**     | ✅ **PASS**    | `platforms;android-35` installed this milestone                     |
+| Android Build Tools        | ✅ **PASS**    | `35.0.0` (installed this milestone) + `36.0.0`                      |
+| **System image API 35**    | ✅ **PASS**    | `system-images;android-35;google_apis;x86_64`                       |
+| Android Platform-Tools     | ✅ **PASS**    | `adb 1.0.41` (`37.0.1`), resolves on PATH                           |
+| Android Emulator binary    | ✅ **PASS**    | `37.1.11`                                                           |
+| **AVD created**            | ✅ **PASS**    | `vyora_api35` (Pixel 7, API 35, x86_64)                             |
+| Gradle wrapper             | ✅ **PASS**    | n/a — projects use `gradlew`                                        |
+| winget                     | ✅ **PASS**    | available                                                           |
+| **AVD boots**              | ❌ **BLOCKED** | _"x86_64 emulation currently requires hardware acceleration"_       |
+| **Hypervisor driver**      | ❌ **BLOCKED** | AEHD 2.2 downloaded to `extras\`; **service not installed**         |
+| **Docker Desktop**         | ❌ **BLOCKED** | not installed                                                       |
+| **PostgreSQL / psql**      | ❌ **BLOCKED** | not installed (fallback only — Docker preferred)                    |
 
-**Summary: 6 PASS · 4 PARTIAL · 7 BLOCKED.**
+**20 PASS · 4 BLOCKED.** Previous state was 6 PASS · 4 PARTIAL · 7 BLOCKED.
 
-## 2. Detail
+## 2. What changed
 
-**Java is the hardest blocker.** `java -version` reports `1.8.0_501` and `javac` is absent — this is
-a **JRE, not a JDK**. `C:\Program Files\Java` contains only `jre1.8.0_501`. React Native and Gradle
-require **JDK 21**. Nothing Android-related can be built until this is fixed.
+**Java is no longer a blocker.** The machine had **JRE 1.8.0_501 only** — no compiler. JDK 21
+(Temurin) was installed via winget; `java --version` and `javac --version` both report 21.0.12 LTS.
 
-**Android SDK is partially provisioned.** Studio is installed and the SDK has `build-tools/36.0.0`,
-`platform-tools`, `emulator` and `platforms/android-37.0`. Two gaps: **API 35 is not installed**
-(only 37.0), and **`cmdline-tools/` is empty** — `sdkmanager` and `avdmanager` are unavailable, so
-SDK components cannot be managed from the command line.
+**The whole Android SDK chain is now provisioned.** The command-line tools download had timed out
+twice in earlier attempts; a third attempt with a 15-minute allowance completed (153,583,359 bytes).
+That unblocked everything downstream in one pass: `sdkmanager` → all 7 licences accepted
+non-interactively → API 35, build-tools 35.0.0 and the `google_apis;x86_64` system image installed →
+`avdmanager` created AVD `vyora_api35`.
 
-**No database stack at all.** Neither Docker Desktop nor a native PostgreSQL install is present.
-Phase 3 cannot start without one.
+**All environment variables are set** at **User** scope, so they persist across reboots.
 
-**No environment variables set.** `JAVA_HOME`, `ANDROID_HOME` and `ANDROID_SDK_ROOT` are all unset
-at both User and Machine scope.
+> Verification note: shells started **before** these variables were set will not see them — Windows
+> reads the environment once at process start. Verified in this session both by invoking the binaries
+> via absolute path and by separately reading the persisted User-scope values. Both agree.
 
-## 3. Founder actions required — these cannot be automated
+**Node.js is PASS, not PARTIAL.** The earlier report marked `v24.19.0` as "Current, not LTS". That
+was wrong — 24.x is an LTS line. Corrected here.
 
-| #   | Action                                                                                       | Why it needs you                                                                                       |
-| --- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| 1   | **Install JDK 21** — `winget install EclipseAdoptium.Temurin.21.JDK`                         | Elevation prompt                                                                                       |
-| 2   | **Install Docker Desktop** — `winget install Docker.DockerDesktop`                           | Elevation, **licence agreement on first run**, and a **reboot**. May require enabling WSL2 or Hyper-V. |
-| 3   | **Accept Android SDK licences** — Android Studio → SDK Manager                               | Interactive licence acceptance; cannot be scripted without `sdkmanager`, which is missing              |
-| 4   | **Install API 35 + command-line tools** — Studio → SDK Manager → SDK Platforms / SDK Tools   | Same                                                                                                   |
-| 5   | **Create an AVD** — Studio → Device Manager                                                  | GUI-only                                                                                               |
-| 6   | **Decide on PostgreSQL** — Docker (recommended) or `winget install PostgreSQL.PostgreSQL.16` | Docker choice depends on #2                                                                            |
+## 3. What is still blocked
 
-**Recommended order:** 1 → 3 → 4 → 5 → 2 → 6. Java first unblocks the most; Docker last because it
-needs a reboot.
+### 3.1 The emulator will not boot — hardware acceleration missing
 
-## 4. After the founder's actions — validation to run
+The AVD exists and is correctly configured. Boot fails at the acceleration check:
 
-```powershell
-java -version                      # expect 21.x
-javac -version                     # expect 21.x
-echo $env:JAVA_HOME
-echo $env:ANDROID_HOME
-adb --version
-sdkmanager --list_installed
-emulator -list-avds
-docker --version
-docker compose version
-psql --version
+```
+ERROR | x86_64 emulation currently requires hardware acceleration!
+CPU acceleration status: Android Emulator hypervisor driver is not installed on this machine
 ```
 
-Every one must succeed before Phase 3 begins.
+Confirmed independently: `Win32_ComputerSystem.HypervisorPresent` is `False`, and
+`sc query aehd` returns error 1060 — _the specified service does not exist_.
 
-## 5. Environment variables to set (after JDK 21 is installed)
+The fix is the **Android Emulator Hypervisor Driver (AEHD)**. Its package was installed to
+`%ANDROID_HOME%\extras\google\Android_Emulator_Hypervisor_Driver\`, but its `silent_install.bat`
+registers a **kernel-mode driver** and sets boot configuration (`bcdedit`). That requires an
+elevated shell and a **reboot** — deliberately not attempted from this non-interactive session.
+
+> This is the only Android gap left, and it is one command plus a reboot. Everything it depends on
+> is already in place.
+
+### 3.2 No database stack
+
+Neither Docker Desktop nor native PostgreSQL is installed. Docker Desktop needs elevation, a licence
+acceptance on first run, and a reboot; Hyper-V is currently off, so it will need WSL2 or Hyper-V
+enabled as well.
+
+### 3.3 Why these two were not automated
+
+| Blocker        | Reason it needs the founder                                                      |
+| -------------- | -------------------------------------------------------------------------------- |
+| AEHD driver    | Kernel driver install + `bcdedit` + reboot; shell is **not elevated** (verified) |
+| Docker Desktop | Elevation + interactive licence + reboot + likely WSL2/Hyper-V enablement        |
+| PostgreSQL     | Fallback path only. Install **only** if Docker cannot be enabled.                |
+
+Commands for both are in `environment-setup.md` §3.
+
+## 4. Re-validation command set
+
+Run from a **newly opened** terminal:
 
 ```powershell
-[Environment]::SetEnvironmentVariable("JAVA_HOME", "C:\Program Files\Eclipse Adoptium\jdk-21...", "User")
-[Environment]::SetEnvironmentVariable("ANDROID_HOME", "$env:LOCALAPPDATA\Android\Sdk", "User")
-# append to User PATH:
-#   %ANDROID_HOME%\platform-tools
-#   %ANDROID_HOME%\emulator
-#   %ANDROID_HOME%\cmdline-tools\latest\bin
-#   %JAVA_HOME%\bin
+java --version                     # 21.0.12 LTS                    [PASS]
+javac --version                    # 21.0.12                        [PASS]
+$env:JAVA_HOME                     #                                [PASS]
+$env:ANDROID_HOME                  #                                [PASS]
+adb version                        # 1.0.41                         [PASS]
+sdkmanager --list_installed        # includes platforms;android-35  [PASS]
+emulator -list-avds                # vyora_api35                    [PASS]
+emulator -avd vyora_api35          # boots                          [BLOCKED — 3.1]
+adb devices                        # one "device"                   [BLOCKED — 3.1]
+docker compose version             #                                [BLOCKED — 3.2]
 ```
 
-Exact JDK path must be confirmed after install — do not guess the version suffix.
+`adb devices` currently returns an empty list, as expected while §3.1 is unresolved.
 
-## 6. Overall
+## 5. Overall
 
-# ❌ BLOCKED
+# ⚠️ PARTIALLY UNBLOCKED
 
-**Phases 3–6 cannot start.** There is no JDK, no Docker, and no PostgreSQL — so no backend, no
-database, and no Android build is possible on this machine today.
+**Backend work is unblocked.** Node, npm and Git are PASS, so `vyora-api/` can be scaffolded and the
+web app continues to build and test normally. **PostgreSQL is still required before any persistence
+work begins.**
 
-Phases 0 and 2 (audit and design documentation) are unaffected and can proceed, since they require
-no runtime.
+**Mobile work is one reboot away.** The JDK, SDK, licences, API 35, system image and AVD are all in
+place. Only the hypervisor driver stands between this machine and a bootable emulator — so this is
+no longer a provisioning problem, just a pending elevated action.
+
+**Neither blocker affects this milestone.** VYORA-PLATFORM-002 is documentation only; the
+architecture and migration design in this directory required no runtime to produce.
