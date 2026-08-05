@@ -75,8 +75,12 @@ The fix is the **Android Emulator Hypervisor Driver (AEHD)**. Its package was in
 registers a **kernel-mode driver** and sets boot configuration (`bcdedit`). That requires an
 elevated shell and a **reboot** — deliberately not attempted from this non-interactive session.
 
-> This is the only Android gap left, and it is one command plus a reboot. Everything it depends on
-> is already in place.
+**The CPU is capable.** `Win32_Processor.VirtualizationFirmwareEnabled` is `True` — Intel VT-x is
+already enabled in firmware (Core i3-6006U, 2 cores / 4 threads, 11.8 GB RAM). So no BIOS change is
+needed; only the driver is missing.
+
+> This is the only Android gap left, and it is one elevated command plus a reboot. Everything it
+> depends on is already in place.
 
 ### 3.2 No database stack
 

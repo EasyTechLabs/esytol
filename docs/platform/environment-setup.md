@@ -141,8 +141,9 @@ emulator -avd vyora_api35    # expect a window
 adb devices                  # expect one "device"
 ```
 
-**Prerequisite:** hardware virtualisation (Intel VT-x / AMD-V) must be enabled in BIOS/UEFI. If
-`silent_install.bat` reports a virtualisation error, enable it there first.
+**No BIOS trip needed.** Hardware virtualisation is already enabled on this machine —
+`Win32_Processor.VirtualizationFirmwareEnabled` is `True` (Intel Core i3-6006U, 2 cores / 4 threads,
+11.8 GB RAM). The driver install is the only missing piece.
 
 > Alternative: Windows Hyper-V (`HypervisorPresent` is currently `False`). AEHD is the lighter option
 > and does not conflict with other virtualisation software, so it is the recommended path.
