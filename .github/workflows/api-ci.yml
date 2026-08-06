@@ -63,9 +63,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Node 24 LTS — the runtime the API was actually validated against
+      # locally (v24.19.0). Pinning CI to a version nobody ran the suite on
+      # would make a green build weaker evidence than it looks.
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: "npm"
           cache-dependency-path: vyora-api/package-lock.json
 
