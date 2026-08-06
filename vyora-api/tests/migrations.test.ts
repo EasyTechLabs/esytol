@@ -39,12 +39,19 @@ describe("CLI entrypoint detection", () => {
     expect(isMainModule("file:///somewhere/else/not-the-entry.ts")).toBe(false);
   });
 
-  it("matches a Windows-style absolute path correctly", () => {
-    // `pathToFileURL("C:\\a\\b.ts")` is `file:///C:/a/b.ts` — three slashes.
-    // A hand-built `file://C:/a/b.ts` has two, and would never compare equal.
+  it("compares against a fully-formed file URL on every platform", () => {
+    // `pathToFileURL` always produces the three-slash form — `file:///C:/a/b.ts`
+    // on Windows, `file:///home/a/b.ts` elsewhere — which is what makes this
+    // comparison portable.
+    //
+    // The removed assertion here claimed the naive `"file://" + argv[1]` form
+    // never matches. That is only true on Windows, where the drive letter
+    // leaves two slashes. On Linux the path already starts with `/`, so the
+    // naive form is byte-identical to the correct one and the assertion
+    // inverted — a Windows-only assumption that API CI caught on Ubuntu.
     const url = pathToFileURL(process.argv[1]!).href;
     expect(url.startsWith("file:///")).toBe(true);
-    expect(isMainModule(`file://${process.argv[1]!.replace(/\\/g, "/")}`)).toBe(false);
+    expect(isMainModule(url)).toBe(true);
   });
 });
 
