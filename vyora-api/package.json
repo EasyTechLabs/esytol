@@ -1,0 +1,39 @@
+{
+  "name": "vyora-api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Vyora API — contract-driven modular monolith. Synthetic data, localhost only.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "build": "tsc --noEmit",
+    "type-check": "tsc --noEmit",
+    "lint": "tsc --noEmit",
+    "contract:lint": "redocly lint openapi/openapi.yaml",
+    "db:migrate": "tsx src/db/migrate.ts up",
+    "db:reset": "tsx src/db/migrate.ts reset",
+    "db:seed": "tsx src/seed/seed.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "validate": "npm run type-check && npm run contract:lint && npm run test"
+  },
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "fastify": "^5.2.1",
+    "pg": "^8.13.1",
+    "yaml": "^2.7.0"
+  },
+  "devDependencies": {
+    "@redocly/cli": "^1.34.0",
+    "@types/node": "^22.10.5",
+    "@types/pg": "^8.11.10",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8"
+  }
+}
