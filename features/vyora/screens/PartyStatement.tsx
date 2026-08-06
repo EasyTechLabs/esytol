@@ -8,20 +8,25 @@
  */
 
 import { useVyora } from "../VyoraProvider";
-import { readParty, readPartyNet, readStatement } from "@/lib/vyora/ledger";
+import { readStatement } from "@/lib/vyora/ledger";
 import { todayISO } from "@/lib/vyora/selectors";
 import { isOverdue, remainingLabel } from "@/lib/vyora/duedates";
 import { formatMoney, formatDate, balanceLabel, balanceColor } from "@/lib/vyora/format";
 import { Empty } from "../components";
+import { usePartyDetail } from "../usePartySource";
+import { PartySourceNotice } from "../PartySourceNotice";
 
 export function PartyStatement({ partyId }: { partyId: string }) {
   const { ready, ledger, dispatch } = useVyora();
-  if (!ready) return <div className="py-20 text-center text-gray-400">Loading…</div>;
 
-  const party = readParty(ledger, partyId);
+  // Header identity and net may come from the development API; the statement
+  // rows below always come from the local log, because the API exposes no
+  // entry-level read and inventing one is out of scope for a read-only slice.
+  const { party, net, source, error, loading, retry } = usePartyDetail(partyId);
+
+  if (!ready) return <div className="py-20 text-center text-gray-400">Loading…</div>;
   if (!party) return <Empty title="Party not found" subtitle="It may have been cleared." />;
 
-  const net = readPartyNet(ledger, partyId);
   const rows = readStatement(ledger, partyId);
   const today = todayISO();
 
@@ -34,6 +39,9 @@ export function PartyStatement({ partyId }: { partyId: string }) {
 
   return (
     <div className="space-y-4">
+      {/* Renders nothing unless a developer enabled the API read path. */}
+      <PartySourceNotice source={source} error={error} loading={loading} onRetry={retry} />
+
       {/* Header */}
       <div className="rounded-2xl border border-gray-200 bg-white p-4">
         <div className="flex items-start justify-between">
