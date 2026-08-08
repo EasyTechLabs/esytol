@@ -1,7 +1,8 @@
 /**
  * The server-side development proxy.
  *
- * Two things are being defended here. First, the gate is re-evaluated on the
+ * The proxy now carries reads and two writes (create, update). Two things are
+ * being defended here. First, the gate is re-evaluated on the
  * server, so a hand-written fetch that skips the UI is refused just the same.
  * Second — and this is the one that would actually hurt — the development
  * identity never leaves the server. A credential in browser JavaScript is a
@@ -184,14 +185,32 @@ describe("the gate is enforced on the server, not just in the UI", () => {
   });
 });
 
-describe("the proxy is read-only", () => {
-  it("exports no write handler on either route", () => {
+describe("the proxy surface is exactly GET, POST and PATCH", () => {
+  // VYORA-PLATFORM-005 asserted this proxy was read-only, and it was.
+  // VYORA-PLATFORM-010 deliberately added create and update, so that assertion
+  // is now wrong and has been replaced rather than relaxed: the surface is
+  // still pinned, just to a larger — and still bounded — set.
+  it("exposes reads on both routes, create on the collection, update on the item", () => {
+    const collection = readFileSync(join(ROUTE_DIR, "route.ts"), "utf8");
+    const item = readFileSync(join(ROUTE_DIR, "[partyId]", "route.ts"), "utf8");
+
+    expect(collection).toContain("export async function GET");
+    expect(item).toContain("export async function GET");
+    expect(collection).toContain("export async function POST");
+    expect(item).toContain("export async function PATCH");
+
+    // Create belongs on the collection and update on the item, not the reverse.
+    expect(collection).not.toContain("export async function PATCH");
+    expect(item).not.toContain("export async function POST");
+  });
+
+  it("still exposes no destructive or replacing verb", () => {
     for (const file of [join(ROUTE_DIR, "route.ts"), join(ROUTE_DIR, "[partyId]", "route.ts")]) {
       const source = readFileSync(file, "utf8");
-      expect(source).toContain("export async function GET");
-      for (const method of ["POST", "PUT", "PATCH", "DELETE"]) {
-        expect(source).not.toContain(`export async function ${method}`);
-      }
+      // No DELETE: party deletion versus a concurrent entry is an unresolved
+      // domain question, and no PUT: nothing here replaces a whole record.
+      expect(source).not.toContain("export async function DELETE");
+      expect(source).not.toContain("export async function PUT");
     }
   });
 
