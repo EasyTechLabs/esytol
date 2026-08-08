@@ -11,12 +11,17 @@
  * client-side check is a UI affordance; this one is the actual control, because
  * a hand-written fetch to this path bypasses the UI entirely.
  *
- * Reads only. Neither route exports POST, PATCH or DELETE, so nothing reachable
- * through this proxy can change anything — on the API or on the device.
+ * Reads and two writes. `GET` (list, detail), `POST` (create) and `PATCH`
+ * (update) are the entire surface. There is deliberately no `DELETE` and no
+ * sync path, so nothing reachable through this proxy can remove a party or
+ * move an event log.
+ *
+ * Nothing here ever writes to the device. A remote write goes to the API and
+ * only to the API — never to local storage, and never to both.
  */
 
 import { NextResponse } from "next/server";
-import { decidePartyApi } from "@/lib/vyora/party-api-config";
+import { decidePartyApi, decidePartyWrites } from "@/lib/vyora/party-api-config";
 
 const DEV_IDENTITY_ENV = "VYORA_API_DEV_IDENTITY";
 
@@ -101,3 +106,98 @@ export async function forwardPartyRead(path: string, search: string): Promise<Ne
 
 /** Query parameters a read may carry. Anything else is dropped, not forwarded. */
 export const READ_PARAMS = ["q", "limit", "cursor", "position", "updatedSince"] as const;
+
+/**
+ * The write gate: everything the read gate requires, plus the write flag.
+ *
+ * Re-evaluated on the server rather than trusted from the client, for the same
+ * reason the read gate is. A hand-written `fetch` to this path skips the UI
+ * entirely, so this is the control that actually holds.
+ */
+export function writeGate(): Gate {
+  const decision = decidePartyWrites({
+    flag: process.env.NEXT_PUBLIC_VYORA_API_PARTY_READS_ENABLED,
+    writeFlag: process.env.NEXT_PUBLIC_VYORA_API_PARTY_WRITES_ENABLED,
+    nodeEnv: process.env.NODE_ENV,
+    apiUrl: process.env.NEXT_PUBLIC_VYORA_API_URL,
+  });
+
+  if (!decision.enabled) {
+    return { ok: false, denial: { status: 404, code: "NOT_FOUND", message: decision.reason } };
+  }
+
+  const identity = process.env[DEV_IDENTITY_ENV];
+  if (!identity) {
+    return {
+      ok: false,
+      denial: {
+        status: 503,
+        code: "DEV_IDENTITY_MISSING",
+        message: `${DEV_IDENTITY_ENV} is not set on the server. Set it in .env.local (never NEXT_PUBLIC_).`,
+      },
+    };
+  }
+
+  return { ok: true, apiUrl: decision.apiUrl, identity };
+}
+
+/** Request headers a write may carry. Everything else is dropped, not forwarded. */
+export const WRITE_HEADERS = ["idempotency-key", "if-match"] as const;
+
+/**
+ * Forward one write to the local API.
+ *
+ * Only `POST` (create) and `PATCH` (update) are reachable. There is no `DELETE`
+ * and no sync path, so nothing routed through here can remove a party or move
+ * an event log.
+ *
+ * The upstream `ETag` is passed straight back, because the client needs it for
+ * the next `If-Match` and inventing one here would break optimistic
+ * concurrency in a way that only shows up as a lost edit.
+ */
+export async function forwardPartyWrite(
+  method: "POST" | "PATCH",
+  path: string,
+  body: string,
+  incoming: Headers
+): Promise<NextResponse> {
+  const check = writeGate();
+  if (!check.ok) return denied(check.denial);
+
+  const headers: Record<string, string> = {
+    // Server-side only. This header never exists in the browser.
+    "x-vyora-dev-identity": check.identity,
+    accept: "application/json",
+    "content-type": incoming.get("content-type") ?? "application/json",
+  };
+  for (const name of WRITE_HEADERS) {
+    const value = incoming.get(name);
+    if (value !== null) headers[name] = value;
+  }
+
+  try {
+    const upstream = await fetch(`${check.apiUrl}/api/v1/parties${path}`, {
+      method,
+      headers,
+      body,
+      cache: "no-store",
+    });
+
+    const out = new Headers({
+      "content-type": upstream.headers.get("content-type") ?? "application/json",
+      "x-vyora-upstream-request-id": upstream.headers.get("x-request-id") ?? "",
+    });
+    const etag = upstream.headers.get("etag");
+    if (etag) out.set("etag", etag);
+
+    return new NextResponse(await upstream.text(), { status: upstream.status, headers: out });
+  } catch (cause) {
+    // The write did not reach the API. The caller must treat this as "nothing
+    // happened" and must not fall back to a local write.
+    return denied({
+      status: 502,
+      code: "DEPENDENCY_UNAVAILABLE",
+      message: `Could not reach the local API at ${check.apiUrl}. Is it running? (${(cause as Error).message})`,
+    });
+  }
+}

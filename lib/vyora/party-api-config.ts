@@ -21,6 +21,16 @@
 /** The public flag. Default OFF — absence must never mean "on". */
 export const PARTY_READS_FLAG = "NEXT_PUBLIC_VYORA_API_PARTY_READS_ENABLED";
 
+/**
+ * The write flag. Default OFF, and strictly narrower than the read flag.
+ *
+ * Writes require everything reads require **and then one more thing**, so a
+ * developer cannot end up writing to the API while still reading locally. That
+ * combination would show them a screen that disagrees with the thing they just
+ * changed, which is exactly how someone concludes their data is lost.
+ */
+export const PARTY_WRITES_FLAG = "NEXT_PUBLIC_VYORA_API_PARTY_WRITES_ENABLED";
+
 /** Where the browser sends its reads: this app's own server-side proxy. */
 export const PARTY_PROXY_PATH = "/api/vyora-dev/parties";
 
@@ -83,6 +93,46 @@ export function decidePartyApi(env: PartyApiEnv): PartyApiDecision {
 export function partyApiDecision(): PartyApiDecision {
   return decidePartyApi({
     flag: process.env.NEXT_PUBLIC_VYORA_API_PARTY_READS_ENABLED,
+    nodeEnv: process.env.NODE_ENV,
+    apiUrl: process.env.NEXT_PUBLIC_VYORA_API_URL,
+  });
+}
+
+export interface PartyWriteEnv extends PartyApiEnv {
+  readonly writeFlag: string | undefined;
+}
+
+/**
+ * Decide whether development Party **writes** are permitted.
+ *
+ * Deliberately built on top of the read decision rather than beside it, so the
+ * two can never disagree. Every reason reads can be refused is a reason writes
+ * are refused, and the write flag only ever narrows further — it can never
+ * widen. Production is therefore refused by construction, not by a second check
+ * someone could forget to copy.
+ *
+ * The server-side identity is the fifth condition, and it is checked only on
+ * the server (`forward.ts`): the browser has no way to know whether it is set,
+ * and giving it one would leak the fact that a credential exists.
+ */
+export function decidePartyWrites(env: PartyWriteEnv): PartyApiDecision {
+  const reads = decidePartyApi(env);
+  if (!reads.enabled) {
+    return { enabled: false, reason: `Writes require reads to be enabled first. ${reads.reason}` };
+  }
+
+  if (env.writeFlag !== "true") {
+    return { enabled: false, reason: `${PARTY_WRITES_FLAG} is not "true" (default: disabled).` };
+  }
+
+  return { enabled: true, apiUrl: reads.apiUrl };
+}
+
+/** Read the write decision from the ambient environment (client-safe values only). */
+export function partyWriteDecision(): PartyApiDecision {
+  return decidePartyWrites({
+    flag: process.env.NEXT_PUBLIC_VYORA_API_PARTY_READS_ENABLED,
+    writeFlag: process.env.NEXT_PUBLIC_VYORA_API_PARTY_WRITES_ENABLED,
     nodeEnv: process.env.NODE_ENV,
     apiUrl: process.env.NEXT_PUBLIC_VYORA_API_URL,
   });
