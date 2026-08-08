@@ -1,0 +1,77 @@
+name: Deploy Production
+
+# Production (www.esytol.com) deploys ONLY through this workflow, and ONLY after
+# a human approves the `production` GitHub Environment (the release-approval gate).
+# Vercel's automatic production deploy on `main` is disabled in vercel.json, so
+# this workflow is the single path to production.
+
+on:
+  release:
+    types: [published] # publishing a GitHub Release triggers a deploy...
+  workflow_dispatch: # ...or a maintainer runs it manually.
+
+# Never run two production deploys at once.
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Approve · Build · Deploy · Verify
+    runs-on: ubuntu-latest
+
+    # The gate: this Environment is configured (in repo Settings → Environments)
+    # with Required reviewers. The job pauses here until a reviewer approves.
+    environment:
+      name: production
+      url: https://www.esytol.com/vyora
+
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Defense in depth — production never ships on a red gate even if a
+      # release was cut from an unverified commit.
+      - name: Quality gate
+        run: npm run type-check && npm run lint && npm run format:check && npm run test:run
+
+      - name: Install Vercel CLI
+        run: npm i -g vercel@latest
+
+      - name: Pull production env from Vercel
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: Build (production)
+        run: vercel build --prod --token="$VERCEL_TOKEN"
+
+      - name: Deploy prebuilt to production
+        id: deploy
+        run: |
+          url=$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")
+          echo "deployment_url=$url" >> "$GITHUB_OUTPUT"
+          echo "Deployed: $url"
+
+      - name: Verify production is live
+        run: |
+          set -e
+          for path in "/vyora" "/"; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "https://www.esytol.com${path}")
+            echo "www.esytol.com${path} -> HTTP ${code}"
+            test "$code" = "200"
+          done
+          # /vyora must stay noindex in production.
+          curl -s "https://www.esytol.com/robots.txt" | grep -qi "Disallow: /vyora" \
+            && echo "robots.txt disallows /vyora ✓" \
+            || (echo "::error::robots.txt no longer disallows /vyora" && exit 1)
