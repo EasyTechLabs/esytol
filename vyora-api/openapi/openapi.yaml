@@ -1,0 +1,1673 @@
+openapi: 3.1.0
+
+info:
+  title: Vyora API
+  version: 1.0.0-draft.1
+  summary: Authenticated party and event-sync contract for the Vyora credit ledger.
+  description: |
+    Design-only contract. **No implementation of this API exists.**
+
+    Three rules govern every path below.
+
+    **1. The tenant is resolved from the token, never from the request.**
+    A `Merchant` is a server-owned workspace identified by a UUID. No path,
+    query parameter, header or request body in this contract accepts a
+    `merchantId`. A caller cannot name, select or override the workspace they
+    are reading; the access token decides, and the server scopes every query.
+
+    **2. `Party` is the only contact resource.**
+    There is no customer or supplier entity, and no party carries a role field.
+    Direction lives on the financial entry, not the contact — see
+    `docs/platform/adr/0002-party-is-the-core-domain-entity.md`.
+
+    **3. Sync transfers events, never state.**
+    `POST /api/v1/sync/push` appends immutable client events; the server never
+    overwrites. `GET /api/v1/sync/pull` is cursor-based over server receipt
+    order. There is no endpoint that replaces a merchant's ledger with a
+    submitted state document.
+  contact:
+    name: Vyora Platform
+  license:
+    name: Proprietary — EasyTechLabs
+    identifier: LicenseRef-EasyTechLabs-Proprietary
+
+servers:
+  - url: http://127.0.0.1:4000
+    description: |
+      Local development only. **No deployed environment exists**, and no
+      staging or production server is listed here on purpose — there is
+      nowhere for a client generated from this contract to send merchant data
+      by accident.
+
+tags:
+  - name: System
+    description: Liveness and caller identity.
+  - name: Parties
+    description: |
+      Contacts. A party is one person or business the merchant deals with.
+
+      **A party may appear in both credit and debit flows.** In Indian retail
+      credit the same wholesaler routinely sells stock to the shop on credit
+      and buys goods from it on credit. Storing a role would force a false
+      choice and would go stale the moment a late offline event arrived, which
+      in an offline-first system is the normal case. Role is therefore derived
+      from the direction of entries (`given`/`taken`, `received`/`paid`) and
+      is never persisted. The `position` filter computes it at read time.
+  - name: Sync
+    description: Event push and pull. Additive, idempotent, cursor-ordered.
+
+security:
+  - bearerAuth: []
+  - devAuth: []
+
+paths:
+  /api/v1/health:
+    get:
+      operationId: getHealth
+      tags: [System]
+      summary: Liveness and dependency status.
+      description: |
+        The only unauthenticated endpoint. It reports no merchant data and is
+        therefore safe to expose without a tenant scope.
+      security: []
+      responses:
+        "200":
+          description: Service is reachable.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/XRequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /api/v1/me:
+    get:
+      operationId: getMe
+      tags: [System]
+      summary: The caller's resolved merchant workspace, user and device.
+      description: |
+        Returns the tenant scope the server derived from the access token.
+
+        This endpoint exists so a client can *discover* its `merchantId` rather
+        than assert one. It is the only place `merchantId` appears in a
+        response body, and it appears nowhere in any request.
+      responses:
+        "200":
+          description: Resolved caller context.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/XRequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Me"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/parties:
+    get:
+      operationId: listParties
+      tags: [Parties]
+      summary: List parties in the caller's workspace.
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - name: q
+          in: query
+          description: Case-insensitive substring match on name or phone.
+          required: false
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+        - name: position
+          in: query
+          description: |
+            Filter by **derived** net position. This is computed from entry
+            direction at read time. It is not a stored field and cannot be
+            written. `no_entries` is a valid, common state — a party created
+            but not yet transacted with has no position at all.
+          required: false
+          schema:
+            $ref: "#/components/schemas/PartyPosition"
+        - name: updatedSince
+          in: query
+          description: Return only parties whose projection changed at or after this instant.
+          required: false
+          schema:
+            $ref: "#/components/schemas/Timestamp"
+      responses:
+        "200":
+          description: A page of parties.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/XRequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartyPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+    post:
+      operationId: createParty
+      tags: [Parties]
+      summary: Create a party.
+      description: |
+        The client mints the party id, because the same identifier must be
+        usable offline before this call is ever made. Supplying an id that
+        already exists with an identical body is a success (`200`), not a
+        conflict — that is what makes retrying a timed-out create safe.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePartyRequest"
+      responses:
+        "201":
+          description: Party created.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/XRequestId"
+            ETag:
+              $ref: "#/components/headers/ETag"
+            Location:
+              description: Canonical URL of the created party.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Party"
+        "200":
+          description: |
+            Idempotent replay. The same `Idempotency-Key` was already processed
+            with an identical body; the original result is returned unchanged.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/XRequestId"
+            ETag:
+              $ref: "#/components/headers/ETag"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Party"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: |
+            The `Idempotency-Key` was reused with a *different* body, or the
+            party id already exists with different content.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/XRequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+
+  /api/v1/parties/{partyId}:
+    parameters:
+      - $ref: "#/components/parameters/PartyId"
+    get:
+      operationId: getParty
+      tags: [Parties]
+      summary: Fetch one party.
+      description: |
+        Returns `404` when the party does not exist **or belongs to another
+        workspace**. The two cases are deliberately indistinguishable, so a
+        caller cannot probe for the existence of another merchant's contacts.
+      responses:
+        "200":
+          description: The party.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/XRequestId"
+            ETag:
+              $ref: "#/components/headers/ETag"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Party"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    patch:
+      operationId: updateParty
+      tags: [Parties]
+      summary: Update a party's editable fields.
+      description: |
+        Optimistic concurrency is mandatory. `If-Match` must carry the `ETag`
+        from a prior read; a stale value fails with `412` rather than silently
+        overwriting a change made on another device.
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: "#/components/schemas/UpdatePartyRequest"
+      responses:
+        "200":
+          description: Party updated.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/XRequestId"
+            ETag:
+              $ref: "#/components/headers/ETag"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Party"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "412":
+          $ref: "#/components/responses/VersionConflict"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "428":
+          description: "`If-Match` was omitted. It is required, not optional."
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/XRequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /api/v1/sync/push:
+    post:
+      operationId: syncPush
+      tags: [Sync]
+      summary: Append a batch of immutable client events.
+      description: |
+        Each event is judged **independently**. A batch of 50 with one bad
+        event yields 49 accepted and 1 rejected, never an all-or-nothing
+        failure — otherwise one malformed event from an old build would wedge
+        a device's outbox forever.
+
+        The response is `200` whenever the batch was processed, including when
+        every event was rejected. Per-event outcomes live in the body, not the
+        status code. A non-`2xx` status means the *batch* could not be
+        processed at all.
+
+        The client removes both `accepted` and `duplicate` events from its
+        outbox. `duplicate` is a success: it means the server already holds
+        that `eventId`.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PushRequest"
+      responses:
+        "200":
+          description: Batch processed. Inspect per-event outcomes in the body.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/XRequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PushResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: |
+            The client's envelope `schemaVersion` is no longer supported.
+            The client must upgrade before it can sync; its outbox is intact
+            and nothing was consumed.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/XRequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "413":
+          description: Batch exceeded the per-request event limit. Split and retry.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/XRequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/sync/pull:
+    get:
+      operationId: syncPull
+      tags: [Sync]
+      summary: Read events recorded after a cursor.
+      description: |
+        Returns events in **`recordedAt` order** — server receipt order, which
+        is the only total order every device agrees on. `occurredAt` is what
+        the merchant sees on their timeline and is deliberately *not* the sort
+        key here: paginating by device clock would let a device that was
+        offline for a week skip events permanently.
+
+        By default the caller's own `deviceId` is excluded, because those
+        events are already applied locally. The client applies what it receives
+        through the **same event-application path** used for locally created
+        events. There is no second reducer, so client and server cannot drift
+        in interpretation.
+      parameters:
+        - name: cursor
+          in: query
+          description: |
+            Opaque cursor from a previous `nextCursor`. Omit to start from the
+            beginning of the workspace's history.
+          required: false
+          schema:
+            $ref: "#/components/schemas/SyncCursor"
+        - $ref: "#/components/parameters/Limit"
+        - name: deviceId
+          in: query
+          description: The calling device's identifier, used to exclude its own events.
+          required: true
+          schema:
+            $ref: "#/components/schemas/Uuid"
+        - name: includeOwnDevice
+          in: query
+          description: |
+            Include events this device produced. Default `false`. Set `true`
+            only for recovery after local data loss.
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: A page of events.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/XRequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PullResponse"
+        "400":
+          description: |
+            The cursor was malformed or not issued by this server
+            (`SYNC_CURSOR_INVALID`).
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/XRequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: |
+            The cursor is valid but points before the retained window
+            (`SYNC_CURSOR_EXPIRED`), or the client is too old
+            (`SYNC_CLIENT_TOO_OLD`). For an expired cursor the client must
+            restart the pull with no cursor; its local events are unaffected.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/XRequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Production scheme. The token carries the merchant workspace, the user
+        and the device. The server resolves tenant scope from it exclusively.
+
+        Clients never send `merchantId`. There is no request field anywhere in
+        this contract through which a caller could name a workspace, so a
+        token-scoping bug cannot be escalated by a crafted request.
+
+    devAuth:
+      type: apiKey
+      in: header
+      name: X-Vyora-Dev-Identity
+      description: |
+        **Development and contract testing only.**
+
+        Accepted only when the server is started with `VYORA_DEV_AUTH=true`,
+        which is refused outright when `NODE_ENV=production`. The value names a
+        seeded synthetic workspace from the local fixture set; it can only ever
+        resolve to a fixture merchant, never to a real one.
+
+        This is a *distinct scheme*, not a bearer token with a magic value, so
+        that its acceptance is a single explicit branch — greppable, testable,
+        and impossible to reach by accident in a production build. See
+        `docs/platform/auth-and-tenant-model.md` §4.
+
+  headers:
+    XRequestId:
+      description: Correlation id echoed on every response, success or failure.
+      required: true
+      schema:
+        $ref: "#/components/schemas/Uuid"
+    ETag:
+      description: |
+        Opaque optimistic-concurrency token for the resource. Pass it back in
+        `If-Match` on the next write.
+      required: true
+      schema:
+        type: string
+    RetryAfter:
+      description: Seconds to wait before retrying.
+      required: false
+      schema:
+        type: integer
+        minimum: 0
+
+  parameters:
+    PartyId:
+      name: partyId
+      in: path
+      required: true
+      description: Client-minted party identifier.
+      schema:
+        $ref: "#/components/schemas/PartyRef"
+
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      description: Opaque pagination cursor from a previous `nextCursor`.
+      schema:
+        type: string
+        maxLength: 512
+
+    Limit:
+      name: limit
+      in: query
+      required: false
+      description: Maximum items per page.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 50
+
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: |
+        Client-generated UUID scoping this request for replay. Retrying with
+        the same key and an identical body returns the original result; reusing
+        it with a different body is a `409`.
+      schema:
+        $ref: "#/components/schemas/Uuid"
+
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      description: The `ETag` from the most recent read of this resource.
+      schema:
+        type: string
+
+  responses:
+    BadRequest:
+      description: Malformed request — syntax, parameters or headers.
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/XRequestId"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+
+    Unauthorized:
+      description: Missing, malformed or expired credentials.
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/XRequestId"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+
+    NotFound:
+      description: |
+        No such resource in the caller's workspace. Returned identically
+        whether the resource is absent or belongs to another merchant.
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/XRequestId"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+
+    VersionConflict:
+      description: The `If-Match` token is stale; the resource changed since it was read.
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/XRequestId"
+        ETag:
+          $ref: "#/components/headers/ETag"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+
+    ValidationFailed:
+      description: Well-formed request whose contents failed field-level validation.
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/XRequestId"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+
+    TooManyRequests:
+      description: Rate limit exceeded.
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/XRequestId"
+        Retry-After:
+          $ref: "#/components/headers/RetryAfter"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+
+    ServiceUnavailable:
+      description: A dependency is unavailable. Writes are refused, never partially applied.
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/XRequestId"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+
+  schemas:
+    # ── Primitives ──────────────────────────────────────────────────────────
+
+    Uuid:
+      type: string
+      format: uuid
+      description: Server-minted identifier. Always a bare RFC 4122 UUID.
+
+    Timestamp:
+      type: string
+      format: date-time
+      description: ISO-8601 instant with an explicit offset, e.g. `2026-08-05T09:14:22.115Z`.
+
+    BusinessDate:
+      type: string
+      format: date
+      description: |
+        The merchant's trading date, `YYYY-MM-DD`, in their local timezone.
+        Distinct from a timestamp: a sale on the evening of the 4th belongs to
+        the 4th's book regardless of UTC offset.
+
+    Money:
+      type: integer
+      minimum: 0
+      description: |
+        Rupees as a non-negative integer. Direction is carried by the entry's
+        `kind`, never by the sign of the amount, so an amount is never
+        negative anywhere in this contract.
+
+    VyoraId:
+      type: string
+      pattern: "^(pty|txn|pay|evt)_[A-Za-z0-9-]{8,64}$"
+      description: |
+        Client-minted domain identifier: a type prefix, an underscore, then a
+        UUID (`pty_1f0c…`). The prefix makes an id self-describing in a log
+        line and lets entry ids stay unique across credits and payments.
+
+        The UUID fallback for pre-`crypto.randomUUID` runtimes emits a shorter
+        base-36 suffix, which is why the pattern is a length range rather than
+        a strict UUID. **This format already exists on merchants' devices and
+        cannot be changed without rewriting their event logs**, so the contract
+        accepts it as-is rather than forcing a migration.
+
+    PartyRef:
+      allOf:
+        - $ref: "#/components/schemas/VyoraId"
+      pattern: "^pty_[A-Za-z0-9-]{8,64}$"
+      description: A `VyoraId` restricted to the party prefix.
+
+    SyncCursor:
+      type: string
+      maxLength: 512
+      description: |
+        Opaque, server-issued. Encodes `(recordedAt, eventId)` so that events
+        sharing a millisecond are never skipped or repeated across pages.
+        Clients must treat it as meaningless and never construct one.
+
+    # ── Errors ──────────────────────────────────────────────────────────────
+
+    ErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          $ref: "#/components/schemas/ErrorObject"
+
+    ErrorObject:
+      type: object
+      additionalProperties: false
+      required: [code, message, requestId]
+      properties:
+        code:
+          $ref: "#/components/schemas/ErrorCode"
+        message:
+          type: string
+          description: |
+            Developer-facing English. **Never rendered to a merchant.** The
+            client owns merchant-facing wording, which is already written,
+            translated and tone-checked on the device.
+        requestId:
+          allOf:
+            - $ref: "#/components/schemas/Uuid"
+          description: Matches the `X-Request-Id` response header. Quote it in bug reports.
+        details:
+          type: array
+          description: Present when the failure is attributable to specific fields.
+          items:
+            $ref: "#/components/schemas/FieldError"
+
+    FieldError:
+      type: object
+      additionalProperties: false
+      required: [field, code, message]
+      properties:
+        field:
+          type: string
+          description: RFC 9535 JSONPath to the offending value, e.g. `$.events[3].payload.amount`.
+        code:
+          type: string
+          enum:
+            - REQUIRED
+            - INVALID_FORMAT
+            - OUT_OF_RANGE
+            - TOO_LONG
+            - NOT_ALLOWED
+          description: Machine-readable field failure.
+        message:
+          type: string
+
+    ErrorCode:
+      type: string
+      description: Machine-readable failure class. Stable; new values may be added.
+      enum:
+        - BAD_REQUEST
+        - UNAUTHENTICATED
+        - TOKEN_EXPIRED
+        - FORBIDDEN
+        - NOT_FOUND
+        - VALIDATION_FAILED
+        - VERSION_CONFLICT
+        - PRECONDITION_REQUIRED
+        - IDEMPOTENCY_KEY_REUSED
+        - RESOURCE_ALREADY_EXISTS
+        - PAYLOAD_TOO_LARGE
+        - RATE_LIMITED
+        - SYNC_CURSOR_INVALID
+        - SYNC_CURSOR_EXPIRED
+        - SYNC_CLIENT_TOO_OLD
+        - SYNC_SCHEMA_VERSION_UNSUPPORTED
+        - DEPENDENCY_UNAVAILABLE
+        - INTERNAL_ERROR
+
+    # ── System ──────────────────────────────────────────────────────────────
+
+    Health:
+      type: object
+      additionalProperties: false
+      required: [status, version, checkedAt]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded]
+          description: |
+            `degraded` means the service answers but a dependency is impaired.
+            Writes are refused while degraded rather than partially applied.
+        version:
+          type: string
+          description: Build identifier of the running service.
+        checkedAt:
+          $ref: "#/components/schemas/Timestamp"
+        dependencies:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [name, status]
+            properties:
+              name:
+                type: string
+              status:
+                type: string
+                enum: [ok, degraded, down]
+
+    Me:
+      type: object
+      additionalProperties: false
+      required: [merchant, user, device, sync]
+      properties:
+        merchant:
+          type: object
+          additionalProperties: false
+          required: [merchantId, displayName, createdAt]
+          properties:
+            merchantId:
+              allOf:
+                - $ref: "#/components/schemas/Uuid"
+              description: |
+                The workspace this token resolved to. **Read-only and
+                response-only.** It appears in no request anywhere in this
+                contract.
+            displayName:
+              type: string
+            createdAt:
+              $ref: "#/components/schemas/Timestamp"
+        user:
+          type: object
+          additionalProperties: false
+          required: [userId, role]
+          properties:
+            userId:
+              $ref: "#/components/schemas/Uuid"
+            displayName:
+              type: [string, "null"]
+            role:
+              type: string
+              enum: [owner]
+              description: |
+                Only `owner` exists today. Multi-user workspaces are a later
+                capability; the field exists now so adding one is not a
+                breaking change.
+        device:
+          type: object
+          additionalProperties: false
+          required: [deviceId, registeredAt]
+          properties:
+            deviceId:
+              allOf:
+                - $ref: "#/components/schemas/Uuid"
+              description: |
+                An identifier, never a credential. Authorisation comes from the
+                token alone; a known `deviceId` grants nothing.
+            label:
+              type: [string, "null"]
+            registeredAt:
+              $ref: "#/components/schemas/Timestamp"
+        sync:
+          type: object
+          additionalProperties: false
+          required: [schemaVersion, minSupportedSchemaVersion, maxBatchEvents]
+          properties:
+            schemaVersion:
+              type: integer
+              description: Envelope version this server emits.
+            minSupportedSchemaVersion:
+              type: integer
+              description: Oldest client envelope version still accepted on push.
+            maxBatchEvents:
+              type: integer
+              description: Maximum events per push batch.
+        authMode:
+          type: string
+          enum: [bearer, development]
+          description: |
+            Which scheme authenticated this request. `development` can only
+            appear on a non-production server and is surfaced so a client can
+            refuse to display real-looking data in a test build.
+
+    # ── Parties ─────────────────────────────────────────────────────────────
+
+    PartyPosition:
+      type: string
+      enum: [owes_merchant, merchant_owes, settled, no_entries]
+      description: |
+        **Derived, never stored.** Computed by folding entry direction at read
+        time. A party is not "a customer" or "a supplier"; they hold a position
+        that can invert with the next entry.
+
+    Party:
+      type: object
+      additionalProperties: false
+      required: [id, name, createdAt, updatedAt, version]
+      properties:
+        id:
+          $ref: "#/components/schemas/PartyRef"
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        phone:
+          type: [string, "null"]
+          maxLength: 20
+        note:
+          type: [string, "null"]
+          maxLength: 500
+        createdAt:
+          $ref: "#/components/schemas/Timestamp"
+        updatedAt:
+          $ref: "#/components/schemas/Timestamp"
+        version:
+          type: integer
+          minimum: 1
+          description: |
+            Optimistic concurrency counter, incremented on every accepted
+            write. Mirrors the `ETag`; both are supplied so a client can reason
+            about staleness without parsing an opaque token.
+        balance:
+          $ref: "#/components/schemas/PartyBalance"
+
+    PartyBalance:
+      type: object
+      additionalProperties: false
+      required: [net, position, entryCount]
+      readOnly: true
+      description: |
+        Derived projection of this party's entries. **No balance is stored
+        anywhere** — server or device. A stored balance would be a second
+        source of truth and would drift the instant a late offline event
+        arrived, which offline-first makes routine rather than exceptional.
+      properties:
+        net:
+          type: integer
+          description: |
+            Signed rupees. Positive means the party owes the merchant;
+            negative means the merchant owes the party. This is the only
+            signed amount in the contract, and it is computed, never submitted.
+        position:
+          $ref: "#/components/schemas/PartyPosition"
+        entryCount:
+          type: integer
+          minimum: 0
+        lastActivityAt:
+          type: [string, "null"]
+          format: date-time
+
+    CreatePartyRequest:
+      type: object
+      additionalProperties: false
+      required: [id, name]
+      description: |
+        Note what is absent: no `merchantId`, no role, no type, no balance.
+        The workspace comes from the token; role and balance are derived.
+      properties:
+        id:
+          allOf:
+            - $ref: "#/components/schemas/PartyRef"
+          description: |
+            Client-minted. The party must be usable offline the moment the
+            merchant types the name, long before this request is sent.
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        phone:
+          type: [string, "null"]
+          maxLength: 20
+        note:
+          type: [string, "null"]
+          maxLength: 500
+        createdAt:
+          allOf:
+            - $ref: "#/components/schemas/Timestamp"
+          description: |
+            When the merchant actually created the contact on their device.
+            Preserved so an offline-created party keeps its true date rather
+            than the date it happened to reach a server.
+
+    UpdatePartyRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      description: |
+        JSON Merge Patch. An explicit `null` clears an optional field; an
+        omitted key leaves it untouched. `id`, `createdAt`, `version` and
+        `balance` are not editable and are rejected with `NOT_ALLOWED`.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        phone:
+          type: [string, "null"]
+          maxLength: 20
+        note:
+          type: [string, "null"]
+          maxLength: 500
+
+    PartyPage:
+      type: object
+      additionalProperties: false
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Party"
+        page:
+          $ref: "#/components/schemas/PageInfo"
+
+    PageInfo:
+      type: object
+      additionalProperties: false
+      required: [hasMore]
+      properties:
+        nextCursor:
+          type: [string, "null"]
+          maxLength: 512
+        hasMore:
+          type: boolean
+
+    # ── Events ──────────────────────────────────────────────────────────────
+
+    EventType:
+      type: string
+      description: |
+        Closed vocabulary, matching log format v2 already on merchants'
+        devices. Unknown types are rejected on push with an explicit reason
+        rather than silently dropped.
+      enum:
+        - ContactCreated
+        - ContactUpdated
+        - ContactDeleted
+        - CreditRecorded
+        - PaymentRecorded
+        - DueDateChanged
+        - EntryDeleted
+        - ContactReminded
+        - DayClosed
+        - BackupCreated
+        - RestoreCompleted
+        - ImportCompleted
+
+    EntryKind:
+      type: string
+      enum: [given, taken]
+      description: |
+        Credit direction from the merchant's point of view. `given` — the
+        merchant handed over goods or money, so the party owes them. `taken` —
+        the merchant received on credit, so they owe the party.
+
+        **This is where role lives.** The same party can be on either side on
+        different days, which is exactly why no role is stored on the contact.
+
+    PaymentKind:
+      type: string
+      enum: [received, paid]
+      description: |
+        Payment direction from the merchant's point of view. `received` — the
+        party paid the merchant. `paid` — the merchant paid the party.
+
+    ClientEventEnvelope:
+      type: object
+      required: [eventId, occurredAt, payloadVersion]
+      description: |
+        Fields common to every pushed event. Concrete events add their `type`
+        and their typed `payload` on top of this — see `ClientEvent`.
+
+        **`merchantId` is absent by design.** The stored envelope carries one
+        (see `docs/platform/domain-model.md` §2), but the server stamps it from
+        the token. A client that could name a workspace on an event could write
+        into someone else's ledger, so the field simply does not exist on the
+        wire.
+
+        `recordedAt` is likewise absent: it is the server's clock and is
+        assigned on acceptance.
+      properties:
+        eventId:
+          allOf:
+            - $ref: "#/components/schemas/VyoraId"
+          description: |
+            Globally unique, client-generated, and **the idempotency key for
+            this event**. Re-pushing the same `eventId` is a `duplicate`, not
+            an error — which is what makes an unreliable connection safe.
+        aggregateId:
+          type: [string, "null"]
+          description: The party or entry this event concerns, when it concerns one.
+        occurredAt:
+          allOf:
+            - $ref: "#/components/schemas/Timestamp"
+          description: |
+            Device clock — when the merchant did it. Drives the
+            merchant-visible timeline. Never used for sync ordering.
+        payloadVersion:
+          type: integer
+          minimum: 1
+          description: Version of this event type's payload shape.
+        causationId:
+          type: [string, "null"]
+          description: The event that caused this one, when one did.
+
+    ClientEvent:
+      description: |
+        One pushed event, discriminated on `type`. Every payload shape in log
+        format v2 is specified here, so a malformed event is a contract
+        failure the server can name precisely rather than a generic parse
+        error.
+      oneOf:
+        - $ref: "#/components/schemas/ContactCreatedEvent"
+        - $ref: "#/components/schemas/ContactUpdatedEvent"
+        - $ref: "#/components/schemas/ContactDeletedEvent"
+        - $ref: "#/components/schemas/CreditRecordedEvent"
+        - $ref: "#/components/schemas/PaymentRecordedEvent"
+        - $ref: "#/components/schemas/DueDateChangedEvent"
+        - $ref: "#/components/schemas/EntryDeletedEvent"
+        - $ref: "#/components/schemas/ContactRemindedEvent"
+        - $ref: "#/components/schemas/DayClosedEvent"
+        - $ref: "#/components/schemas/BackupCreatedEvent"
+        - $ref: "#/components/schemas/RestoreCompletedEvent"
+        - $ref: "#/components/schemas/ImportCompletedEvent"
+      discriminator:
+        propertyName: type
+        mapping:
+          ContactCreated: "#/components/schemas/ContactCreatedEvent"
+          ContactUpdated: "#/components/schemas/ContactUpdatedEvent"
+          ContactDeleted: "#/components/schemas/ContactDeletedEvent"
+          CreditRecorded: "#/components/schemas/CreditRecordedEvent"
+          PaymentRecorded: "#/components/schemas/PaymentRecordedEvent"
+          DueDateChanged: "#/components/schemas/DueDateChangedEvent"
+          EntryDeleted: "#/components/schemas/EntryDeletedEvent"
+          ContactReminded: "#/components/schemas/ContactRemindedEvent"
+          DayClosed: "#/components/schemas/DayClosedEvent"
+          BackupCreated: "#/components/schemas/BackupCreatedEvent"
+          RestoreCompleted: "#/components/schemas/RestoreCompletedEvent"
+          ImportCompleted: "#/components/schemas/ImportCompletedEvent"
+
+    ContactCreatedEvent:
+      allOf:
+        - $ref: "#/components/schemas/ClientEventEnvelope"
+        - type: object
+          required: [type, payload]
+          properties:
+            type:
+              allOf:
+                - $ref: "#/components/schemas/EventType"
+              const: ContactCreated
+            payload:
+              $ref: "#/components/schemas/ContactCreatedPayload"
+
+    ContactUpdatedEvent:
+      allOf:
+        - $ref: "#/components/schemas/ClientEventEnvelope"
+        - type: object
+          required: [type, payload]
+          properties:
+            type:
+              allOf:
+                - $ref: "#/components/schemas/EventType"
+              const: ContactUpdated
+            payload:
+              $ref: "#/components/schemas/ContactUpdatedPayload"
+
+    ContactDeletedEvent:
+      allOf:
+        - $ref: "#/components/schemas/ClientEventEnvelope"
+        - type: object
+          required: [type, payload]
+          properties:
+            type:
+              allOf:
+                - $ref: "#/components/schemas/EventType"
+              const: ContactDeleted
+            payload:
+              $ref: "#/components/schemas/ContactDeletedPayload"
+
+    CreditRecordedEvent:
+      allOf:
+        - $ref: "#/components/schemas/ClientEventEnvelope"
+        - type: object
+          required: [type, payload]
+          properties:
+            type:
+              allOf:
+                - $ref: "#/components/schemas/EventType"
+              const: CreditRecorded
+            payload:
+              $ref: "#/components/schemas/CreditRecordedPayload"
+
+    PaymentRecordedEvent:
+      allOf:
+        - $ref: "#/components/schemas/ClientEventEnvelope"
+        - type: object
+          required: [type, payload]
+          properties:
+            type:
+              allOf:
+                - $ref: "#/components/schemas/EventType"
+              const: PaymentRecorded
+            payload:
+              $ref: "#/components/schemas/PaymentRecordedPayload"
+
+    DueDateChangedEvent:
+      allOf:
+        - $ref: "#/components/schemas/ClientEventEnvelope"
+        - type: object
+          required: [type, payload]
+          properties:
+            type:
+              allOf:
+                - $ref: "#/components/schemas/EventType"
+              const: DueDateChanged
+            payload:
+              $ref: "#/components/schemas/DueDateChangedPayload"
+
+    EntryDeletedEvent:
+      allOf:
+        - $ref: "#/components/schemas/ClientEventEnvelope"
+        - type: object
+          required: [type, payload]
+          properties:
+            type:
+              allOf:
+                - $ref: "#/components/schemas/EventType"
+              const: EntryDeleted
+            payload:
+              $ref: "#/components/schemas/EntryDeletedPayload"
+
+    ContactRemindedEvent:
+      allOf:
+        - $ref: "#/components/schemas/ClientEventEnvelope"
+        - type: object
+          required: [type, payload]
+          properties:
+            type:
+              allOf:
+                - $ref: "#/components/schemas/EventType"
+              const: ContactReminded
+            payload:
+              $ref: "#/components/schemas/ContactRemindedPayload"
+
+    DayClosedEvent:
+      allOf:
+        - $ref: "#/components/schemas/ClientEventEnvelope"
+        - type: object
+          required: [type, payload]
+          properties:
+            type:
+              allOf:
+                - $ref: "#/components/schemas/EventType"
+              const: DayClosed
+            payload:
+              $ref: "#/components/schemas/DayClosedPayload"
+
+    BackupCreatedEvent:
+      allOf:
+        - $ref: "#/components/schemas/ClientEventEnvelope"
+        - type: object
+          required: [type, payload]
+          properties:
+            type:
+              allOf:
+                - $ref: "#/components/schemas/EventType"
+              const: BackupCreated
+            payload:
+              $ref: "#/components/schemas/BackupCreatedPayload"
+
+    RestoreCompletedEvent:
+      description: Always rejected on push in sync v1. See `SnapshotPayload`.
+      allOf:
+        - $ref: "#/components/schemas/ClientEventEnvelope"
+        - type: object
+          required: [type, payload]
+          properties:
+            type:
+              allOf:
+                - $ref: "#/components/schemas/EventType"
+              const: RestoreCompleted
+            payload:
+              $ref: "#/components/schemas/SnapshotPayload"
+
+    ImportCompletedEvent:
+      description: Always rejected on push in sync v1. See `SnapshotPayload`.
+      allOf:
+        - $ref: "#/components/schemas/ClientEventEnvelope"
+        - type: object
+          required: [type, payload]
+          properties:
+            type:
+              allOf:
+                - $ref: "#/components/schemas/EventType"
+              const: ImportCompleted
+            payload:
+              $ref: "#/components/schemas/SnapshotPayload"
+
+    ServerEvent:
+      allOf:
+        - $ref: "#/components/schemas/ClientEvent"
+        - type: object
+          required: [recordedAt, deviceId, schemaVersion]
+          properties:
+            recordedAt:
+              allOf:
+                - $ref: "#/components/schemas/Timestamp"
+              description: |
+                Server clock — when the event was accepted. **The sync ordering
+                key**, and the only total order every device agrees on.
+            deviceId:
+              allOf:
+                - $ref: "#/components/schemas/Uuid"
+              description: Which device produced the event. Diagnostic, never authorising.
+            schemaVersion:
+              type: integer
+      description: |
+        A stored event as returned by pull. Note it still carries no
+        `merchantId`: the caller's workspace is already established by the
+        token, so echoing it would add a field that only ever restates what the
+        reader knows.
+
+    # ── Event payloads (log format v2, unchanged) ───────────────────────────
+
+    PartyRecord:
+      type: object
+      additionalProperties: false
+      required: [id, name, createdAt]
+      properties:
+        id:
+          $ref: "#/components/schemas/PartyRef"
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        phone:
+          type: [string, "null"]
+        note:
+          type: [string, "null"]
+        createdAt:
+          $ref: "#/components/schemas/Timestamp"
+
+    TransactionRecord:
+      type: object
+      additionalProperties: false
+      required: [id, partyId, amount, kind, date, createdAt]
+      properties:
+        id:
+          $ref: "#/components/schemas/VyoraId"
+        partyId:
+          $ref: "#/components/schemas/PartyRef"
+        amount:
+          $ref: "#/components/schemas/Money"
+        kind:
+          $ref: "#/components/schemas/EntryKind"
+        description:
+          type: [string, "null"]
+        date:
+          $ref: "#/components/schemas/BusinessDate"
+        dueDate:
+          type: [string, "null"]
+          format: date
+        createdAt:
+          $ref: "#/components/schemas/Timestamp"
+
+    PaymentRecord:
+      type: object
+      additionalProperties: false
+      required: [id, partyId, amount, kind, date, createdAt]
+      properties:
+        id:
+          $ref: "#/components/schemas/VyoraId"
+        partyId:
+          $ref: "#/components/schemas/PartyRef"
+        amount:
+          $ref: "#/components/schemas/Money"
+        kind:
+          $ref: "#/components/schemas/PaymentKind"
+        note:
+          type: [string, "null"]
+        date:
+          $ref: "#/components/schemas/BusinessDate"
+        createdAt:
+          $ref: "#/components/schemas/Timestamp"
+
+    ContactCreatedPayload:
+      type: object
+      additionalProperties: false
+      required: [party]
+      properties:
+        party:
+          $ref: "#/components/schemas/PartyRecord"
+
+    ContactUpdatedPayload:
+      type: object
+      additionalProperties: false
+      required: [partyId, changes]
+      properties:
+        partyId:
+          $ref: "#/components/schemas/PartyRef"
+        changes:
+          type: object
+          additionalProperties: false
+          minProperties: 1
+          properties:
+            name:
+              type: string
+              minLength: 1
+              maxLength: 100
+            phone:
+              type: [string, "null"]
+            note:
+              type: [string, "null"]
+
+    ContactDeletedPayload:
+      type: object
+      additionalProperties: false
+      required: [partyId]
+      description: |
+        A **tombstone**, not a deletion. The party leaves the projection; every
+        event about them stays in the log. That is what keeps replay
+        deterministic and what would make "restore a deleted contact" possible
+        with no new storage.
+      properties:
+        partyId:
+          $ref: "#/components/schemas/PartyRef"
+
+    CreditRecordedPayload:
+      type: object
+      additionalProperties: false
+      required: [transaction]
+      properties:
+        transaction:
+          $ref: "#/components/schemas/TransactionRecord"
+
+    PaymentRecordedPayload:
+      type: object
+      additionalProperties: false
+      required: [payment]
+      properties:
+        payment:
+          $ref: "#/components/schemas/PaymentRecord"
+
+    DueDateChangedPayload:
+      type: object
+      additionalProperties: false
+      required: [transactionId]
+      properties:
+        transactionId:
+          $ref: "#/components/schemas/VyoraId"
+        dueDate:
+          type: [string, "null"]
+          format: date
+          description: Null clears the due date.
+
+    EntryDeletedPayload:
+      type: object
+      additionalProperties: false
+      required: [entryId]
+      properties:
+        entryId:
+          allOf:
+            - $ref: "#/components/schemas/VyoraId"
+          description: A transaction or payment id — entry ids are unique across both.
+
+    ContactRemindedPayload:
+      type: object
+      additionalProperties: false
+      required: [partyId, tone]
+      description: |
+        Audit-only. Records that the *merchant* followed up; Vyora sends
+        nothing. Moves no balance, and "last contacted" is read back off the
+        log rather than stored on the contact.
+      properties:
+        partyId:
+          $ref: "#/components/schemas/PartyRef"
+        tone:
+          type: string
+          enum: [gentle, normal, firm]
+
+    DayClosedPayload:
+      type: object
+      additionalProperties: false
+      required: [date, summary, notes]
+      description: |
+        Audit-only. Carries the summary the merchant actually reviewed rather
+        than a value recomputed later, so a back-dated entry recorded next week
+        cannot silently rewrite a day already signed off — the same reason a
+        paper book carries a closing entry.
+      properties:
+        date:
+          $ref: "#/components/schemas/BusinessDate"
+        notes:
+          type: string
+          maxLength: 1000
+        summary:
+          type: object
+          additionalProperties: false
+          required: [date, collected, creditGiven, paidOut, netCash, outstandingChange, entryCount]
+          properties:
+            date:
+              $ref: "#/components/schemas/BusinessDate"
+            collected:
+              type: integer
+            creditGiven:
+              type: integer
+            paidOut:
+              type: integer
+            netCash:
+              type: integer
+            outstandingChange:
+              type: integer
+            entryCount:
+              type: integer
+              minimum: 0
+
+    BackupCreatedPayload:
+      type: object
+      additionalProperties: false
+      required: [entryCount]
+      description: Audit-only. Records that the merchant took a backup. Changes no state.
+      properties:
+        entryCount:
+          type: integer
+          minimum: 0
+
+    SnapshotPayload:
+      type: object
+      additionalProperties: false
+      required: [snapshot]
+      description: |
+        Carried by `RestoreCompleted` and `ImportCompleted`.
+
+        **Always rejected on push in sync v1** with
+        `SNAPSHOT_EVENT_UNSUPPORTED`. A snapshot replaces an entire projection,
+        so one arriving out of order would silently discard newer events from
+        another device — precisely the data loss event-based sync exists to
+        prevent. The shape is specified anyway so the server can recognise the
+        event and reject it for the right reason instead of reporting an
+        unknown type.
+      properties:
+        snapshot:
+          type: object
+          additionalProperties: false
+          required: [version, parties, transactions, payments]
+          properties:
+            version:
+              type: integer
+            parties:
+              type: array
+              items:
+                $ref: "#/components/schemas/PartyRecord"
+            transactions:
+              type: array
+              items:
+                $ref: "#/components/schemas/TransactionRecord"
+            payments:
+              type: array
+              items:
+                $ref: "#/components/schemas/PaymentRecord"
+
+    # ── Sync ────────────────────────────────────────────────────────────────
+
+    PushRequest:
+      type: object
+      additionalProperties: false
+      required: [deviceId, schemaVersion, events]
+      description: |
+        No `merchantId`. The batch lands in the workspace the token resolves
+        to, and there is no way to direct it elsewhere.
+      properties:
+        deviceId:
+          allOf:
+            - $ref: "#/components/schemas/Uuid"
+          description: |
+            Registered on first use. An identifier for cursor bookkeeping and
+            diagnostics — **not a credential**, and it grants no access.
+        schemaVersion:
+          type: integer
+          minimum: 1
+          description: |
+            Envelope version of every event in this batch. Below
+            `minSupportedSchemaVersion` the whole batch is refused with `409`
+            and nothing is consumed, so the client's outbox survives intact.
+        events:
+          type: array
+          minItems: 1
+          maxItems: 500
+          description: Outbox events, oldest first.
+          items:
+            $ref: "#/components/schemas/ClientEvent"
+
+    PushResponse:
+      type: object
+      additionalProperties: false
+      required: [accepted, duplicate, rejected, cursor, serverTime]
+      description: |
+        Partial acceptance is the normal case, not an error path. Every
+        submitted `eventId` appears in exactly one of the three arrays.
+      properties:
+        accepted:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [eventId, recordedAt]
+            properties:
+              eventId:
+                $ref: "#/components/schemas/VyoraId"
+              recordedAt:
+                $ref: "#/components/schemas/Timestamp"
+        duplicate:
+          type: array
+          description: |
+            Already held by the server. **A success.** The client removes these
+            from its outbox exactly as it does accepted ones.
+          items:
+            type: object
+            additionalProperties: false
+            required: [eventId, recordedAt]
+            properties:
+              eventId:
+                $ref: "#/components/schemas/VyoraId"
+              recordedAt:
+                allOf:
+                  - $ref: "#/components/schemas/Timestamp"
+                description: When the event was *originally* accepted.
+        rejected:
+          type: array
+          items:
+            $ref: "#/components/schemas/RejectedEvent"
+        cursor:
+          allOf:
+            - $ref: "#/components/schemas/SyncCursor"
+          description: |
+            Cursor positioned after the last event accepted in this batch, so a
+            client can push then pull without re-reading its own writes.
+        serverTime:
+          $ref: "#/components/schemas/Timestamp"
+
+    RejectedEvent:
+      type: object
+      additionalProperties: false
+      required: [eventId, reason, message]
+      description: |
+        A rejection is **terminal for that event**. The client must not retry
+        it unchanged; it moves the event to a quarantine the merchant can be
+        told about. Silently re-queueing a permanently invalid event would
+        wedge the outbox forever.
+      properties:
+        eventId:
+          $ref: "#/components/schemas/VyoraId"
+        reason:
+          $ref: "#/components/schemas/RejectionReason"
+        message:
+          type: string
+          description: Developer-facing detail. Never shown to a merchant.
+        details:
+          type: array
+          items:
+            $ref: "#/components/schemas/FieldError"
+
+    RejectionReason:
+      type: string
+      description: Why a single event was refused, independent of the rest of the batch.
+      enum:
+        - SNAPSHOT_EVENT_UNSUPPORTED
+        - UNKNOWN_EVENT_TYPE
+        - PAYLOAD_VERSION_UNSUPPORTED
+        - PAYLOAD_INVALID
+        - EVENT_ID_CONFLICT
+        - EVENT_ID_MALFORMED
+        - OCCURRED_AT_OUT_OF_RANGE
+        - AGGREGATE_MISMATCH
+
+    PullResponse:
+      type: object
+      additionalProperties: false
+      required: [events, hasMore, serverTime]
+      properties:
+        events:
+          type: array
+          description: Ordered by `recordedAt`, ties broken by `eventId`.
+          items:
+            $ref: "#/components/schemas/ServerEvent"
+        nextCursor:
+          type: [string, "null"]
+          maxLength: 512
+          description: |
+            Pass to the next call. Null only when the caller has reached the
+            end of history and `hasMore` is false.
+        hasMore:
+          type: boolean
+        serverTime:
+          $ref: "#/components/schemas/Timestamp"

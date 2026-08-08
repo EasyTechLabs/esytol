@@ -1,0 +1,14 @@
+node_modules/
+dist/
+coverage/
+
+# Secrets and local machine state. Only .env.example is committed.
+.env
+.env.local
+.env.*.local
+
+# Local database artefacts. A cluster must never enter version control.
+pgdata/
+*.dump
+*.sql.gz
+pg_log/

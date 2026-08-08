@@ -9,24 +9,30 @@ import { useState } from "react";
 import Link from "next/link";
 import { useVyora } from "../VyoraProvider";
 import type { Party } from "@/lib/vyora/types";
-import { readSearch } from "@/lib/vyora/ledger";
 import { isFavorite, toggleFavorite, withFavoritesFirst } from "@/lib/vyora/productivity";
 import { ContactSheet, useLongPress } from "../ContactSheet";
 import { formatMoney, balanceLabel, balanceColor } from "@/lib/vyora/format";
 import { BigButton, Empty } from "../components";
+import { usePartyList } from "../usePartySource";
+import { PartySourceNotice } from "../PartySourceNotice";
 
 export function Parties() {
-  const { ready, ledger, dispatch, settings, updateSettings } = useVyora();
+  const { ready, dispatch, settings, updateSettings } = useVyora();
   const [q, setQ] = useState("");
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [sheetFor, setSheetFor] = useState<Party | null>(null);
 
+  // Local ledger by default. The remote source is a development opt-in and
+  // falls back to local on any failure, so this list is never empty because a
+  // server was unreachable.
+  const { results: rows, source, error, loading, retry } = usePartyList(q);
+
   if (!ready) return <div className="py-20 text-center text-gray-400">Loading…</div>;
 
   // Pinned customers first; the ledger's exposure order survives within groups.
-  const results = withFavoritesFirst(readSearch(ledger, q), settings, (b) => b.party.id);
+  const results = withFavoritesFirst(rows, settings, (b) => b.party.id);
 
   const add = () => {
     const result = dispatch({ type: "CreateContact", name, phone: phone || undefined });
@@ -38,6 +44,9 @@ export function Parties() {
 
   return (
     <div className="space-y-4">
+      {/* Renders nothing unless a developer enabled the API read path. */}
+      <PartySourceNotice source={source} error={error} loading={loading} onRetry={retry} />
+
       {/* Instant search */}
       <input
         value={q}
