@@ -6,6 +6,31 @@ Built with Next.js 15, React 19, TypeScript, and Tailwind CSS.
 
 ---
 
+## Running the Vyora stack locally
+
+The web app talks to a local `vyora-api`. Both, plus PostgreSQL and Metro, come
+up with one command from the `vyora` repository:
+
+```powershell
+.\scripts\dev-stack.ps1 start     # database + API + web + Metro, then verify
+.\scripts\dev-stack.ps1 status    # ports, PIDs, URLs
+.\scripts\dev-stack.ps1 stop      # stops processes; NEVER deletes data
+```
+
+This web app alone (local-first, no API):
+
+```bash
+npm ci
+npm run dev                       # http://127.0.0.1:3000/vyora
+```
+
+The four `NEXT_PUBLIC_VYORA_API_*` flags are `false` in committed configuration.
+`dev-stack.ps1` sets them in the process environment only; starting `next dev`
+by hand leaves the app purely local, which is the intended default.
+
+Full four-process workflow and troubleshooting:
+[`vyora/architecture/local-development.md`](https://github.com/EasyTechLabs/vyora/blob/main/architecture/local-development.md)
+
 ## Vyora platform
 
 Vyora is the credit-ledger product inside this app. Its backend and mobile app
