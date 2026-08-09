@@ -105,7 +105,12 @@ describe("duplicate handling keeps the log immutable", () => {
     const replay = await record(body, key);
 
     expect(first.status).toBe(201);
-    expect(replay.body.id).toBe(body.id);
+    // VYORA-PLATFORM-015: the contract used to document `200` here while the
+    // server replayed the stored `201`. The prose ("the original result is
+    // returned unchanged") and the status code contradicted each other; the
+    // prose was right. Pinned now so the two cannot drift apart again.
+    expect(replay.status).toBe(201);
+    expect(replay.body).toEqual(first.body);
 
     const { rows } = await h.pool.query<{ n: number }>(
       `SELECT count(*)::int AS n FROM events

@@ -188,7 +188,16 @@ paths:
               $ref: "#/components/schemas/CreatePartyRequest"
       responses:
         "201":
-          description: Party created.
+          description: |
+            Party created.
+
+            **An idempotent replay returns this same `201` and the same body.**
+            Retrying with the same `Idempotency-Key` and an identical body
+            returns the stored response verbatim — status included — because a
+            retry that is distinguishable from the original is not idempotent.
+            A client that lost the first response cannot tell whether it or its
+            retry did the work, and it does not need to: exactly one party and
+            exactly one event exist either way.
           headers:
             X-Request-Id:
               $ref: "#/components/headers/XRequestId"
@@ -198,19 +207,6 @@ paths:
               description: Canonical URL of the created party.
               schema:
                 type: string
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Party"
-        "200":
-          description: |
-            Idempotent replay. The same `Idempotency-Key` was already processed
-            with an identical body; the original result is returned unchanged.
-          headers:
-            X-Request-Id:
-              $ref: "#/components/headers/XRequestId"
-            ETag:
-              $ref: "#/components/headers/ETag"
           content:
             application/json:
               schema:
@@ -340,19 +336,16 @@ paths:
               $ref: "#/components/schemas/RecordCreditRequest"
       responses:
         "201":
-          description: Credit recorded; the event is in the log.
-          headers:
-            X-Request-Id:
-              $ref: "#/components/headers/XRequestId"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/LedgerEntry"
-        "200":
           description: |
-            Idempotent replay. The same `Idempotency-Key` was already processed
-            with an identical body; the original result is returned unchanged
-            and **no second event was appended**.
+            Credit recorded; the event is in the log.
+
+            **An idempotent replay returns this same `201` and the same body,
+            and appends no second event.** The stored response is returned
+            verbatim — status included — because a retry that is
+            distinguishable from the original is not idempotent. A client whose
+            connection dropped mid-write cannot tell whether it or its retry
+            recorded the entry, and it does not need to: exactly one entry and
+            exactly one event exist either way.
           headers:
             X-Request-Id:
               $ref: "#/components/headers/XRequestId"
@@ -412,6 +405,115 @@ paths:
                 $ref: "#/components/schemas/PartyStatement"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/parties/{partyId}/payments:
+    parameters:
+      - $ref: "#/components/parameters/PartyId"
+    post:
+      operationId: recordPayment
+      tags: [Ledger]
+      summary: Record a payment against a party.
+      description: |
+        Appends one immutable `PaymentRecorded` event — the same type and
+        payload already in log format v2 on merchants' devices.
+
+        **A payment does not settle a specific credit.** It moves the party's
+        net position and nothing else. Real udhaar is not invoice-matched: a
+        merchant takes ₹500 against a running tab, not against the entry from
+        the 14th. Allocating payments to entries would invent a relationship
+        the merchant never asserted, and would then have to be un-invented when
+        an older entry arrived late from another device.
+
+        `kind` is the direction from the merchant's point of view. `received` —
+        the party paid the merchant, so they owe less. `paid` — the merchant
+        paid the party, so the merchant owes less.
+
+        Recording a payment cannot take a balance past zero into a fabricated
+        one: over-payment is permitted and simply inverts the position, because
+        refusing it would make the ledger disagree with what physically
+        happened at the counter.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecordPaymentRequest"
+      responses:
+        "201":
+          description: |
+            Payment recorded; the event is in the log.
+
+            **An idempotent replay returns this same `201` and the same body,
+            and appends no second event.** The stored response is returned
+            verbatim — status included — because a retry that is
+            distinguishable from the original is not idempotent.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/XRequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LedgerEntry"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: |
+            The `Idempotency-Key` was reused with a different body, or the entry
+            id already exists with different content. Never an overwrite.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/XRequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+
+  /api/v1/parties/{partyId}/summary:
+    parameters:
+      - $ref: "#/components/parameters/PartyId"
+    get:
+      operationId: getPartyLedgerSummary
+      tags: [Ledger]
+      summary: A party's ledger totals, without the entries.
+      description: |
+        What the statement adds up to, for callers that need the totals but not
+        the history — a party card, a list row, a mobile screen on a slow
+        connection.
+
+        **Every number here is folded from accepted events at read time.**
+        Nothing is stored and nothing is cached. This endpoint and
+        `/statement` derive their balance through the same fold, so a summary
+        can never disagree with the statement it summarises.
+
+        The four `totals` are unsigned gross amounts per direction; `balance.net`
+        is the single signed number. They are reported separately because
+        "you've given ₹40,000 and been paid ₹38,500" is a different fact from
+        "₹1,500 outstanding", and a merchant chasing a debt needs both.
+
+        `404` when the party does not exist **or belongs to another workspace** —
+        deliberately indistinguishable.
+      responses:
+        "200":
+          description: The summary.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/XRequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartyLedgerSummary"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
@@ -1156,6 +1258,43 @@ components:
             offline keeps its true moment rather than the moment it reached a
             server.
 
+    RecordPaymentRequest:
+      type: object
+      additionalProperties: false
+      required: [id, amount, kind, date]
+      description: |
+        Mirrors `RecordCreditRequest` deliberately: same absences (no
+        `merchantId`, no `partyId` in the body, no balance), same client-minted
+        id, same offline-first reasoning.
+
+        There is no `dueDate` and no `appliesTo`. A payment has nothing falling
+        due, and it settles the running position rather than a nominated entry.
+      properties:
+        id:
+          allOf:
+            - $ref: "#/components/schemas/VyoraId"
+          description: Client-minted entry id, so the payment exists offline immediately.
+        amount:
+          $ref: "#/components/schemas/Money"
+        kind:
+          $ref: "#/components/schemas/PaymentKind"
+        note:
+          type: [string, "null"]
+          maxLength: 500
+          description: |
+            The merchant's own words — "part payment", "cash at shop". Named
+            `note` rather than `description` because that is what the field is
+            called on the local `Payment` and renaming it in transit would make
+            the two records look like different things.
+        date:
+          $ref: "#/components/schemas/BusinessDate"
+        createdAt:
+          allOf:
+            - $ref: "#/components/schemas/Timestamp"
+          description: |
+            When the merchant actually recorded it. Preserved so a payment
+            taken offline keeps its true moment.
+
     LedgerEntry:
       type: object
       additionalProperties: false
@@ -1170,8 +1309,9 @@ components:
           type: string
           enum: [credit, payment]
           description: |
-            `payment` exists in the projection because log v2 has payments, but
-            no endpoint in this contract creates one yet.
+            `credit` from `POST …/credits`, `payment` from `POST …/payments`.
+            Both are entries in one log; the distinction is what the merchant
+            did, not where it is stored.
         direction:
           type: string
           enum: [given, taken, received, paid]
@@ -1223,6 +1363,72 @@ components:
             $ref: "#/components/schemas/StatementRow"
         balance:
           $ref: "#/components/schemas/PartyBalance"
+
+    LedgerTotals:
+      type: object
+      additionalProperties: false
+      required: [creditGiven, creditTaken, paymentReceived, paymentPaid]
+      readOnly: true
+      description: |
+        Gross unsigned amounts per direction. Deliberately not netted against
+        each other here — `PartyBalance.net` is the one signed number, and
+        keeping the gross figures separate is what lets a merchant see that a
+        quiet ₹1,500 balance sits on ₹40,000 of trade rather than ₹1,500 of it.
+      properties:
+        creditGiven:
+          allOf:
+            - $ref: "#/components/schemas/Money"
+          description: Total credit the merchant handed over.
+        creditTaken:
+          allOf:
+            - $ref: "#/components/schemas/Money"
+          description: Total credit the merchant received.
+        paymentReceived:
+          allOf:
+            - $ref: "#/components/schemas/Money"
+          description: Total the party paid the merchant.
+        paymentPaid:
+          allOf:
+            - $ref: "#/components/schemas/Money"
+          description: Total the merchant paid the party.
+
+    LedgerCounts:
+      type: object
+      additionalProperties: false
+      required: [credits, payments]
+      readOnly: true
+      properties:
+        credits:
+          type: integer
+          minimum: 0
+        payments:
+          type: integer
+          minimum: 0
+
+    PartyLedgerSummary:
+      type: object
+      additionalProperties: false
+      required: [partyId, balance, totals, counts]
+      readOnly: true
+      description: |
+        The statement's arithmetic without its rows. Folded from the same
+        entries through the same code path as `/statement`, so the two cannot
+        report different balances for the same party.
+      properties:
+        partyId:
+          $ref: "#/components/schemas/PartyRef"
+        balance:
+          $ref: "#/components/schemas/PartyBalance"
+        totals:
+          $ref: "#/components/schemas/LedgerTotals"
+        counts:
+          $ref: "#/components/schemas/LedgerCounts"
+        firstActivityAt:
+          type: [string, "null"]
+          format: date-time
+          description: |
+            When this relationship started. `null` when the party has no
+            entries — a contact saved ahead of the first sale, which is normal.
 
     # ── Events ──────────────────────────────────────────────────────────────
 

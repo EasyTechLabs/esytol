@@ -1,10 +1,16 @@
 /**
- * Ledger endpoints: record a credit, read a statement.
+ * Ledger endpoints: record a credit, record a payment, read a statement, read a
+ * summary.
  *
- * Recording a credit mints a `CreditRecorded` event — the same type and payload
- * already on merchants' devices in log format v2 — and hands it to
- * `appendAndApply`, the one server-side event-application path. Nothing here
- * writes a projection directly, and nothing here accepts submitted state.
+ * Recording an entry mints a `CreditRecorded` or `PaymentRecorded` event — the
+ * same types and payloads already on merchants' devices in log format v2 — and
+ * hands it to `appendAndApply`, the one server-side event-application path.
+ * Nothing here writes a projection directly, and nothing here accepts submitted
+ * state.
+ *
+ * A payment moves the party's net position; it does not settle a nominated
+ * entry. Nothing in this file links a payment to a credit, because the merchant
+ * never asserted that link.
  *
  * This is not sync. Sync reconciles two devices' logs; this appends one event
  * and reads the projection back.
@@ -16,7 +22,7 @@ import type { AppContext } from "../../server.js";
 import { withTransaction } from "../../db/pool.js";
 import { appendAndApply } from "../../events/apply.js";
 import { findParty } from "../parties/repository.js";
-import { findEntry, readStatement, signedAmount } from "./repository.js";
+import { findEntry, readStatement, readSummary, signedAmount } from "./repository.js";
 import { badRequest, notFound, resourceAlreadyExists, validationFailed } from "../../errors.js";
 import { readIdempotency, recordIdempotency } from "../../idempotency.js";
 
@@ -92,6 +98,99 @@ export function registerLedgerRoutes(app: FastifyInstance, ctx: AppContext): voi
     });
 
     return reply.status(201).send(entry);
+  });
+
+  // ── POST /api/v1/parties/{partyId}/payments ───────────────────────────────
+  //
+  // Structurally identical to recording a credit, and deliberately kept as its
+  // own handler rather than folded into a shared one parameterised by event
+  // type. The two mint different events with different payload shapes, and a
+  // single handler with a `type` argument is exactly the shape in which a
+  // future edit silently applies a credit's rule to a payment.
+  app.post("/api/v1/parties/:partyId/payments", async (request, reply) => {
+    const tenant = await request.resolveTenant();
+    const { partyId } = request.params as { partyId: string };
+    const key = requireIdempotencyKey(request.headers["idempotency-key"]);
+    const body = request.body as Record<string, unknown>;
+
+    const problems = ctx.contract.validate("RecordPaymentRequest", body);
+    if (problems) throw validationFailed("Request body failed contract validation.", problems);
+
+    const replay = await readIdempotency(ctx.pool, tenant.merchantId, key, { partyId, body });
+    if (replay) return reply.status(replay.status).send(replay.body);
+
+    const entryId = body.id as string;
+    const createdAt = (body.createdAt as string | undefined) ?? new Date().toISOString();
+
+    const entry = await withTransaction(ctx.pool, async (client) => {
+      const party = await findParty(client, tenant.merchantId, partyId);
+      if (!party) throw notFound(`No party ${partyId} in this workspace.`);
+
+      const existing = await findEntry(client, tenant.merchantId, entryId);
+      if (existing) {
+        // Entry ids are unique across credits *and* payments, so this also
+        // catches a payment reusing a credit's id — which must be a conflict,
+        // never a silent replacement of one kind of entry by the other.
+        const same =
+          existing.partyId === partyId &&
+          existing.entryType === "payment" &&
+          existing.amount === body.amount &&
+          existing.direction === body.kind;
+        if (!same)
+          throw resourceAlreadyExists(`Entry ${entryId} already exists with different content.`);
+        return existing;
+      }
+
+      await appendAndApply(client, tenant.merchantId, tenant.deviceId, ctx.config.schemaVersion, {
+        eventId: `evt_${randomUUID()}`,
+        type: "PaymentRecorded",
+        aggregateId: partyId,
+        payloadVersion: 1,
+        occurredAt: createdAt,
+        payload: {
+          payment: {
+            id: entryId,
+            partyId,
+            amount: body.amount,
+            kind: body.kind,
+            note: body.note ?? null,
+            date: body.date,
+            createdAt,
+          },
+        },
+      });
+
+      const created = await findEntry(client, tenant.merchantId, entryId);
+      if (!created) throw new Error("entry projection missing immediately after append");
+      await recordIdempotency(client, tenant.merchantId, key, { partyId, body }, 201, created);
+      return created;
+    });
+
+    return reply.status(201).send(entry);
+  });
+
+  // ── GET /api/v1/parties/{partyId}/summary ─────────────────────────────────
+  app.get("/api/v1/parties/:partyId/summary", async (request, reply) => {
+    const tenant = await request.resolveTenant();
+    const { partyId } = request.params as { partyId: string };
+
+    const party = await findParty(ctx.pool, tenant.merchantId, partyId);
+    if (!party) throw notFound(`No party ${partyId} in this workspace.`);
+
+    const summary = await readSummary(ctx.pool, tenant.merchantId, partyId);
+
+    return reply.send({
+      partyId,
+      balance: {
+        net: summary.net,
+        position: position(summary.net, summary.entryCount),
+        entryCount: summary.entryCount,
+        lastActivityAt: summary.lastActivityAt,
+      },
+      totals: summary.totals,
+      counts: summary.counts,
+      firstActivityAt: summary.firstActivityAt,
+    });
   });
 
   // ── GET /api/v1/parties/{partyId}/statement ───────────────────────────────

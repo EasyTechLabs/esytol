@@ -29,10 +29,10 @@ describe("OpenAPI contract", () => {
     }
   });
 
-  // VYORA-PLATFORM-003 approved eight operations; VYORA-PLATFORM-013 added the
-  // two ledger operations deliberately. The surface stays pinned — it just
-  // grew by exactly the two the ledger slice needs, and nothing else.
-  it("declares exactly the ten approved operations", () => {
+  // VYORA-PLATFORM-003 approved eight operations; 013 added the two credit
+  // ledger operations, 015 added payments and the summary. The surface stays
+  // pinned — it grows only by the operations a milestone deliberately adds.
+  it("declares exactly the twelve approved operations", () => {
     const actual = contract.operations.map((o) => `${o.method} ${o.path}`).sort();
     expect(actual).toEqual(
       [
@@ -43,7 +43,9 @@ describe("OpenAPI contract", () => {
         "GET /api/v1/parties/{partyId}",
         "PATCH /api/v1/parties/{partyId}",
         "POST /api/v1/parties/{partyId}/credits",
+        "POST /api/v1/parties/{partyId}/payments",
         "GET /api/v1/parties/{partyId}/statement",
+        "GET /api/v1/parties/{partyId}/summary",
         "POST /api/v1/sync/push",
         "GET /api/v1/sync/pull",
       ].sort()
@@ -54,9 +56,27 @@ describe("OpenAPI contract", () => {
     // An entry is money. It is appended once, and corrected by a further
     // event — never edited away.
     const verbs = contract.operations
-      .filter((o) => o.path.includes("/credits") || o.path.includes("/statement"))
+      .filter((o) => /\/(credits|payments|statement|summary)$/.test(o.path))
       .map((o) => o.method);
-    expect(verbs.sort()).toEqual(["GET", "POST"]);
+    expect(verbs.length).toBe(4);
+    expect([...new Set(verbs)].sort()).toEqual(["GET", "POST"]);
+  });
+
+  it("never lets a payment nominate the entry it settles", () => {
+    // Real udhaar is not invoice-matched. A field naming a target entry would
+    // record a link the merchant never asserted, and would then have to be
+    // rewritten whenever an older entry arrived late from another device.
+    const components = contract.document.components as {
+      schemas: Record<
+        string,
+        { properties: Record<string, unknown>; additionalProperties: boolean }
+      >;
+    };
+    const schema = components.schemas.RecordPaymentRequest!;
+    expect(schema.additionalProperties).toBe(false);
+    for (const forbidden of ["appliesTo", "transactionId", "entryId", "settles", "balance"]) {
+      expect(Object.keys(schema.properties)).not.toContain(forbidden);
+    }
   });
 
   it("never accepts a merchantId in any request", () => {

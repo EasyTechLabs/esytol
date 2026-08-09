@@ -130,6 +130,93 @@ export async function readStatement(
   };
 }
 
+export interface LedgerTotals {
+  creditGiven: number;
+  creditTaken: number;
+  paymentReceived: number;
+  paymentPaid: number;
+}
+
+export interface LedgerSummary {
+  net: number;
+  entryCount: number;
+  totals: LedgerTotals;
+  counts: { credits: number; payments: number };
+  firstActivityAt: string | null;
+  lastActivityAt: string | null;
+}
+
+/**
+ * A party's totals without its rows.
+ *
+ * The net is folded from the same `signedAmount` the statement uses, over the
+ * same rows, in the same order. That is the point: a summary that computed its
+ * balance a second way would eventually disagree with the statement it claims
+ * to summarise, and a merchant would have no way to tell which number to trust.
+ *
+ * Unlike `readStatement` this takes no limit — a total over the first 50 entries
+ * is not a total.
+ */
+export async function readSummary(
+  db: Pool | PoolClient,
+  merchantId: string,
+  partyId: string
+): Promise<LedgerSummary> {
+  const { rows } = await db.query<{
+    entry_type: "credit" | "payment";
+    direction: EntryDirection;
+    amount: number;
+    created_at: Date;
+  }>(
+    `SELECT entry_type, direction, amount, created_at
+       FROM entry_projection
+      WHERE merchant_id = $1 AND party_id = $2 AND deleted = false
+      ORDER BY created_at ASC, entry_id ASC`,
+    [merchantId, partyId]
+  );
+
+  const totals: LedgerTotals = {
+    creditGiven: 0,
+    creditTaken: 0,
+    paymentReceived: 0,
+    paymentPaid: 0,
+  };
+  const counts = { credits: 0, payments: 0 };
+  let net = 0;
+
+  for (const row of rows) {
+    net += signedAmount(row.direction, row.amount);
+    if (row.entry_type === "credit") counts.credits += 1;
+    else counts.payments += 1;
+
+    switch (row.direction) {
+      case "given":
+        totals.creditGiven += row.amount;
+        break;
+      case "taken":
+        totals.creditTaken += row.amount;
+        break;
+      case "received":
+        totals.paymentReceived += row.amount;
+        break;
+      case "paid":
+        totals.paymentPaid += row.amount;
+        break;
+    }
+  }
+
+  const first = rows[0];
+  const last = rows[rows.length - 1];
+  return {
+    net,
+    entryCount: rows.length,
+    totals,
+    counts,
+    firstActivityAt: first ? first.created_at.toISOString() : null,
+    lastActivityAt: last ? last.created_at.toISOString() : null,
+  };
+}
+
 /** Whether an entry id already exists in this workspace, and its content. */
 export async function findEntry(
   db: Pool | PoolClient,
