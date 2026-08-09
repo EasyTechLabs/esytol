@@ -6,6 +6,22 @@ Built with Next.js 15, React 19, TypeScript, and Tailwind CSS.
 
 ---
 
+## Vyora platform
+
+Vyora is the credit-ledger product inside this app. Its backend and mobile app
+live in their own repositories; this one holds the **web** app and a
+development-only adapter that talks to a local API.
+
+|                                                                        |                                                                               |
+| ---------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| [`docs/platform/PROJECT_CONTEXT.md`](docs/platform/PROJECT_CONTEXT.md) | **Start here.** The durable handoff — read cold, do not rely on chat history. |
+| [`vyora-api`](https://github.com/EasyTechLabs/vyora-api)               | Backend: Fastify, PostgreSQL, the OpenAPI contract.                           |
+| [`vyora-mobile`](https://github.com/EasyTechLabs/vyora-mobile)         | Expo / React Native app.                                                      |
+| [`vyora`](https://github.com/EasyTechLabs/vyora)                       | Knowledge base and product planning.                                          |
+
+All Vyora remote-API flags are committed as `false` and are development-only.
+Production refuses every `/api/vyora-dev/*` route regardless of flags.
+
 ## Tech Stack
 
 | Layer     | Technology                     |
