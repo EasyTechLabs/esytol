@@ -8,26 +8,32 @@
  */
 
 import { useVyora } from "../VyoraProvider";
-import { readStatement } from "@/lib/vyora/ledger";
 import { todayISO } from "@/lib/vyora/selectors";
 import { isOverdue, remainingLabel } from "@/lib/vyora/duedates";
 import { formatMoney, formatDate, balanceLabel, balanceColor } from "@/lib/vyora/format";
 import { Empty } from "../components";
 import { usePartyDetail } from "../usePartySource";
 import { PartySourceNotice } from "../PartySourceNotice";
+import { useStatement, useCreditWriter } from "../useLedgerSource";
+import { DevRecordCredit } from "../DevRecordCredit";
 
 export function PartyStatement({ partyId }: { partyId: string }) {
   const { ready, ledger, dispatch } = useVyora();
 
-  // Header identity and net may come from the development API; the statement
-  // rows below always come from the local log, because the API exposes no
-  // entry-level read and inventing one is out of scope for a read-only slice.
-  const { party, net, source, error, loading, retry } = usePartyDetail(partyId);
+  // Header identity comes from the party source; the statement rows and the
+  // outstanding come from the ledger source. Both default to local and both
+  // fall back to local on failure.
+  const { party, net: partyNet, source, error, loading, retry } = usePartyDetail(partyId);
+  const statement = useStatement(partyId, party?.name ?? "");
+  const creditWriter = useCreditWriter();
 
   if (!ready) return <div className="py-20 text-center text-gray-400">Loading…</div>;
   if (!party) return <Empty title="Party not found" subtitle="It may have been cleared." />;
 
-  const rows = readStatement(ledger, partyId);
+  const rows = statement.rows;
+  // When the statement came from the API its balance is the folded total of the
+  // rows on screen, so it is the one that matches what the merchant can see.
+  const net = statement.source === "remote" ? statement.net : partyNet;
   const today = todayISO();
 
   // Due dates live on the transaction, not the statement row — read them off
@@ -41,6 +47,27 @@ export function PartyStatement({ partyId }: { partyId: string }) {
     <div className="space-y-4">
       {/* Renders nothing unless a developer enabled the API read path. */}
       <PartySourceNotice source={source} error={error} loading={loading} onRetry={retry} />
+      {/* Ledger source notice — renders nothing unless remote statements are on. */}
+      <PartySourceNotice
+        source={statement.source}
+        error={statement.error}
+        loading={statement.loading}
+        onRetry={statement.reload}
+      />
+
+      {/* Developer-only credit recording. Renders nothing by default. */}
+      <DevRecordCredit
+        target={creditWriter.target}
+        pending={creditWriter.pending}
+        error={creditWriter.error}
+        onDismissError={creditWriter.clearError}
+        onRecord={async (input) => {
+          const ok = await creditWriter.recordCredit(partyId, input);
+          // The entry landed in the API, so re-read the statement to show it.
+          if (ok) statement.reload();
+          return ok;
+        }}
+      />
 
       {/* Header */}
       <div className="rounded-2xl border border-gray-200 bg-white p-4">
