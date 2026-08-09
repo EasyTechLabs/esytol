@@ -5,3 +5,9 @@ dist/
 public/
 *.lock
 next-env.d.ts
+
+# Additive sibling projects. Each carries its own toolchain and its own
+# formatting; the root Prettier walking into them produces line-ending churn in
+# files this project never edits.
+vyora-api/
+vyora-mobile/

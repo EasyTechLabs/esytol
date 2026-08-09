@@ -12,7 +12,7 @@ export default defineConfig({
     // needs the node environment, serial execution and a live PostgreSQL
     // database. Running its suite here under jsdom fails for reasons that have
     // nothing to do with the web app. Run it with `npm test` inside vyora-api/.
-    exclude: [...configDefaults.exclude, "vyora-api/**"],
+    exclude: [...configDefaults.exclude, "vyora-api/**", "vyora-mobile/**"],
     testTimeout: 60_000,
     coverage: {
       provider: "v8",
