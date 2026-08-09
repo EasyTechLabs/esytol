@@ -237,6 +237,21 @@ emulator. The screens are thin wrappers over exactly these calls.
 | `format:check` on Windows            | `core.autocrlf` vs LF blobs, no `.gitattributes`  | nothing — Linux CI is authoritative        |
 | iOS native project                   | Expo SDK 57 refuses to generate `ios/` on Windows | an iOS build, which needs a Mac regardless |
 
+### The debug APK is `arm64-v8a` only — a deliberate narrowing
+
+`gradle.properties` targets four ABIs (`armeabi-v7a, arm64-v8a, x86, x86_64`).
+React Native 0.86 has the New Architecture enabled, so each ABI means a full
+C++ codegen compile; on this two-core machine all four is hours of work for a
+debug artefact.
+
+The APK is therefore built with `-PreactNativeArchitectures=arm64-v8a`, which is
+what every current physical Android device runs. Nothing in the app is
+architecture-specific — the restriction is a build flag, and removing it
+produces the universal APK with no source change.
+
+`x86_64` would be needed for the emulator, which is separately blocked on
+hardware acceleration. There is no point paying for an ABI that cannot be run.
+
 ### iOS readiness
 
 The iOS **configuration** is complete and verified to resolve:
