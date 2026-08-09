@@ -6,7 +6,7 @@
  */
 
 import type { NextResponse } from "next/server";
-import { forwardPartyRead } from "../forward";
+import { forwardPartyRead, forwardPartyWrite } from "../forward";
 
 export const dynamic = "force-dynamic";
 
@@ -16,4 +16,23 @@ export async function GET(
 ): Promise<NextResponse> {
   const { partyId } = await context.params;
   return forwardPartyRead(`/${encodeURIComponent(partyId)}`, "");
+}
+
+/**
+ * Update a party. Development-only, and gated separately from reads.
+ *
+ * `If-Match` is forwarded rather than synthesised — the API requires it, and a
+ * proxy that invented one would silently defeat optimistic concurrency.
+ */
+export async function PATCH(
+  request: Request,
+  context: { params: Promise<{ partyId: string }> }
+): Promise<NextResponse> {
+  const { partyId } = await context.params;
+  return forwardPartyWrite(
+    "PATCH",
+    `/${encodeURIComponent(partyId)}`,
+    await request.text(),
+    request.headers
+  );
 }

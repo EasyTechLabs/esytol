@@ -37,6 +37,48 @@ export interface PartySource {
   get(partyId: string): Promise<PartyRead | null>;
 }
 
+/** What a caller supplies to create a party. */
+export interface CreatePartyInput {
+  readonly name: string;
+  readonly phone?: string | undefined;
+  readonly note?: string | undefined;
+}
+
+/** What a caller supplies to update one. `null` clears an optional field. */
+export interface UpdatePartyInput {
+  readonly name?: string;
+  readonly phone?: string | null;
+  readonly note?: string | null;
+}
+
+/**
+ * A party as returned by a write, carrying the concurrency token.
+ *
+ * `etag` is what the next update must send as `If-Match`. It is threaded
+ * through rather than recomputed, because deriving it locally would let a
+ * stale client overwrite a newer server record — the exact failure optimistic
+ * concurrency exists to prevent.
+ */
+export interface PartyWriteResult {
+  readonly party: Party;
+  readonly etag: string | null;
+  readonly version: number | null;
+}
+
+/**
+ * The write boundary. Deliberately create and update only.
+ *
+ * No delete, no entries, no payments, no sync. Those either have unresolved
+ * domain questions (deletion vs concurrent entry) or belong to slices that
+ * have not been designed yet, and a boundary that exposes them invites their
+ * use before that work is done.
+ */
+export interface PartyWriter {
+  readonly kind: PartySourceKind;
+  create(id: string, input: CreatePartyInput): Promise<PartyWriteResult>;
+  update(partyId: string, etag: string, patch: UpdatePartyInput): Promise<PartyWriteResult>;
+}
+
 /**
  * The default, and the one the pilot ships with.
  *

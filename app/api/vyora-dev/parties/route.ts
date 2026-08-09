@@ -6,7 +6,7 @@
  */
 
 import type { NextResponse } from "next/server";
-import { forwardPartyRead, READ_PARAMS } from "./forward";
+import { forwardPartyRead, forwardPartyWrite, READ_PARAMS } from "./forward";
 
 /** Never prerender or cache: this reads a live local service. */
 export const dynamic = "force-dynamic";
@@ -24,4 +24,9 @@ export async function GET(request: Request): Promise<NextResponse> {
 
   const search = allowed.toString();
   return forwardPartyRead("", search ? `?${search}` : "");
+}
+
+/** Create a party. Development-only, and gated separately from reads. */
+export async function POST(request: Request): Promise<NextResponse> {
+  return forwardPartyWrite("POST", "", await request.text(), request.headers);
 }

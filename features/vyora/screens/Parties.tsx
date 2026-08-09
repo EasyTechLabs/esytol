@@ -14,10 +14,12 @@ import { ContactSheet, useLongPress } from "../ContactSheet";
 import { formatMoney, balanceLabel, balanceColor } from "@/lib/vyora/format";
 import { BigButton, Empty } from "../components";
 import { usePartyList } from "../usePartySource";
+import { usePartyWriter } from "../usePartyWriter";
+import { PartyWriteNotice } from "../PartyWriteNotice";
 import { PartySourceNotice } from "../PartySourceNotice";
 
 export function Parties() {
-  const { ready, dispatch, settings, updateSettings } = useVyora();
+  const { ready, settings, updateSettings } = useVyora();
   const [q, setQ] = useState("");
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
@@ -29,23 +31,38 @@ export function Parties() {
   // server was unreachable.
   const { results: rows, source, error, loading, retry } = usePartyList(q);
 
+  // Writes go to exactly one destination — never both, and never one after the
+  // other. Local by default; the API only when every write condition holds.
+  const writer = usePartyWriter();
+
   if (!ready) return <div className="py-20 text-center text-gray-400">Loading…</div>;
 
   // Pinned customers first; the ledger's exposure order survives within groups.
   const results = withFavoritesFirst(rows, settings, (b) => b.party.id);
 
-  const add = () => {
-    const result = dispatch({ type: "CreateContact", name, phone: phone || undefined });
-    if (!result.ok) return;
+  const add = async () => {
+    const ok = await writer.createParty({ name, phone: phone || undefined });
+    // A failed write leaves the form filled so the merchant's typing is not
+    // lost, and the error stays on screen until they act on it.
+    if (!ok) return;
     setName("");
     setPhone("");
     setAdding(false);
+    // A remote create lands in the API, so re-read to show it.
+    if (writer.target === "remote") retry();
   };
 
   return (
     <div className="space-y-4">
       {/* Renders nothing unless a developer enabled the API read path. */}
       <PartySourceNotice source={source} error={error} loading={loading} onRetry={retry} />
+      <PartyWriteNotice
+        target={writer.target}
+        error={writer.error}
+        conflict={writer.conflict}
+        pending={writer.pending}
+        onDismiss={writer.clearError}
+      />
 
       {/* Instant search */}
       <input
@@ -83,8 +100,8 @@ export function Parties() {
             className="w-full rounded-xl border-2 border-gray-200 px-3 py-2.5 outline-none focus:border-brand-500"
           />
           <div className="flex gap-2">
-            <BigButton type="button" onClick={add} disabled={!name.trim()}>
-              Add
+            <BigButton type="button" onClick={add} disabled={!name.trim() || writer.pending}>
+              {writer.pending ? "Saving…" : "Add"}
             </BigButton>
             <button
               type="button"
