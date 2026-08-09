@@ -92,7 +92,19 @@ describe("migrations", () => {
     const { rows } = await pool.query<{ name: string }>(
       `SELECT name FROM schema_migrations ORDER BY name`
     );
-    expect(rows.map((r) => r.name)).toEqual(["001_init.sql"]);
+    expect(rows.map((r) => r.name)).toEqual(["001_init.sql", "002_entry_statement_fields.sql"]);
+  });
+
+  it("adds the statement fields the ledger projection needs", async () => {
+    await resetDatabase(pool);
+    const { rows } = await pool.query<{ column_name: string }>(
+      `SELECT column_name FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'entry_projection'`
+    );
+    const columns = rows.map((r) => r.column_name);
+    // `event_id` is what lets a statement line be traced to its immutable event.
+    expect(columns).toContain("event_id");
+    expect(columns).toContain("description");
   });
 
   it("store no balance column anywhere", async () => {

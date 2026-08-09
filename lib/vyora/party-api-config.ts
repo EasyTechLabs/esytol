@@ -98,6 +98,17 @@ export function partyApiDecision(): PartyApiDecision {
   });
 }
 
+/**
+ * Ledger flags. Both default OFF, and both sit *below* the party flags.
+ *
+ * Ledger reads require party reads, and ledger writes require party writes.
+ * That layering is not decoration: a statement is a projection of entries
+ * belonging to a party, so reading one while the party list came from somewhere
+ * else would show a balance that belongs to a different record.
+ */
+export const LEDGER_READS_FLAG = "NEXT_PUBLIC_VYORA_API_LEDGER_READS_ENABLED";
+export const LEDGER_WRITES_FLAG = "NEXT_PUBLIC_VYORA_API_LEDGER_WRITES_ENABLED";
+
 export interface PartyWriteEnv extends PartyApiEnv {
   readonly writeFlag: string | undefined;
 }
@@ -127,6 +138,74 @@ export function decidePartyWrites(env: PartyWriteEnv): PartyApiDecision {
 
   return { enabled: true, apiUrl: reads.apiUrl };
 }
+
+export interface LedgerEnv extends PartyWriteEnv {
+  readonly ledgerReadFlag: string | undefined;
+  readonly ledgerWriteFlag: string | undefined;
+}
+
+/**
+ * Decide whether development ledger **reads** (remote statements) are permitted.
+ *
+ * Built on the party read decision, so it inherits every refusal reads produce
+ * — production included — and can only narrow further.
+ */
+export function decideLedgerReads(env: LedgerEnv): PartyApiDecision {
+  const partyReads = decidePartyApi(env);
+  if (!partyReads.enabled) {
+    return {
+      enabled: false,
+      reason: `Ledger reads require Party reads to be enabled first. ${partyReads.reason}`,
+    };
+  }
+  if (env.ledgerReadFlag !== "true") {
+    return { enabled: false, reason: `${LEDGER_READS_FLAG} is not "true" (default: disabled).` };
+  }
+  return { enabled: true, apiUrl: partyReads.apiUrl };
+}
+
+/**
+ * Decide whether development ledger **writes** (remote credits) are permitted.
+ *
+ * Requires ledger reads *and* party writes. Recording a credit you cannot then
+ * read back is worse than not recording it at all — the developer would have no
+ * way to see what they just did.
+ */
+export function decideLedgerWrites(env: LedgerEnv): PartyApiDecision {
+  const ledgerReads = decideLedgerReads(env);
+  if (!ledgerReads.enabled) {
+    return {
+      enabled: false,
+      reason: `Ledger writes require ledger reads to be enabled first. ${ledgerReads.reason}`,
+    };
+  }
+  const partyWrites = decidePartyWrites(env);
+  if (!partyWrites.enabled) {
+    return {
+      enabled: false,
+      reason: `Ledger writes require Party writes to be enabled first. ${partyWrites.reason}`,
+    };
+  }
+  if (env.ledgerWriteFlag !== "true") {
+    return { enabled: false, reason: `${LEDGER_WRITES_FLAG} is not "true" (default: disabled).` };
+  }
+  return { enabled: true, apiUrl: ledgerReads.apiUrl };
+}
+
+/** Ambient environment, client-safe values only. */
+function ambient(): LedgerEnv {
+  return {
+    flag: process.env.NEXT_PUBLIC_VYORA_API_PARTY_READS_ENABLED,
+    writeFlag: process.env.NEXT_PUBLIC_VYORA_API_PARTY_WRITES_ENABLED,
+    ledgerReadFlag: process.env.NEXT_PUBLIC_VYORA_API_LEDGER_READS_ENABLED,
+    ledgerWriteFlag: process.env.NEXT_PUBLIC_VYORA_API_LEDGER_WRITES_ENABLED,
+    nodeEnv: process.env.NODE_ENV,
+    apiUrl: process.env.NEXT_PUBLIC_VYORA_API_URL,
+  };
+}
+
+export const ledgerReadDecision = (): PartyApiDecision => decideLedgerReads(ambient());
+export const ledgerWriteDecision = (): PartyApiDecision => decideLedgerWrites(ambient());
 
 /** Read the write decision from the ambient environment (client-safe values only). */
 export function partyWriteDecision(): PartyApiDecision {

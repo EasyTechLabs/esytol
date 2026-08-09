@@ -15,6 +15,7 @@ import { sendError, ApiError } from "./errors.js";
 import { registerSystemRoutes } from "./modules/system/routes.js";
 import { registerPartyRoutes } from "./modules/parties/routes.js";
 import { registerSyncRoutes } from "./modules/sync/routes.js";
+import { registerLedgerRoutes } from "./modules/ledger/routes.js";
 
 export interface AppContext {
   readonly config: Config;
@@ -67,6 +68,7 @@ export function buildServer(config: Config, pool: Pool = createPool(config.datab
 
   registerSystemRoutes(app, ctx);
   registerPartyRoutes(app, ctx);
+  registerLedgerRoutes(app, ctx);
   registerSyncRoutes(app, ctx);
 
   app.setNotFoundHandler((request, reply) =>

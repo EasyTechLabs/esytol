@@ -11,8 +11,9 @@
  * client-side check is a UI affordance; this one is the actual control, because
  * a hand-written fetch to this path bypasses the UI entirely.
  *
- * Reads and two writes. `GET` (list, detail), `POST` (create) and `PATCH`
- * (update) are the entire surface. There is deliberately no `DELETE` and no
+ * Party reads and writes, plus the ledger slice: `GET` (list, detail,
+ * statement), `POST` (create party, record credit) and `PATCH` (update party)
+ * are the entire surface. There is deliberately no `DELETE` and no
  * sync path, so nothing reachable through this proxy can remove a party or
  * move an event log.
  *
@@ -21,7 +22,12 @@
  */
 
 import { NextResponse } from "next/server";
-import { decidePartyApi, decidePartyWrites } from "@/lib/vyora/party-api-config";
+import {
+  decidePartyApi,
+  decidePartyWrites,
+  decideLedgerReads,
+  decideLedgerWrites,
+} from "@/lib/vyora/party-api-config";
 
 const DEV_IDENTITY_ENV = "VYORA_API_DEV_IDENTITY";
 
@@ -143,6 +149,115 @@ export function writeGate(): Gate {
 
 /** Request headers a write may carry. Everything else is dropped, not forwarded. */
 export const WRITE_HEADERS = ["idempotency-key", "if-match"] as const;
+
+/** Build a gate from any decision plus the server-held identity. */
+function gateFrom(decision: ReturnType<typeof decidePartyApi>): Gate {
+  if (!decision.enabled) {
+    return { ok: false, denial: { status: 404, code: "NOT_FOUND", message: decision.reason } };
+  }
+  const identity = process.env[DEV_IDENTITY_ENV];
+  if (!identity) {
+    return {
+      ok: false,
+      denial: {
+        status: 503,
+        code: "DEV_IDENTITY_MISSING",
+        message: `${DEV_IDENTITY_ENV} is not set on the server. Set it in .env.local (never NEXT_PUBLIC_).`,
+      },
+    };
+  }
+  return { ok: true, apiUrl: decision.apiUrl, identity };
+}
+
+function ledgerEnv() {
+  return {
+    flag: process.env.NEXT_PUBLIC_VYORA_API_PARTY_READS_ENABLED,
+    writeFlag: process.env.NEXT_PUBLIC_VYORA_API_PARTY_WRITES_ENABLED,
+    ledgerReadFlag: process.env.NEXT_PUBLIC_VYORA_API_LEDGER_READS_ENABLED,
+    ledgerWriteFlag: process.env.NEXT_PUBLIC_VYORA_API_LEDGER_WRITES_ENABLED,
+    nodeEnv: process.env.NODE_ENV,
+    apiUrl: process.env.NEXT_PUBLIC_VYORA_API_URL,
+  };
+}
+
+/** Ledger read gate — party reads plus the ledger read flag. */
+export const ledgerReadGate = (): Gate => gateFrom(decideLedgerReads(ledgerEnv()));
+
+/** Ledger write gate — the narrowest in the app. */
+export const ledgerWriteGate = (): Gate => gateFrom(decideLedgerWrites(ledgerEnv()));
+
+/** Forward a statement read to the local API. */
+export async function forwardLedgerRead(path: string, search: string): Promise<NextResponse> {
+  const check = ledgerReadGate();
+  if (!check.ok) return denied(check.denial);
+  return relay(
+    check,
+    "GET",
+    `${check.apiUrl}/api/v1/parties${path}${search}`,
+    undefined,
+    undefined
+  );
+}
+
+/**
+ * Forward a credit to the local API.
+ *
+ * A failure here means the entry reached nothing. The caller must treat that as
+ * "nothing happened" and must not write locally instead.
+ */
+export async function forwardLedgerWrite(
+  path: string,
+  body: string,
+  incoming: Headers
+): Promise<NextResponse> {
+  const check = ledgerWriteGate();
+  if (!check.ok) return denied(check.denial);
+  return relay(check, "POST", `${check.apiUrl}/api/v1/parties${path}`, body, incoming);
+}
+
+/** One place that attaches the credential and copies the response back. */
+async function relay(
+  check: Extract<Gate, { ok: true }>,
+  method: "GET" | "POST",
+  target: string,
+  body: string | undefined,
+  incoming: Headers | undefined
+): Promise<NextResponse> {
+  const headers: Record<string, string> = {
+    // Server-side only. This header never exists in the browser.
+    "x-vyora-dev-identity": check.identity,
+    accept: "application/json",
+  };
+  if (body !== undefined) {
+    headers["content-type"] = incoming?.get("content-type") ?? "application/json";
+    for (const name of WRITE_HEADERS) {
+      const value = incoming?.get(name);
+      if (value) headers[name] = value;
+    }
+  }
+
+  try {
+    const upstream = await fetch(target, {
+      method,
+      headers,
+      ...(body === undefined ? {} : { body }),
+      cache: "no-store",
+    });
+    return new NextResponse(await upstream.text(), {
+      status: upstream.status,
+      headers: {
+        "content-type": upstream.headers.get("content-type") ?? "application/json",
+        "x-vyora-upstream-request-id": upstream.headers.get("x-request-id") ?? "",
+      },
+    });
+  } catch (cause) {
+    return denied({
+      status: 502,
+      code: "DEPENDENCY_UNAVAILABLE",
+      message: `Could not reach the local API at ${check.apiUrl}. Is it running? (${(cause as Error).message})`,
+    });
+  }
+}
 
 /**
  * Forward one write to the local API.

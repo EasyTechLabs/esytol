@@ -7,6 +7,17 @@ import pg from "pg";
  */
 pg.types.setTypeParser(20, (value: string) => Number.parseInt(value, 10));
 
+/**
+ * `date` (OID 1082) stays a string.
+ *
+ * A business date is `YYYY-MM-DD` in the merchant's own timezone — a calendar
+ * day, not an instant. Letting pg parse it into a JS `Date` re-interprets it in
+ * the server's timezone and then serialises as a full timestamp, which both
+ * breaks the contract's `format: date` and can shift a sale onto the wrong
+ * trading day. PostgreSQL already hands it over in exactly the form we want.
+ */
+pg.types.setTypeParser(1082, (value: string) => value);
+
 export type Pool = pg.Pool;
 export type PoolClient = pg.PoolClient;
 

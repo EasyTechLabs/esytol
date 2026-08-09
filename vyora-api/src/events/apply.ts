@@ -217,13 +217,26 @@ async function applyToProjection(
 
     case "CreditRecorded": {
       const t = record(p.transaction);
+      // `event_id` is carried onto the row so a statement line can be traced
+      // back to the exact immutable event that produced it.
       await client.query(
         `INSERT INTO entry_projection
            (merchant_id, entry_id, party_id, entry_type, direction, amount,
-            business_date, due_date, created_at, deleted)
-         VALUES ($1, $2, $3, 'credit', $4, $5, $6, $7, $8, false)
+            business_date, due_date, created_at, deleted, description, event_id)
+         VALUES ($1, $2, $3, 'credit', $4, $5, $6, $7, $8, false, $9, $10)
          ON CONFLICT (merchant_id, entry_id) DO NOTHING`,
-        [merchantId, t.id, t.partyId, t.kind, t.amount, t.date, t.dueDate ?? null, t.createdAt]
+        [
+          merchantId,
+          t.id,
+          t.partyId,
+          t.kind,
+          t.amount,
+          t.date,
+          t.dueDate ?? null,
+          t.createdAt,
+          t.description ?? null,
+          event.eventId,
+        ]
       );
       return;
     }
@@ -233,10 +246,20 @@ async function applyToProjection(
       await client.query(
         `INSERT INTO entry_projection
            (merchant_id, entry_id, party_id, entry_type, direction, amount,
-            business_date, due_date, created_at, deleted)
-         VALUES ($1, $2, $3, 'payment', $4, $5, $6, NULL, $7, false)
+            business_date, due_date, created_at, deleted, description, event_id)
+         VALUES ($1, $2, $3, 'payment', $4, $5, $6, NULL, $7, false, $8, $9)
          ON CONFLICT (merchant_id, entry_id) DO NOTHING`,
-        [merchantId, pay.id, pay.partyId, pay.kind, pay.amount, pay.date, pay.createdAt]
+        [
+          merchantId,
+          pay.id,
+          pay.partyId,
+          pay.kind,
+          pay.amount,
+          pay.date,
+          pay.createdAt,
+          pay.note ?? null,
+          event.eventId,
+        ]
       );
       return;
     }
