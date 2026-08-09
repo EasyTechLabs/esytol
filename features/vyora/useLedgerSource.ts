@@ -17,7 +17,12 @@ import type { StatementRow } from "@/lib/vyora/ledger";
 import { readStatement, readPartyNet } from "@/lib/vyora/ledger";
 import { useVyora } from "./VyoraProvider";
 import type { PartySourceKind } from "@/lib/vyora/party-source";
-import type { LedgerSource, RecordCreditInput } from "@/lib/vyora/ledger-source";
+import type {
+  LedgerSource,
+  RecordCreditInput,
+  RecordPaymentInput,
+  RemoteSummary,
+} from "@/lib/vyora/ledger-source";
 import { remoteLedgerSource, toLocalStatementRow } from "@/lib/vyora/ledger-source";
 import { ledgerReadDecision, ledgerWriteDecision } from "@/lib/vyora/party-api-config";
 
@@ -42,6 +47,21 @@ export interface CreditWriteState {
   readonly pending: boolean;
   recordCredit(partyId: string, input: RecordCreditInput): Promise<boolean>;
   clearError(): void;
+}
+
+export interface PaymentWriteState {
+  readonly target: PartySourceKind;
+  readonly error: string | null;
+  readonly pending: boolean;
+  recordPayment(partyId: string, input: RecordPaymentInput): Promise<boolean>;
+  clearError(): void;
+}
+
+export interface SummaryState {
+  readonly summary: RemoteSummary | null;
+  readonly error: string | null;
+  readonly loading: boolean;
+  reload(): void;
 }
 
 function useRemote(overrides: LedgerOverrides, forWrites: boolean): LedgerSource | null {
@@ -166,4 +186,99 @@ export function useCreditWriter(overrides: LedgerOverrides = {}): CreditWriteSta
   );
 
   return { target: remote ? "remote" : "local", error, pending, recordCredit, clearError };
+}
+
+/**
+ * Record a payment.
+ *
+ * Deliberately a separate hook from `useCreditWriter` rather than one writer
+ * with a `kind` argument. They call different endpoints and mint different
+ * events, and a single writer parameterised by kind is the shape in which a
+ * later edit sends a payment down the credit path.
+ *
+ * Same rule as every other remote write in this app: the API or nothing. A
+ * failure writes nothing locally.
+ */
+export function usePaymentWriter(overrides: LedgerOverrides = {}): PaymentWriteState {
+  const remote = useRemote(overrides, true);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+
+  const clearError = useCallback(() => setError(null), []);
+
+  const recordPayment = useCallback(
+    async (partyId: string, input: RecordPaymentInput): Promise<boolean> => {
+      if (!remote) {
+        setError("Remote ledger writes are disabled; use the local payment flow.");
+        return false;
+      }
+      setPending(true);
+      setError(null);
+      try {
+        await remote.recordPayment(partyId, input);
+        return true;
+      } catch (cause) {
+        setError((cause as Error).message);
+        return false;
+      } finally {
+        setPending(false);
+      }
+    },
+    [remote]
+  );
+
+  return { target: remote ? "remote" : "local", error, pending, recordPayment, clearError };
+}
+
+/**
+ * A party's remote ledger summary.
+ *
+ * Unlike `useStatement` this has **no local fallback**, and returns `null`
+ * rather than a locally computed total when the API cannot be reached. The
+ * statement falls back because a stale history is still a history; a summary
+ * that silently swapped its source would show one set of totals from the device
+ * and another from the server under the same heading, with nothing on screen to
+ * say which. Absent is honest; substituted is not.
+ */
+export function usePartySummary(partyId: string, overrides: LedgerOverrides = {}): SummaryState {
+  const remote = useRemote(overrides, false);
+  const [summary, setSummary] = useState<RemoteSummary | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const latest = useRef(0);
+
+  useEffect(() => {
+    if (!remote) {
+      setSummary(null);
+      setError(null);
+      return;
+    }
+    const ticket = ++latest.current;
+    let cancelled = false;
+    setLoading(true);
+
+    remote
+      .summary(partyId)
+      .then((s) => {
+        if (cancelled || ticket !== latest.current) return;
+        setSummary(s);
+        setError(null);
+      })
+      .catch((cause: Error) => {
+        if (cancelled || ticket !== latest.current) return;
+        setSummary(null);
+        setError(cause.message);
+      })
+      .finally(() => {
+        if (!cancelled && ticket === latest.current) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [remote, partyId, attempt]);
+
+  const reload = useCallback(() => setAttempt((n) => n + 1), []);
+  return { summary, error, loading, reload };
 }

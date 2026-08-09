@@ -78,7 +78,15 @@ function stubLedger(overrides: Partial<LedgerSource> = {}): LedgerSource {
       rows: [remoteRow()],
       balance: { net: 2500, position: "owes_merchant", entryCount: 1, lastActivityAt: null },
     }),
+    summary: async () => ({
+      partyId: PARTY,
+      balance: { net: 2500, position: "owes_merchant", entryCount: 1, lastActivityAt: null },
+      totals: { creditGiven: 2500, creditTaken: 0, paymentReceived: 0, paymentPaid: 0 },
+      counts: { credits: 1, payments: 0 },
+      firstActivityAt: null,
+    }),
     recordCredit: async () => remoteRow(),
+    recordPayment: async () => remoteRow({ entryType: "payment", direction: "received" }),
     ...overrides,
   };
 }

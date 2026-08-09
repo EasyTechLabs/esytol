@@ -1,10 +1,11 @@
 /**
  * Vyora — the development-only remote ledger boundary.
  *
- * Two operations, matching the contract exactly: read a party's statement, and
- * record one credit. There is no update, no delete, no payment, no sync — each
- * of those is either a later slice or an unresolved domain question, and a
- * boundary that exposed them would invite their use before that work is done.
+ * Four operations, matching the contract exactly: read a party's statement,
+ * read its summary, record one credit, record one payment. There is no update,
+ * no delete and no sync — each of those is either a later slice or an
+ * unresolved domain question, and a boundary that exposed them would invite
+ * their use before that work is done.
  *
  * All traffic goes through this app's own server route, never the API directly,
  * so the development identity stays server-side.
@@ -46,10 +47,35 @@ export interface RecordCreditInput {
   readonly dueDate?: string | undefined;
 }
 
+export interface RecordPaymentInput {
+  readonly amount: number;
+  readonly kind: "received" | "paid";
+  readonly note?: string | undefined;
+  readonly date: string;
+}
+
+/** Gross totals per direction, beside the one signed net. */
+export interface RemoteLedgerTotals {
+  creditGiven: number;
+  creditTaken: number;
+  paymentReceived: number;
+  paymentPaid: number;
+}
+
+export interface RemoteSummary {
+  partyId: string;
+  balance: { net: number; position: string; entryCount: number; lastActivityAt: string | null };
+  totals: RemoteLedgerTotals;
+  counts: { credits: number; payments: number };
+  firstActivityAt: string | null;
+}
+
 export interface LedgerSource {
   readonly kind: PartySourceKind;
   statement(partyId: string): Promise<RemoteStatement>;
+  summary(partyId: string): Promise<RemoteSummary>;
   recordCredit(partyId: string, input: RecordCreditInput): Promise<RemoteStatementRow>;
+  recordPayment(partyId: string, input: RecordPaymentInput): Promise<RemoteStatementRow>;
 }
 
 /**
@@ -117,6 +143,23 @@ export function remoteLedgerSource(basePath: string = PARTY_PROXY_PATH): LedgerS
       return (await response.json()) as RemoteStatement;
     },
 
+    async summary(partyId: string): Promise<RemoteSummary> {
+      // No `limit`. A total over the first page is not a total, so this call
+      // deliberately cannot be given one.
+      let response: Response;
+      try {
+        response = await fetch(`${basePath}/${encodeURIComponent(partyId)}/summary`, {
+          cache: "no-store",
+        });
+      } catch (cause) {
+        throw new PartyApiError(
+          `Could not reach the development API. Is it running? (${(cause as Error).message})`
+        );
+      }
+      if (!response.ok) await parseFailure(response);
+      return (await response.json()) as RemoteSummary;
+    },
+
     async recordCredit(partyId: string, input: RecordCreditInput): Promise<RemoteStatementRow> {
       // The entry id is client-minted, so the entry has an identity from the
       // moment the merchant records it — and it deduplicates a retry alongside
@@ -134,6 +177,36 @@ export function remoteLedgerSource(basePath: string = PARTY_PROXY_PATH): LedgerS
       let response: Response;
       try {
         response = await fetch(`${basePath}/${encodeURIComponent(partyId)}/credits`, {
+          method: "POST",
+          headers: { "content-type": "application/json", "idempotency-key": newUuid() },
+          body: JSON.stringify(body),
+          cache: "no-store",
+        });
+      } catch (cause) {
+        throw new PartyApiError(
+          `Could not reach the development API. Is it running? (${(cause as Error).message})`
+        );
+      }
+      if (!response.ok) await parseFailure(response);
+      return (await response.json()) as RemoteStatementRow;
+    },
+
+    async recordPayment(partyId: string, input: RecordPaymentInput): Promise<RemoteStatementRow> {
+      // `pay_` prefix, matching the local `Payment` id. Entry ids are unique
+      // across credits and payments, and the prefix is what makes a mistaken
+      // reuse legible in a log rather than merely rejected.
+      const body: Record<string, unknown> = {
+        id: `pay_${newUuid()}`,
+        amount: input.amount,
+        kind: input.kind,
+        date: input.date,
+        createdAt: new Date().toISOString(),
+      };
+      if (input.note) body.note = input.note;
+
+      let response: Response;
+      try {
+        response = await fetch(`${basePath}/${encodeURIComponent(partyId)}/payments`, {
           method: "POST",
           headers: { "content-type": "application/json", "idempotency-key": newUuid() },
           body: JSON.stringify(body),

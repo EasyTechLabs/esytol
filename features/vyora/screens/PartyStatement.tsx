@@ -14,8 +14,15 @@ import { formatMoney, formatDate, balanceLabel, balanceColor } from "@/lib/vyora
 import { Empty } from "../components";
 import { usePartyDetail } from "../usePartySource";
 import { PartySourceNotice } from "../PartySourceNotice";
-import { useStatement, useCreditWriter } from "../useLedgerSource";
+import {
+  useStatement,
+  useCreditWriter,
+  usePaymentWriter,
+  usePartySummary,
+} from "../useLedgerSource";
 import { DevRecordCredit } from "../DevRecordCredit";
+import { DevRecordPayment } from "../DevRecordPayment";
+import { DevLedgerSummary } from "../DevLedgerSummary";
 
 export function PartyStatement({ partyId }: { partyId: string }) {
   const { ready, ledger, dispatch } = useVyora();
@@ -26,6 +33,8 @@ export function PartyStatement({ partyId }: { partyId: string }) {
   const { party, net: partyNet, source, error, loading, retry } = usePartyDetail(partyId);
   const statement = useStatement(partyId, party?.name ?? "");
   const creditWriter = useCreditWriter();
+  const paymentWriter = usePaymentWriter();
+  const summary = usePartySummary(partyId);
 
   if (!ready) return <div className="py-20 text-center text-gray-400">Loading…</div>;
   if (!party) return <Empty title="Party not found" subtitle="It may have been cleared." />;
@@ -64,10 +73,32 @@ export function PartyStatement({ partyId }: { partyId: string }) {
         onRecord={async (input) => {
           const ok = await creditWriter.recordCredit(partyId, input);
           // The entry landed in the API, so re-read the statement to show it.
-          if (ok) statement.reload();
+          if (ok) {
+            statement.reload();
+            summary.reload();
+          }
           return ok;
         }}
       />
+
+      {/* Developer-only payment recording. Renders nothing by default. */}
+      <DevRecordPayment
+        target={paymentWriter.target}
+        pending={paymentWriter.pending}
+        error={paymentWriter.error}
+        onDismissError={paymentWriter.clearError}
+        onRecord={async (input) => {
+          const ok = await paymentWriter.recordPayment(partyId, input);
+          if (ok) {
+            statement.reload();
+            summary.reload();
+          }
+          return ok;
+        }}
+      />
+
+      {/* Developer-only totals. Renders nothing unless the API answered. */}
+      <DevLedgerSummary summary={summary.summary} loading={summary.loading} error={summary.error} />
 
       {/* Header */}
       <div className="rounded-2xl border border-gray-200 bg-white p-4">
