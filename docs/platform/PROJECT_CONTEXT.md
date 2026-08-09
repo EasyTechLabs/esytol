@@ -185,8 +185,13 @@ Earlier history: `3fe6abf` (PR #3, Party writes), `bab1584` (PR #1),
 `c815467`, `3bb2ee9` (Vyora Alpha v0.1).
 `main` HEAD: **`0754d47`** (PR #2, production release guard restored).
 
-**Commits `74c5ecf` and later were merged locally only.** PR #4 is green on
-GitHub but was never merged there; the remote PR remains open.
+**PR #4 was merged on GitHub** by `easytech28` at 10:25 IST on 2026-08-09
+(`bc6523d`), independently of the local merge of the same branch at `74c5ecf`.
+The two histories were reconciled by a merge, not a rebase, so every SHA listed
+above is still valid — which is the point of listing them here at all.
+
+Commits after `74c5ecf` were made locally on `develop` under the accelerated
+working mode authorised in VYORA-PLATFORM-015 (no PR, no review wait).
 
 ### Test results at handoff
 
