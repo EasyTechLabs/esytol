@@ -53,6 +53,19 @@ tags:
       in an offline-first system is the normal case. Role is therefore derived
       from the direction of entries (`given`/`taken`, `received`/`paid`) and
       is never persisted. The `position` filter computes it at read time.
+  - name: Ledger
+    description: |
+      Credit entries and the statement projection derived from them.
+
+      **Writes are immutable events.** Recording a credit appends a
+      `CreditRecorded` event to the log; it never replaces state. The statement
+      and the balance are *projections* of accepted events, folded at read time,
+      and no balance is stored anywhere.
+
+      This is not sync. Sync reconciles two devices' logs; these operations
+      append one event and read the projection back. The event type and payload
+      are identical to log format v2, so nothing here invents a new ledger
+      concept.
   - name: Sync
     description: Event push and pull. Additive, idempotent, cursor-ordered.
 
@@ -296,6 +309,113 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+
+  /api/v1/parties/{partyId}/credits:
+    parameters:
+      - $ref: "#/components/parameters/PartyId"
+    post:
+      operationId: recordCredit
+      tags: [Ledger]
+      summary: Record a credit entry against a party.
+      description: |
+        Appends one immutable `CreditRecorded` event. The request carries the
+        entry, not a new state for the party — there is no field here that
+        replaces anything, and the party's balance is never sent or stored.
+
+        `kind` is the direction, from the merchant's point of view. `given`
+        means the party owes the merchant more; `taken` means the merchant owes
+        the party more. The same party can be on either side on different days,
+        which is why no role is stored on the contact.
+
+        The entry id is client-minted so the entry exists offline the moment the
+        merchant records it, and it doubles as the natural deduplication key
+        alongside `Idempotency-Key`.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecordCreditRequest"
+      responses:
+        "201":
+          description: Credit recorded; the event is in the log.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/XRequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LedgerEntry"
+        "200":
+          description: |
+            Idempotent replay. The same `Idempotency-Key` was already processed
+            with an identical body; the original result is returned unchanged
+            and **no second event was appended**.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/XRequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LedgerEntry"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: |
+            The `Idempotency-Key` was reused with a different body, or the entry
+            id already exists with different content. Never an overwrite.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/XRequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+
+  /api/v1/parties/{partyId}/statement:
+    parameters:
+      - $ref: "#/components/parameters/PartyId"
+    get:
+      operationId: getPartyStatement
+      tags: [Ledger]
+      summary: A party's statement and derived balance.
+      description: |
+        The dispute-settling history for one party: every entry, oldest first,
+        each with the running outstanding after it.
+
+        **Entirely derived.** Rows are folded from accepted events at read time
+        and nothing here is stored as a total. If the projection and the log
+        ever disagree, the log wins and the projection is rebuilt.
+
+        `404` when the party does not exist **or belongs to another workspace** —
+        deliberately indistinguishable, so a caller cannot probe for another
+        merchant's parties.
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: The statement.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/XRequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartyStatement"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /api/v1/sync/push:
     post:
@@ -1000,6 +1120,109 @@ components:
           maxLength: 512
         hasMore:
           type: boolean
+
+    # ── Ledger ──────────────────────────────────────────────────────────────
+
+    RecordCreditRequest:
+      type: object
+      additionalProperties: false
+      required: [id, amount, kind, date]
+      description: |
+        Note what is absent: no `merchantId`, no `partyId` in the body (it is in
+        the path), and no balance. The workspace comes from the token and the
+        balance is derived.
+      properties:
+        id:
+          allOf:
+            - $ref: "#/components/schemas/VyoraId"
+          description: Client-minted entry id, so the entry exists offline immediately.
+        amount:
+          $ref: "#/components/schemas/Money"
+        kind:
+          $ref: "#/components/schemas/EntryKind"
+        description:
+          type: [string, "null"]
+          maxLength: 500
+        date:
+          $ref: "#/components/schemas/BusinessDate"
+        dueDate:
+          type: [string, "null"]
+          format: date
+        createdAt:
+          allOf:
+            - $ref: "#/components/schemas/Timestamp"
+          description: |
+            When the merchant actually recorded it. Preserved so an entry made
+            offline keeps its true moment rather than the moment it reached a
+            server.
+
+    LedgerEntry:
+      type: object
+      additionalProperties: false
+      required: [id, partyId, entryType, direction, amount, date, createdAt, eventId]
+      description: One accepted entry, as stored. Read-only.
+      properties:
+        id:
+          $ref: "#/components/schemas/VyoraId"
+        partyId:
+          $ref: "#/components/schemas/PartyRef"
+        entryType:
+          type: string
+          enum: [credit, payment]
+          description: |
+            `payment` exists in the projection because log v2 has payments, but
+            no endpoint in this contract creates one yet.
+        direction:
+          type: string
+          enum: [given, taken, received, paid]
+        amount:
+          $ref: "#/components/schemas/Money"
+        description:
+          type: [string, "null"]
+        date:
+          $ref: "#/components/schemas/BusinessDate"
+        dueDate:
+          type: [string, "null"]
+          format: date
+        createdAt:
+          $ref: "#/components/schemas/Timestamp"
+        eventId:
+          allOf:
+            - $ref: "#/components/schemas/VyoraId"
+          description: The immutable event this entry came from. The audit handle.
+
+    StatementRow:
+      allOf:
+        - $ref: "#/components/schemas/LedgerEntry"
+        - type: object
+          required: [signedAmount, runningNet, label]
+          properties:
+            signedAmount:
+              type: integer
+              description: |
+                This entry's effect on "they owe me": `+given`, `+paid`,
+                `−taken`, `−received`.
+            runningNet:
+              type: integer
+              description: The outstanding after this entry, folded oldest-first.
+            label:
+              type: string
+              description: Developer-facing, e.g. `Credit given`. The client owns merchant wording.
+
+    PartyStatement:
+      type: object
+      additionalProperties: false
+      required: [partyId, rows, balance]
+      properties:
+        partyId:
+          $ref: "#/components/schemas/PartyRef"
+        rows:
+          type: array
+          description: Oldest first, so `runningNet` reads as a ledger does.
+          items:
+            $ref: "#/components/schemas/StatementRow"
+        balance:
+          $ref: "#/components/schemas/PartyBalance"
 
     # ── Events ──────────────────────────────────────────────────────────────
 
