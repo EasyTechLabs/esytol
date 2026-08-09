@@ -119,26 +119,31 @@ export async function enqueue(
 }
 
 /**
- * The next deliveries that are due.
+ * The next deliveries, in insertion order, **including ones not yet due**.
  *
- * Ordered by `id`, which is insertion order, so a party is always delivered
- * before the entries that reference it. A credit posted before its party exists
- * is refused with a 404 that looks exactly like a permanent failure.
+ * Ordering is a correctness requirement, not an optimisation: a party must
+ * reach the server before the entries that reference it, or those entries come
+ * back `404` — a permanent refusal that gets them parked as "needs attention"
+ * when in truth nothing is wrong.
+ *
+ * That is why this deliberately does *not* filter out rows sitting on a
+ * backoff. Filtering them would let a later entry jump ahead of the very row it
+ * depends on, which is exactly the bug the live end-to-end run exposed: one
+ * dropped connection deferred a party, the next drain skipped it, and the
+ * credit behind it was refused and blocked. The caller stops at the first row
+ * that is not yet due; see `drain`.
  */
-export async function due(
-  db: SqlDatabase,
-  limit = 20,
-  now: () => string = isoNow
-): Promise<OutboxRow[]> {
+export async function pending(db: SqlDatabase, limit = 20): Promise<OutboxRow[]> {
   const rows = await db.getAllAsync<RawRow>(
-    `SELECT * FROM outbox
-      WHERE status = 'pending'
-        AND (next_attempt_at IS NULL OR next_attempt_at <= ?)
-      ORDER BY id ASC
-      LIMIT ?`,
-    [now(), limit]
+    `SELECT * FROM outbox WHERE status = 'pending' ORDER BY id ASC LIMIT ?`,
+    [limit]
   );
   return rows.map(toRow);
+}
+
+/** Whether a row may be attempted now. */
+export function isDue(row: OutboxRow, now: () => string = isoNow): boolean {
+  return row.nextAttemptAt === null || row.nextAttemptAt <= now();
 }
 
 export async function markSent(db: SqlDatabase, id: number, now: () => string = isoNow) {

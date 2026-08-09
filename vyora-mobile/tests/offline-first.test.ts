@@ -170,6 +170,36 @@ describe("delivery, once a connection appears", () => {
     expect(second).toEqual(first);
   });
 
+  it("never jumps a row that is waiting on a backoff", async () => {
+    // Regression. The drain used to select only rows that were due, which let
+    // a credit overtake the party it references after one dropped connection.
+    // The server refused the credit with a 404 — permanent — and parked a
+    // perfectly good entry as "needs attention".
+    const clock = fixedClock();
+    const partyId = await createParty(db, { name: "Ordering" });
+    await recordCredit(db, { partyId, amount: 300, kind: "given" });
+
+    // One outage defers the party.
+    await drain(db, offlineApi(), { clock: clock.nowMs, now: clock.nowIso });
+
+    // Connection is back, but the party's backoff has not elapsed. The credit
+    // behind it must not be sent on its own.
+    const log: Array<{ path: string; key: string | undefined; body: unknown }> = [];
+    const immediate = await drain(db, acceptingApi(log), {
+      clock: clock.nowMs,
+      now: clock.nowIso,
+    });
+    expect(immediate.attempted).toBe(0);
+    expect(log).toEqual([]);
+    expect(immediate.stoppedBecause).toContain("Waiting until");
+
+    // Once it has, both go, party first.
+    clock.advance(10_000);
+    const after = await drain(db, acceptingApi(log), { clock: clock.nowMs, now: clock.nowIso });
+    expect(after.sent).toBe(2);
+    expect(log.map((l) => l.path)).toEqual(["createParty", "recordCredit"]);
+  });
+
   it("stops at the first unreachable row rather than burning the whole queue", async () => {
     const partyId = await createParty(db, { name: "One Outage" });
     await recordCredit(db, { partyId, amount: 100, kind: "given" });

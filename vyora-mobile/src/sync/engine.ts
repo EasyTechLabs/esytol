@@ -74,7 +74,7 @@ export async function drain(
   api: ApiClient,
   options: DrainOptions = {}
 ): Promise<DrainResult> {
-  const rows = await outbox.due(db, options.limit ?? 20, options.now);
+  const rows = await outbox.pending(db, options.limit ?? 20);
 
   let attempted = 0;
   let sent = 0;
@@ -83,6 +83,19 @@ export async function drain(
   let stoppedBecause: string | null = null;
 
   for (const row of rows) {
+    // Strict insertion order, including waiting behind a row on a backoff.
+    //
+    // Skipping ahead is not a performance question. A party deferred by one
+    // dropped connection would be jumped by the credit that references it, the
+    // server would refuse that credit with a 404 because the party does not
+    // exist yet, and the entry would be parked as "needs attention" when
+    // nothing was wrong with it. Found by the live end-to-end run, not by
+    // reasoning — which is why that run exists.
+    if (!outbox.isDue(row, options.now)) {
+      stoppedBecause = `Waiting until ${row.nextAttemptAt} before retrying delivery ${row.id}.`;
+      break;
+    }
+
     attempted += 1;
     const outcome = await deliver(api, row);
 
