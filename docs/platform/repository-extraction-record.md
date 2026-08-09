@@ -193,3 +193,96 @@ published.
 **No Esytol web code goes into either new repository, and no API server code
 stays in Esytol.** The mobile repository gets a _generated_ copy of the contract
 types, not the contract's implementation.
+
+---
+
+## 4. Extraction — what actually happened
+
+### Repositories created
+
+| Repository                                                     | Visibility | `develop` | `main`    | Default   |
+| -------------------------------------------------------------- | ---------- | --------- | --------- | --------- |
+| [`vyora-api`](https://github.com/EasyTechLabs/vyora-api)       | private    | `76bb5f9` | `76bb5f9` | `develop` |
+| [`vyora-mobile`](https://github.com/EasyTechLabs/vyora-mobile) | private    | `4d78062` | `4d78062` | `develop` |
+| [`vyora`](https://github.com/EasyTechLabs/vyora)               | private    | —         | `ee8f583` | `main`    |
+
+`vyora` already existed; it was invisible to the account first used because it
+is private and that account is not an organisation member.
+
+### History was preserved, not squashed
+
+Both repositories were created with `git subtree split`, so `vyora-api` carries
+its ten real commits and `vyora-mobile` its two. A copy-paste extraction would
+have produced a single "initial commit" claiming to be the history of work that
+took several milestones.
+
+### Changes made because the code is no longer nested
+
+**`vyora-api`**
+
+- Removed `postcss.config.mjs`. It existed only to stop Vitest walking up out of
+  `vyora-api/` into the web app's Tailwind config. Standalone there is no parent
+  to walk into; verified by running the suite without it — 121 tests pass.
+- Own CI, no path filter, no `working-directory`.
+- Added `scripts/emit-contract-artifact.mjs` and `docs/contract-consumers.md`.
+- Brought the API design documents across and repointed the README links, which
+  pointed into `esytol/docs/platform` and would have been dead.
+
+**`vyora-mobile`**
+
+- The type generator read `../../vyora-api/openapi/openapi.yaml` — a path
+  outside its own repository. After the split that would either not exist or,
+  worse, resolve to whatever happened to be next to it on disk. The contract is
+  now **vendored** at `contract/`, with a manifest naming the source commit, and
+  the generated header carries that commit.
+
+### Removed from `esytol`
+
+Only after all 23 representative paths were confirmed present on the new
+remotes:
+
+```
+vyora-api/                      39 files
+vyora-mobile/                   39 files
+.github/workflows/api-ci.yml     1 file
+```
+
+Plus the root toolchain exclusions (`tsconfig`, `vitest`, `eslint`,
+`.prettierignore`) that existed only to keep the parent build out of the two
+nested projects.
+
+### Retained in `esytol`
+
+The **development-only web adapter** — the web app's client side of the
+boundary, not API implementation:
+
+```
+app/api/vyora-dev/**             7 route files
+lib/vyora/party-api-config.ts    flag gates
+lib/vyora/party-source-remote.ts
+lib/vyora/ledger-source.ts
+features/vyora/**                screens, hooks, dev affordances
+tests/vyora/**
+docs/platform/**                 28 documents
+```
+
+`forward.ts` stays because it is what keeps `VYORA_API_DEV_IDENTITY` out of
+browser JavaScript.
+
+## 5. Branch protection — unavailable, not skipped
+
+`main` protection was attempted on both new repositories, through the branch
+protection API and again through rulesets. Both returned:
+
+```
+403  Upgrade to GitHub Pro or make this repository public to enable this feature.
+```
+
+The `EasyTechLabs` organisation is on the **free** plan, where protected
+branches and rulesets are not available for **private** repositories. `esytol`
+has protection because it is public.
+
+This is a plan limitation, not a permissions problem or an oversight. Options,
+none of which should be taken without a decision: upgrade the org, make the
+repositories public, or accept unprotected `main` on the two private ones and
+rely on convention.
