@@ -29,7 +29,10 @@ describe("OpenAPI contract", () => {
     }
   });
 
-  it("declares exactly the eight approved operations", () => {
+  // VYORA-PLATFORM-003 approved eight operations; VYORA-PLATFORM-013 added the
+  // two ledger operations deliberately. The surface stays pinned — it just
+  // grew by exactly the two the ledger slice needs, and nothing else.
+  it("declares exactly the ten approved operations", () => {
     const actual = contract.operations.map((o) => `${o.method} ${o.path}`).sort();
     expect(actual).toEqual(
       [
@@ -39,10 +42,21 @@ describe("OpenAPI contract", () => {
         "POST /api/v1/parties",
         "GET /api/v1/parties/{partyId}",
         "PATCH /api/v1/parties/{partyId}",
+        "POST /api/v1/parties/{partyId}/credits",
+        "GET /api/v1/parties/{partyId}/statement",
         "POST /api/v1/sync/push",
         "GET /api/v1/sync/pull",
       ].sort()
     );
+  });
+
+  it("exposes no way to delete or replace a ledger entry", () => {
+    // An entry is money. It is appended once, and corrected by a further
+    // event — never edited away.
+    const verbs = contract.operations
+      .filter((o) => o.path.includes("/credits") || o.path.includes("/statement"))
+      .map((o) => o.method);
+    expect(verbs.sort()).toEqual(["GET", "POST"]);
   });
 
   it("never accepts a merchantId in any request", () => {
