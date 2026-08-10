@@ -12,6 +12,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { navRoutes } from "./modules";
 import { PwaSurfaces } from "./PwaSurfaces";
+import { ReadOnlyTabNotice } from "./ReadOnlyTabNotice";
 
 /** Taps on the "Alpha" badge that open Founder Mode. */
 const FOUNDER_TAPS = 5;
@@ -80,6 +81,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Content */}
       <main className="flex-1 px-4 pb-28 pt-4">
         <PwaSurfaces />
+        {/* Above the screen, not inside it: a tab that cannot save should say so
+            before the merchant starts typing, on every screen. */}
+        <ReadOnlyTabNotice />
         {children}
       </main>
 

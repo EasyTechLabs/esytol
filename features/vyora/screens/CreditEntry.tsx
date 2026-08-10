@@ -52,8 +52,8 @@ export function CreditEntry() {
     });
   };
 
-  const save = (again: boolean) => {
-    const result = submit();
+  const save = async (again: boolean) => {
+    const result = await submit();
     if (!result?.ok) return; // the machine is now in `failure`; the reason renders below
     if (again) {
       reset();

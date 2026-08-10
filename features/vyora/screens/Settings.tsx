@@ -184,10 +184,10 @@ export function Settings() {
   const set = (patch: Partial<MerchantSettings>) => updateSettings(patch);
 
   /** Generate, hand to the browser, and only THEN record that a backup happened. */
-  const exportLedger = () => {
+  const exportLedger = async () => {
     setExportNote("");
     setExportFailed(false);
-    const result = dispatch({ type: "BackupLedger" });
+    const result = await dispatch({ type: "BackupLedger" });
     if (!result.ok) {
       setExportFailed(true);
       setExportNote(result.error.message);
@@ -224,9 +224,11 @@ export function Settings() {
     setPending({ payload, preview: preview.value });
   };
 
-  const confirmImport = () => {
+  const confirmImport = async () => {
     if (!pending) return;
-    const result = dispatch({ type: "ImportLedger", payload: pending.payload });
+    // Through the same locked write as any other command, so a restore cannot
+    // land between another tab's save and its verification.
+    const result = await dispatch({ type: "ImportLedger", payload: pending.payload });
     setPending(null);
     if (!result.ok) {
       setImportFailed(true);

@@ -50,8 +50,8 @@ describe("the provider restores the clock floor", () => {
     localStorage.setItem(CLOCK_KEY, String(floor));
 
     const { result } = await mounted();
-    act(() => {
-      result.current.dispatch({
+    await act(async () => {
+      await result.current.dispatch({
         type: "RecordCredit",
         contactName: CONTACT,
         amount: 100,
@@ -72,16 +72,16 @@ describe("the provider restores the clock floor", () => {
     localStorage.setItem(CLOCK_KEY, String(floor));
 
     const { result } = await mounted();
-    act(() => {
-      result.current.dispatch({
+    await act(async () => {
+      await result.current.dispatch({
         type: "RecordPayment",
         contactName: CONTACT,
         amount: 500,
         kind: "received",
       });
     });
-    act(() => {
-      result.current.dispatch({
+    await act(async () => {
+      await result.current.dispatch({
         type: "RecordCredit",
         contactName: CONTACT,
         amount: 2000,
@@ -100,8 +100,8 @@ describe("the provider stores the clock floor", () => {
     expect(localStorage.getItem(CLOCK_KEY)).toBeNull();
 
     const { result } = await mounted();
-    act(() => {
-      result.current.dispatch({
+    await act(async () => {
+      await result.current.dispatch({
         type: "RecordCredit",
         contactName: CONTACT,
         amount: 250,
@@ -118,8 +118,8 @@ describe("the provider stores the clock floor", () => {
 
   it("never moves the stored floor backwards across writes", async () => {
     const { result } = await mounted();
-    act(() => {
-      result.current.dispatch({
+    await act(async () => {
+      await result.current.dispatch({
         type: "RecordCredit",
         contactName: CONTACT,
         amount: 10,
@@ -128,8 +128,8 @@ describe("the provider stores the clock floor", () => {
     });
     const first = Number(localStorage.getItem(CLOCK_KEY));
 
-    act(() => {
-      result.current.dispatch({
+    await act(async () => {
+      await result.current.dispatch({
         type: "RecordPayment",
         contactName: CONTACT,
         amount: 5,
@@ -176,8 +176,8 @@ describe("importing a backup and the clock floor", () => {
     expect(localStorage.getItem(CLOCK_KEY)).toBeNull();
 
     const { result } = await mounted();
-    act(() => {
-      result.current.dispatch({ type: "ImportLedger", payload: BACKUP });
+    await act(async () => {
+      await result.current.dispatch({ type: "ImportLedger", payload: BACKUP });
     });
 
     const stored = Number(localStorage.getItem(CLOCK_KEY));
@@ -187,8 +187,8 @@ describe("importing a backup and the clock floor", () => {
 
   it("does not adopt the backup's own instants", async () => {
     const { result } = await mounted();
-    act(() => {
-      result.current.dispatch({ type: "ImportLedger", payload: BACKUP });
+    await act(async () => {
+      await result.current.dispatch({ type: "ImportLedger", payload: BACKUP });
     });
 
     // The imported rows are stamped a year ahead. The floor must stay local.
@@ -200,8 +200,8 @@ describe("importing a backup and the clock floor", () => {
     localStorage.setItem(CLOCK_KEY, String(floor));
 
     const { result } = await mounted();
-    act(() => {
-      result.current.dispatch({ type: "ImportLedger", payload: BACKUP });
+    await act(async () => {
+      await result.current.dispatch({ type: "ImportLedger", payload: BACKUP });
     });
 
     expect(Number(localStorage.getItem(CLOCK_KEY))).toBeGreaterThanOrEqual(floor);
@@ -209,8 +209,8 @@ describe("importing a backup and the clock floor", () => {
 
   it("leaves the floor in place when the merchant erases everything", async () => {
     const { result } = await mounted();
-    act(() => {
-      result.current.dispatch({
+    await act(async () => {
+      await result.current.dispatch({
         type: "RecordCredit",
         contactName: CONTACT,
         amount: 100,
@@ -220,8 +220,8 @@ describe("importing a backup and the clock floor", () => {
     const floor = Number(localStorage.getItem(CLOCK_KEY));
     expect(floor).toBeGreaterThan(0);
 
-    act(() => {
-      result.current.reset();
+    await act(async () => {
+      await result.current.reset();
     });
 
     // Erasing the ledger must not hand the next entry an instant already spent.

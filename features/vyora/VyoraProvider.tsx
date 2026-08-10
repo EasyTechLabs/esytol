@@ -17,13 +17,21 @@
  * log is never re-read and the ledger never re-derived just to record an entry.
  */
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { VyoraData } from "@/lib/vyora/types";
 import type { Ledger, LedgerAppend } from "@/lib/vyora/ledger";
 import { appendToLedger } from "@/lib/vyora/ledger";
 import { cacheLedger, ledgerFor } from "@/lib/vyora/selectors";
 import type { LedgerEvent } from "@/lib/vyora/events";
-import { applyEvent, emptyData, reduceEvents } from "@/lib/vyora/events";
+import { applyEvent, emptyData, newId, reduceEvents } from "@/lib/vyora/events";
 import type { Command, CommandContext, CommandError, CommandResult } from "@/lib/vyora/commands";
 import { executeCommand, validateCommand } from "@/lib/vyora/commands";
 import type { MerchantSettings } from "@/lib/vyora/settings";
@@ -35,12 +43,22 @@ import { Toast } from "./Toast";
 import type { PwaFlags } from "@/lib/vyora/pwa";
 import { DEFAULT_PWA_FLAGS } from "@/lib/vyora/pwa";
 import { nowISO } from "@/lib/vyora/clock";
+import { hasWebLocks, withLedgerLock } from "@/lib/vyora/locks";
 import {
+  STALE_AFTER_MS,
+  claimWriting,
+  isWriting,
+  releaseWriting,
+  writerElsewhere,
+} from "@/lib/vyora/writer";
+import {
+  LOG_KEY,
   clearLog,
   loadClockFloor,
   loadLog,
   loadPwaFlags,
   loadSettings,
+  readRawLog,
   saveClockFloor,
   saveLog,
   savePwaFlags,
@@ -63,12 +81,26 @@ interface VyoraContextValue {
   data: VyoraData;
   /** The append-only history this device holds. The audit trail. */
   events: readonly LedgerEvent[];
-  /** Run a command. The ONLY way to change anything. */
-  dispatch: (command: Command) => CommandResult;
+  /**
+   * Run a command. The ONLY way to change anything.
+   *
+   * Async because the write is serialised across tabs with `navigator.locks`,
+   * which is promise-based — see `lib/vyora/locks.ts`. Await it before reading
+   * the result or the ledger.
+   */
+  dispatch: (command: Command) => Promise<CommandResult>;
   /** Why this command would be rejected, or null. Drives both buttons and messages. */
   check: (command: Command) => CommandError | null;
+  /**
+   * Can this tab record anything?
+   *
+   * False only where the browser has no `navigator.locks` **and** another tab
+   * already holds the writer claim. Screens should show a read-only notice
+   * rather than letting a merchant fill in a form that cannot be saved.
+   */
+  writable: boolean;
   /** Erase everything on this device (with confirmation in the UI). */
-  reset: () => void;
+  reset: () => Promise<void>;
   /** Bytes this device is holding for Vyora. Founder Mode only. */
   storageBytes: () => number;
   /** The merchant's own profile and preferences. Local only. */
@@ -90,6 +122,17 @@ const VyoraContext = createContext<VyoraContextValue | null>(null);
 const STORAGE_FULL: CommandError = {
   code: "STORAGE_FULL",
   message: "This device is out of space, so nothing was saved. Export a backup, then try again.",
+};
+
+/**
+ * This browser cannot serialise writes between tabs, and another tab is the one
+ * doing the writing. Refusing is the honest outcome: letting this tab save would
+ * overwrite whatever the other tab has recorded since this one loaded.
+ */
+const READ_ONLY_TAB: CommandError = {
+  code: "READ_ONLY_TAB",
+  message:
+    "This tab is read-only because Vyora is already open in another tab. Use that tab, or close it and reload this one.",
 };
 
 function initialState(): VyoraState {
@@ -125,16 +168,99 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
   const [pwaFlags, setPwaFlagsState] = useState<PwaFlags>(DEFAULT_PWA_FLAGS);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
 
+  /**
+   * False only on browsers without Web Locks, in a tab that does not hold the
+   * writer claim. Everywhere else every tab writes, serialised by the lock.
+   */
+  const [writable, setWritable] = useState(true);
+  /** Identifies this tab to the writer claim. Never leaves the device. */
+  const tabId = useRef(newId("tab"));
+
+  /** Writes in progress. A tab is busy until the whole locked write completes. */
+  const inFlight = useRef(0);
+  /**
+   * The stored log exactly as this tab last saw it.
+   *
+   * A write compares this against storage to tell "nothing has changed, my
+   * projection is current" from "another tab appended". Equal means the
+   * incremental append path still applies; different means re-fold before doing
+   * anything, because executing against a stale projection is how an entry gets
+   * overwritten even while the lock is held.
+   */
+  const lastSeenRaw = useRef<string | null>(null);
+
   useEffect(() => {
     const events = loadLog();
     // Before anything can be recorded. The clock's "never the same instant
     // twice" guarantee is per-page; the floor that carries it across a reload —
     // or a device clock moved backwards — is on the device.
     nowISO.seed(loadClockFloor(events));
+    lastSeenRaw.current = readRawLog();
     setState({ events, ledger: ledgerFor(reduceEvents(events)) });
     setSettings(loadSettings());
     setPwaFlagsState(loadPwaFlags());
     setReady(true);
+  }, []);
+
+  /**
+   * Another tab wrote. Pick up its work.
+   *
+   * `storage` fires only in the *other* tabs of an origin, never in the one that
+   * wrote — exactly the semantics needed, and it needs no channel to be opened.
+   * A tab mid-write is skipped: it is inside the lock and about to re-read
+   * anyway, and replacing its state underneath itself would discard the entry
+   * the merchant is currently recording.
+   */
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== null && event.key !== LOG_KEY) return;
+      if (inFlight.current > 0) return;
+      const events = loadLog();
+      lastSeenRaw.current = readRawLog();
+      setState({ events, ledger: ledgerFor(reduceEvents(events)) });
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  /**
+   * May this tab write?
+   *
+   * With Web Locks, yes — every tab can write, because the lock serialises them.
+   * Without it there is no way to make two tabs safe, so exactly one holds a
+   * claim and the rest go read-only rather than being told a comforting lie.
+   */
+  useEffect(() => {
+    if (hasWebLocks()) {
+      setWritable(true);
+      return;
+    }
+
+    const id = tabId.current;
+    const sync = () => {
+      // Refresh a claim this tab already holds — that is what tells the others
+      // it is still alive. Never take one merely by being open: a session that
+      // only reads, or one using the remote party source, must write nothing.
+      // The claim is taken at the first actual write instead.
+      if (isWriting(id)) {
+        claimWriting(id);
+        setWritable(true);
+        return;
+      }
+      setWritable(!writerElsewhere(id));
+    };
+    sync();
+
+    // Liveness, not a retry loop: nothing here waits on or races for a lock.
+    const timer = window.setInterval(sync, Math.floor(STALE_AFTER_MS / 3));
+    const release = () => releaseWriting(id);
+    window.addEventListener("pagehide", release);
+
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("pagehide", release);
+      release();
+    };
   }, []);
 
   const updateSettings = useCallback((patch: Partial<MerchantSettings>) => {
@@ -158,73 +284,153 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
     [state]
   );
 
+  /**
+   * Run a command. The only way to change anything.
+   *
+   * **Async, and it has to be.** The whole read-modify-write runs inside one
+   * critical section — fresh read, execute, append, persist, verify — and
+   * `navigator.locks` is the only cross-tab mutex browsers offer, which is
+   * promise-based. Serialising a narrower slice would not help: two tabs each
+   * computing from their own stale projection still produce a log missing one
+   * of them, so re-reading *inside* the lock is the part that does the work.
+   */
   const dispatch = useCallback(
-    (command: Command): CommandResult => {
-      const result = time("command", command.type, () => executeCommand(context, command));
-
-      // One place decides what every completed action says. Screens never write
-      // their own confirmation, so there is exactly one toast in the app.
-      // A failed WRITE overrides this below — never confirm an unsaved entry.
-      setFeedback(successFeedback(command, result));
-
-      if (!result.ok || result.events.length === 0) return result;
-
-      const events = [...state.events, ...result.events];
-      const data = result.events.reduce(applyEvent, state.ledger.data);
-      const append = toLedgerAppend(result.events);
-      const ledger = append
-        ? time("selector", "appendToLedger", () => appendToLedger(state.ledger, data, append))
-        : ledgerFor(data);
-
-      setState({ events, ledger: cacheLedger(ledger) });
-
-      // Spend the instant before writing the log that used it. A floor stored
-      // without its entries merely wastes an instant, which nothing can
-      // perceive; entries stored without the floor let the next page load
-      // reissue one, and that is what reorders a running balance. So this runs
-      // first, and it runs even if the write below fails.
-      saveClockFloor(nowISO.lastMs());
-
-      // The entry is in memory; whether it reached the device is a separate
-      // question. A quota-exhausted or blocked write used to return `false`
-      // silently while the merchant read a success toast — so the entry looked
-      // saved and vanished on the next open. Never confirm what was not stored.
-      if (!saveLog(events)) {
-        setFeedback({
-          message: "NOT SAVED — this device is out of space. Export a backup, then retry.",
-          tone: "warning",
-        });
-        return { ok: false, error: STORAGE_FULL };
+    async (command: Command): Promise<CommandResult> => {
+      // Exclusivity is established here, at the moment it matters. With Web
+      // Locks every tab may write and the lock serialises them; without it,
+      // exactly one tab may hold the claim and the rest refuse before computing
+      // anything — so no id and no instant is spent on a write that cannot
+      // happen.
+      if (!hasWebLocks() && !claimWriting(tabId.current)) {
+        setWritable(false);
+        setFeedback({ message: READ_ONLY_TAB.message, tone: "warning" });
+        return { ok: false, error: READ_ONLY_TAB };
       }
 
-      // Remember what the merchant just used, so the next capture is fewer
-      // taps. Derived from the events, so any command that records an entry
-      // gets this for free.
-      const entry = result.events.find(
-        (e) => e.type === "CreditRecorded" || e.type === "PaymentRecorded"
-      );
-      if (entry) {
-        const row = entry.type === "CreditRecorded" ? entry.transaction : entry.payment;
-        setSettings((previous) => {
-          const next: MerchantSettings = {
-            ...previous,
-            recentContactIds: touchRecent(previous.recentContactIds, row.partyId),
-            lastAmount: row.amount,
-          };
-          saveSettings(next);
-          return next;
+      inFlight.current += 1;
+      try {
+        return await withLedgerLock(async () => {
+          // Another tab may have appended since this one loaded.
+          const raw = readRawLog();
+          const changed = raw !== lastSeenRaw.current;
+          const base = changed
+            ? (() => {
+                const events = loadLog();
+                return { events, ledger: ledgerFor(reduceEvents(events)) };
+              })()
+            : { events: state.events, ledger: state.ledger };
+
+          const result = time("command", command.type, () =>
+            executeCommand({ ledger: base.ledger, events: base.events }, command)
+          );
+
+          // Nothing to persist — a rejection, or a read such as ExportLedger.
+          // Still adopt the other tab's work if this read revealed some.
+          if (!result.ok || result.events.length === 0) {
+            if (changed) {
+              lastSeenRaw.current = raw;
+              setState({ events: base.events, ledger: cacheLedger(base.ledger) });
+            }
+            setFeedback(successFeedback(command, result));
+            return result;
+          }
+
+          const events = [...base.events, ...result.events];
+          const data = result.events.reduce(applyEvent, base.ledger.data);
+          const append = toLedgerAppend(result.events);
+          const ledger = append
+            ? time("selector", "appendToLedger", () => appendToLedger(base.ledger, data, append))
+            : ledgerFor(data);
+
+          // Spend the instant before writing the log that used it. A floor
+          // stored without its entries merely wastes an instant, which nothing
+          // can perceive; entries stored without the floor let the next page
+          // load reissue one, and that is what reorders a running balance.
+          saveClockFloor(nowISO.lastMs());
+
+          // Whether it reached the device is a separate question from whether
+          // it is in memory. A quota-exhausted write returns `false`, and a
+          // merchant who reads a success toast for an entry that vanishes on
+          // the next open has been lied to. Never confirm what was not stored.
+          if (!saveLog(events)) {
+            setFeedback({
+              message: "NOT SAVED — this device is out of space. Export a backup, then retry.",
+              tone: "warning",
+            });
+            return { ok: false, error: STORAGE_FULL };
+          }
+
+          // Read back inside the lock. `saveLog` reporting success is not proof
+          // the bytes are there, and this is the last moment another tab cannot
+          // have intervened.
+          const storedRaw = readRawLog();
+          const stored = loadLog();
+          const persisted =
+            stored.length === events.length &&
+            stored[stored.length - 1]?.id === events[events.length - 1]?.id;
+
+          if (!persisted) {
+            setFeedback({
+              message: "NOT SAVED — this device did not keep the entry. Try again.",
+              tone: "warning",
+            });
+            return { ok: false, error: STORAGE_FULL };
+          }
+
+          lastSeenRaw.current = storedRaw;
+          setState({ events, ledger: cacheLedger(ledger) });
+
+          // Only now: the entry is on the device, so saying so is true.
+          setFeedback(successFeedback(command, result));
+
+          // Remember what the merchant just used, so the next capture is fewer
+          // taps. Derived from the events, so any command that records an entry
+          // gets this for free.
+          const entry = result.events.find(
+            (e) => e.type === "CreditRecorded" || e.type === "PaymentRecorded"
+          );
+          if (entry) {
+            const row = entry.type === "CreditRecorded" ? entry.transaction : entry.payment;
+            setSettings((previous) => {
+              const next: MerchantSettings = {
+                ...previous,
+                recentContactIds: touchRecent(previous.recentContactIds, row.partyId),
+                lastAmount: row.amount,
+              };
+              saveSettings(next);
+              return next;
+            });
+          }
+          return result;
         });
+      } finally {
+        inFlight.current -= 1;
       }
-      return result;
     },
-    [context, state]
+    [state]
   );
 
   const check = useCallback((command: Command) => validateCommand(context, command), [context]);
 
-  const reset = useCallback(() => {
-    clearLog();
-    setState(initialState());
+  /**
+   * Erase everything on this device.
+   *
+   * Under the same lock as a write. Erasing while another tab is mid-append
+   * would otherwise interleave with it, and "erase all my data" landing between
+   * another tab's `saveLog` and its verification is exactly the kind of race
+   * that leaves a merchant unsure what happened.
+   */
+  const reset = useCallback(async () => {
+    inFlight.current += 1;
+    try {
+      await withLedgerLock(async () => {
+        clearLog();
+        lastSeenRaw.current = readRawLog();
+        setState(initialState());
+      });
+    } finally {
+      inFlight.current -= 1;
+    }
   }, []);
 
   const value = useMemo<VyoraContextValue>(
@@ -235,6 +441,7 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
       events: state.events,
       dispatch,
       check,
+      writable,
       reset,
       storageBytes: storageSizeBytes,
       settings,
@@ -242,7 +449,18 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
       pwaFlags,
       setPwaFlags,
     }),
-    [ready, state, dispatch, check, reset, settings, updateSettings, pwaFlags, setPwaFlags]
+    [
+      ready,
+      state,
+      dispatch,
+      check,
+      writable,
+      reset,
+      settings,
+      updateSettings,
+      pwaFlags,
+      setPwaFlags,
+    ]
   );
 
   return (

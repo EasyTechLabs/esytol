@@ -91,6 +91,24 @@ export function saveLog(events: readonly LedgerEvent[]): boolean {
 }
 
 /**
+ * The stored log exactly as it sits on the device, unparsed.
+ *
+ * A write now begins by re-reading, because another tab may have appended since
+ * this one loaded. Parsing and re-folding on every write would undo the
+ * incremental capture path that `appendToLedger` exists for, so the caller first
+ * compares this string with the one it last saw: equal means its in-memory
+ * projection is current and the fast append still applies.
+ */
+export function readRawLog(): string | null {
+  if (!hasWindow()) return null;
+  try {
+    return window.localStorage.getItem(LOG_KEY);
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Read the log. On a device still holding v1 state, migrate it and persist the
  * result so the conversion happens exactly once. The v1 key is NOT removed —
  * if anything about v2 goes wrong, the original data is still sitting there.

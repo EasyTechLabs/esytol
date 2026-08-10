@@ -21,8 +21,8 @@ export function PaymentEntry() {
   // Presentation only — not part of the write, so not part of the machine.
   const [showMore, setShowMore] = useState(false);
 
-  const save = () => {
-    const result = submit();
+  const save = async () => {
+    const result = await submit();
     if (!result?.ok) return; // the machine is now in `failure`; the reason renders below
     router.push("/vyora");
   };

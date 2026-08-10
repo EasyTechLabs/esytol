@@ -108,7 +108,7 @@ export function usePartyWriter(overrides: PartyWriterOverrides = {}): PartyWrite
 
       // Local path, unchanged from before this milestone: the command engine
       // is still the only thing that touches the device's log.
-      const outcome = dispatch({
+      const outcome = await dispatch({
         type: "CreateContact",
         name: input.name,
         phone: input.phone || undefined,

@@ -92,21 +92,48 @@ The provider seeds the clock before anything can be recorded and writes the floo
 `saveLog`, and even if that write fails: a floor without its entries wastes an instant, which
 nothing can perceive; entries without their floor let the next load reissue one.
 
-### Two tabs — a hazard that predates all of this
+### Two tabs
 
-`saveLog` writes the **whole log** from one tab's memory, and there is no `storage` listener, no
-`BroadcastChannel` and no `navigator.locks` anywhere in `VyoraProvider`. Two open tabs therefore
-**lose data outright**: whichever saves last overwrites everything the other recorded since both
-loaded. This is not caused by the clock work — it has always been true and was simply never written
-down.
+`saveLog` writes the **whole log** from one tab's memory. Until WEB-MULTITAB-001 that meant two open
+tabs **lost data outright** — whichever saved last overwrote everything the other had recorded since
+both loaded. Measured at the real boundary: two tabs recording ₹100 and ₹200 left `[200]`, and a
+credit in one tab with a payment in the other lost the credit entirely, after a success toast had
+already been shown for it.
 
-It also bounds the clock guarantee, and the bound is worth stating precisely rather than glossing:
+Every write now runs inside one critical section, held by `navigator.locks`:
 
-- Two tabs cannot read-modify-write the floor atomically, so in principle they can mint the same instant.
-- In practice that collision **cannot reach a stored ledger**, because a persisted log only ever contains one tab's writes since its last load — the other tab's entries are already gone. Concurrent tabs destroy entries rather than misorder them.
+```
+fresh read → execute the command against THAT state → append →
+persist log and clock floor → read back and verify → update the UI
+```
 
-So the guarantee is **per log**: within any log that actually exists on disk, no two entries share a
-`createdAt`. Making concurrent tabs safe is a separate problem, and a real one.
+**Re-reading inside the lock is the part that does the work.** Serialising two tabs that each compute
+from their own stale projection still produces a log missing one of them — proven by neutering just
+the fresh read, which brings the original loss straight back while the lock is still held. The lock
+alone buys nothing.
+
+Consequences worth knowing:
+
+- `dispatch` is **async**. Web Locks is the only same-origin cross-tab mutex and it is promise-based; there is no synchronous equivalent. `await` it before reading the result or the ledger.
+- A tab picks up another tab's work through the `storage` event, which fires only in the _other_ tabs of an origin. A tab that is mid-write ignores it — it is inside the lock and about to re-read anyway.
+- Import, restore and the clock floor all go through the same locked path, so a restore cannot land between another tab's save and its verification. The log is append-only, so an entry recorded moments before a restore is still in history afterwards.
+- Nothing is shown as saved until it has been read back from storage. A quota-exhausted or unverified write reports failure instead of a success toast.
+
+### Browsers without Web Locks
+
+There is no way to make two tabs write safely without a same-origin lock, so this does not pretend
+otherwise. One tab holds a claim in `vyora.writer.v1` and may write; the others become **read-only**
+and say so in a banner on every screen.
+
+The claim is taken at the first _write_, never merely by having the app open — a session that only
+reads, or one driving the remote party source, writes nothing to storage at all. It is refreshed
+while the holder is alive and released on `pagehide`; a claim nobody has touched for
+`STALE_AFTER_MS` is treated as abandoned, so a crashed tab cannot lock the merchant out permanently.
+
+That staleness window is liveness detection, not a retry loop. It is **best effort and stated as
+such**: two tabs could in principle both judge a claim abandoned in the same instant. Every current
+browser engine ships Web Locks, so this path is rare — and it is still strictly better than the old
+behaviour, where every tab wrote freely and the last one won.
 
 On first read of a device still holding v1 state, `migrateLegacyData` converts it into the log that
 folds back to exactly that state, persists it under the v2 key, and **leaves the v1 key untouched**.

@@ -30,10 +30,13 @@ export interface Workflow<TDraft> {
   readonly canUndo: boolean;
   /** Replace the draft. Ignored while a write is in flight. */
   readonly edit: (patch: Partial<TDraft>) => void;
-  /** Run the command. Returns its result, or null if the draft was not submittable. */
-  readonly submit: () => CommandResult | null;
+  /**
+   * Run the command. Resolves to its result, or null if the draft was not
+   * submittable. Async because the write is serialised across tabs.
+   */
+  readonly submit: () => Promise<CommandResult | null>;
   /** Reverse the last successful run, when the workflow supports it. */
-  readonly undo: () => void;
+  readonly undo: () => Promise<void>;
   /** Back to a fresh, empty draft. */
   readonly reset: () => void;
 }
@@ -72,17 +75,23 @@ export function useWorkflow<TDraft>(definition: WorkflowDefinition<TDraft>): Wor
    * is a render-time value, so two calls in the SAME tick would both read
    * `valid` and both dispatch. This latch closes that window; the machine
    * handles every later one.
+   *
+   * Since the write became async it stays closed for the **whole** locked
+   * write — fresh read, execute, persist, verify — not merely until the call
+   * returns. A latch released early would let a second submit start while the
+   * first was still inside the lock, which is the double-entry this exists to
+   * prevent.
    */
   const inFlight = useRef(false);
 
-  const submit = useCallback((): CommandResult | null => {
+  const submit = useCallback(async (): Promise<CommandResult | null> => {
     if (inFlight.current) return null;
     const saving = transition(state, { type: "SUBMIT" }, rules);
     // Not valid, or already in flight — the machine refused, so nothing runs.
     if (saving.status !== "saving") return null;
     inFlight.current = true;
     try {
-      const result = dispatch(definition.toCommand(saving.draft));
+      const result = await dispatch(definition.toCommand(saving.draft));
       setState(transition(saving, { type: "RESOLVED", result }, rules));
       return result;
     } finally {
@@ -90,10 +99,10 @@ export function useWorkflow<TDraft>(definition: WorkflowDefinition<TDraft>): Wor
     }
   }, [state, rules, dispatch, definition]);
 
-  const undo = useCallback(() => {
+  const undo = useCallback(async () => {
     const undoing = transition(state, { type: "UNDO" }, rules);
     if (undoing.status !== "undo") return;
-    const result = dispatch(undoing.undoCommand);
+    const result = await dispatch(undoing.undoCommand);
     setState(
       transition(
         undoing,
