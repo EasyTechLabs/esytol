@@ -29,6 +29,7 @@
 
 import type { VyoraData, Party, Transaction, Payment, EntryKind, PaymentKind } from "./types";
 import type { DaySummary } from "./closing";
+import { nowISO } from "./clock";
 
 /** Version of the persisted event-log format. */
 export const LOG_VERSION = 2;
@@ -44,10 +45,6 @@ export function newId(prefix = "id"): string {
   if (c && typeof c.randomUUID === "function") return `${prefix}_${c.randomUUID()}`;
   // Deterministic-enough fallback (never used on modern browsers / Node ≥ 19).
   return `${prefix}_${Date.now().toString(36)}${Math.round(performance?.now?.() ?? 0).toString(36)}`;
-}
-
-function nowISO(): string {
-  return new Date().toISOString();
 }
 
 // ─── Event shapes ────────────────────────────────────────────────────────────

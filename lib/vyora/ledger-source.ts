@@ -11,6 +11,7 @@
  * so the development identity stays server-side.
  */
 
+import { nowISO } from "./clock";
 import type { StatementRow as LocalStatementRow } from "./ledger";
 import type { PartySourceKind } from "./party-source";
 import { PARTY_PROXY_PATH } from "./party-api-config";
@@ -164,12 +165,20 @@ export function remoteLedgerSource(basePath: string = PARTY_PROXY_PATH): LedgerS
       // The entry id is client-minted, so the entry has an identity from the
       // moment the merchant records it — and it deduplicates a retry alongside
       // the idempotency key.
+      //
+      // `createdAt` comes from the shared device clock, not `new Date()`. The
+      // API orders a statement by `(created_at, entry_id)`, and entry ids are
+      // random UUIDs behind a type prefix where `pay_` sorts before `txn_` — so
+      // two entries sent with the same instant come back with the payment
+      // folded first whatever order they were recorded in. That is the mobile
+      // defect exactly, reachable from here. The clock never mints an instant
+      // twice, so the tiebreak is never consulted.
       const body: Record<string, unknown> = {
         id: `txn_${newUuid()}`,
         amount: input.amount,
         kind: input.kind,
         date: input.date,
-        createdAt: new Date().toISOString(),
+        createdAt: nowISO(),
       };
       if (input.description) body.description = input.description;
       if (input.dueDate) body.dueDate = input.dueDate;
@@ -200,7 +209,7 @@ export function remoteLedgerSource(basePath: string = PARTY_PROXY_PATH): LedgerS
         amount: input.amount,
         kind: input.kind,
         date: input.date,
-        createdAt: new Date().toISOString(),
+        createdAt: nowISO(),
       };
       if (input.note) body.note = input.note;
 

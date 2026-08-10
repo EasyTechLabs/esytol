@@ -193,6 +193,68 @@ export function savePwaFlags(flags: PwaFlags): boolean {
   }
 }
 
+/**
+ * The device clock's floor gets its own key, beside settings and PWA flags.
+ *
+ * It is not a ledger fact, so it does not belong in the log; and it must not be
+ * carried by a backup, so it does not belong in the export either. It records
+ * only how far this browser's clock has already counted, so a reload — or a
+ * device clock moved backwards — cannot reissue an instant already spent. See
+ * `clock.ts` for why that matters to a running balance.
+ */
+const CLOCK_KEY = "vyora.clock.v1";
+
+export { CLOCK_KEY };
+
+/** Highest instant this device has stamped on one of its own events. */
+function highestEventAtMs(events: readonly LedgerEvent[]): number {
+  let high = -1;
+  for (const event of events) {
+    const ms = Date.parse(event.at);
+    if (Number.isFinite(ms) && ms > high) high = ms;
+  }
+  return high;
+}
+
+/**
+ * Where this device's clock should resume, in milliseconds, or -1 for a device
+ * with no history at all.
+ *
+ * The stored floor wins. A device that recorded entries before this key existed
+ * has none, and the fallback is the highest `at` in its own log — **not** the
+ * highest `createdAt` among its entries. Every event's `at` was stamped by this
+ * browser, whereas an entry's `createdAt` can have come from somewhere else: an
+ * imported backup carries the exporting device's instants, and seeding from a
+ * device whose clock was a year fast would drag this one into that year and
+ * keep it there.
+ */
+export function loadClockFloor(events: readonly LedgerEvent[] = []): number {
+  if (!hasWindow()) return highestEventAtMs(events);
+  try {
+    const raw = window.localStorage.getItem(CLOCK_KEY);
+    const stored = raw === null ? Number.NaN : Number(raw);
+    if (Number.isFinite(stored)) return stored;
+  } catch {
+    // Fall through to the log.
+  }
+  return highestEventAtMs(events);
+}
+
+/** Record how far the clock has counted. Monotonic: it never moves backwards. */
+export function saveClockFloor(ms: number): boolean {
+  if (!hasWindow()) return false;
+  if (!Number.isFinite(ms) || ms < 0) return false;
+  try {
+    const raw = window.localStorage.getItem(CLOCK_KEY);
+    const stored = raw === null ? Number.NaN : Number(raw);
+    if (Number.isFinite(stored) && stored >= ms) return true;
+    window.localStorage.setItem(CLOCK_KEY, String(Math.trunc(ms)));
+    return true;
+  } catch {
+    return false; // quota / private mode — never crash the UI
+  }
+}
+
 /** The projection currently on this device. Convenience for non-React callers. */
 export function loadData(): VyoraData {
   return reduceEvents(loadLog());

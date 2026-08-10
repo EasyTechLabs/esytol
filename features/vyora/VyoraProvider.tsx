@@ -34,11 +34,14 @@ import { successFeedback } from "@/lib/vyora/feedback";
 import { Toast } from "./Toast";
 import type { PwaFlags } from "@/lib/vyora/pwa";
 import { DEFAULT_PWA_FLAGS } from "@/lib/vyora/pwa";
+import { nowISO } from "@/lib/vyora/clock";
 import {
   clearLog,
+  loadClockFloor,
   loadLog,
   loadPwaFlags,
   loadSettings,
+  saveClockFloor,
   saveLog,
   savePwaFlags,
   saveSettings,
@@ -124,6 +127,10 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const events = loadLog();
+    // Before anything can be recorded. The clock's "never the same instant
+    // twice" guarantee is per-page; the floor that carries it across a reload —
+    // or a device clock moved backwards — is on the device.
+    nowISO.seed(loadClockFloor(events));
     setState({ events, ledger: ledgerFor(reduceEvents(events)) });
     setSettings(loadSettings());
     setPwaFlagsState(loadPwaFlags());
@@ -170,6 +177,13 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
         : ledgerFor(data);
 
       setState({ events, ledger: cacheLedger(ledger) });
+
+      // Spend the instant before writing the log that used it. A floor stored
+      // without its entries merely wastes an instant, which nothing can
+      // perceive; entries stored without the floor let the next page load
+      // reissue one, and that is what reorders a running balance. So this runs
+      // first, and it runs even if the write below fails.
+      saveClockFloor(nowISO.lastMs());
 
       // The entry is in memory; whether it reached the device is a separate
       // question. A quota-exhausted or blocked write used to return `false`

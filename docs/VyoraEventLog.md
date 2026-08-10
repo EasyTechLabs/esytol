@@ -68,6 +68,45 @@ visible in the timeline — a balance the merchant could not reconcile.
 | ----------------- | --------------------------------------------------- | ----------------------------------- |
 | `vyora.events.v2` | `{version: 2, events: [...]}` — the source of truth | yes                                 |
 | `vyora.alpha.v1`  | the pre-ARCH-002 state blob                         | **never** — read once for migration |
+| `vyora.clock.v1`  | how far this browser's clock has counted            | yes — on every write                |
+
+### `vyora.clock.v1` — why the clock has a floor on disk
+
+`createdAt` resolves to the millisecond, and minting an event is pure JavaScript with no I/O between
+two of them, so entries recorded back to back collided **294 times in 300**. The timeline breaks a
+tie in favour of the transaction side, which is right when the credit really was first and wrong
+when it was not — a payment recorded first then folded second gives the merchant a running balance
+that never happened.
+
+So the clock (`lib/vyora/clock.ts`) never mints the same instant twice, and the floor is persisted
+here so a reload — or a device clock moved backwards — cannot reissue one already spent.
+
+- It is **not in the log**, because how far a clock has counted is not a ledger fact.
+- It is **not in an export**, because a backup must not carry another device's clock.
+- It **survives "erase all my data"**, like the PWA flags: it is a fact about this browser, and
+  keeping it is strictly safer than dropping it.
+- A device with entries but no floor falls back to the highest event `at` in its **own log** — never
+  to an entry's `createdAt`, which an imported backup supplies from the exporting device.
+
+The provider seeds the clock before anything can be recorded and writes the floor **before**
+`saveLog`, and even if that write fails: a floor without its entries wastes an instant, which
+nothing can perceive; entries without their floor let the next load reissue one.
+
+### Two tabs — a hazard that predates all of this
+
+`saveLog` writes the **whole log** from one tab's memory, and there is no `storage` listener, no
+`BroadcastChannel` and no `navigator.locks` anywhere in `VyoraProvider`. Two open tabs therefore
+**lose data outright**: whichever saves last overwrites everything the other recorded since both
+loaded. This is not caused by the clock work — it has always been true and was simply never written
+down.
+
+It also bounds the clock guarantee, and the bound is worth stating precisely rather than glossing:
+
+- Two tabs cannot read-modify-write the floor atomically, so in principle they can mint the same instant.
+- In practice that collision **cannot reach a stored ledger**, because a persisted log only ever contains one tab's writes since its last load — the other tab's entries are already gone. Concurrent tabs destroy entries rather than misorder them.
+
+So the guarantee is **per log**: within any log that actually exists on disk, no two entries share a
+`createdAt`. Making concurrent tabs safe is a separate problem, and a real one.
 
 On first read of a device still holding v1 state, `migrateLegacyData` converts it into the log that
 folds back to exactly that state, persists it under the v2 key, and **leaves the v1 key untouched**.
