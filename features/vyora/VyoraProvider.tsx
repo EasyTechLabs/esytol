@@ -42,6 +42,7 @@ import { successFeedback } from "@/lib/vyora/feedback";
 import { Toast } from "./Toast";
 import type { PwaFlags } from "@/lib/vyora/pwa";
 import { DEFAULT_PWA_FLAGS } from "@/lib/vyora/pwa";
+import { latestInstantMs } from "@/lib/vyora/backup";
 import { nowISO } from "@/lib/vyora/clock";
 import { hasWebLocks, withLedgerLock } from "@/lib/vyora/locks";
 import {
@@ -99,6 +100,11 @@ interface VyoraContextValue {
    * rather than letting a merchant fill in a form that cannot be saved.
    */
   writable: boolean;
+  /**
+   * Replace this book with a validated backup's events. Replace-only: no merge,
+   * no snapshot event, no network. Validate the file before calling.
+   */
+  restore: (events: readonly LedgerEvent[]) => Promise<CommandResult>;
   /** Erase everything on this device (with confirmation in the UI). */
   reset: () => Promise<void>;
   /** Bytes this device is holding for Vyora. Founder Mode only. */
@@ -413,6 +419,79 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
   const check = useCallback((command: Command) => validateCommand(context, command), [context]);
 
   /**
+   * Replace this browser's book with a validated backup.
+   *
+   * **Replace, not merge, and no snapshot event.** The restored log *is* the
+   * book, so the log is swapped wholesale rather than having a snapshot appended
+   * to it. Two books folded together would produce balances belonging to
+   * neither, and a merchant cannot un-merge them; the pre-restore file the UI
+   * takes first is what makes the replacement recoverable.
+   *
+   * Runs through the same locked path as a write, so a restore cannot land
+   * between another tab's save and its verification. Other tabs pick it up from
+   * the `storage` event, exactly as they pick up an entry.
+   *
+   * Callers must validate the file **before** calling this. By the time it runs,
+   * the decision has been made.
+   */
+  const restore = useCallback(async (events: readonly LedgerEvent[]): Promise<CommandResult> => {
+    if (!hasWebLocks() && !claimWriting(tabId.current)) {
+      setFeedback({ message: READ_ONLY_TAB.message, tone: "warning" });
+      return { ok: false, error: READ_ONLY_TAB };
+    }
+
+    inFlight.current += 1;
+    try {
+      return await withLedgerLock(async () => {
+        const next = [...events];
+        if (!saveLog(next)) {
+          setFeedback({
+            message: "NOT RESTORED — this device is out of space. Your book is unchanged.",
+            tone: "warning",
+          });
+          return { ok: false, error: STORAGE_FULL };
+        }
+
+        // Read back before believing it, as every write does.
+        const storedRaw = readRawLog();
+        const stored = loadLog();
+        if (stored.length !== next.length) {
+          setFeedback({
+            message: "NOT RESTORED — this device did not keep the file. Your book is unchanged.",
+            tone: "warning",
+          });
+          return { ok: false, error: STORAGE_FULL };
+        }
+
+        // The merchant's next action happens AFTER the restore, so it has to
+        // sort after everything the restore brought in.
+        //
+        // A floor set merely to "now" does not achieve that. Restore a book
+        // from a device whose clock ran ahead and the next entry lands in the
+        // *middle* of it — today's credit inserted into last year's history,
+        // silently reordering every running balance after it. A ledger whose
+        // balance sequence a restore can rewrite is not a ledger.
+        //
+        // So the floor clears the whole restored book by a millisecond. The
+        // cost is real and deliberate: after restoring a fast-clock backup,
+        // new entries carry timestamps that look like the future. That is the
+        // lesser harm, and it is written down rather than hidden — see
+        // `vyora/architecture/backup-envelope.md`.
+        const floor = Math.max(Date.now(), latestInstantMs(stored)) + 1;
+        nowISO.seed(floor);
+        saveClockFloor(floor);
+
+        lastSeenRaw.current = storedRaw;
+        setState({ events: stored, ledger: cacheLedger(ledgerFor(reduceEvents(stored))) });
+        setFeedback({ message: "Restored. This browser now holds that book.", tone: "success" });
+        return { ok: true, value: { events: stored.length }, events: [] };
+      });
+    } finally {
+      inFlight.current -= 1;
+    }
+  }, []);
+
+  /**
    * Erase everything on this device.
    *
    * Under the same lock as a write. Erasing while another tab is mid-append
@@ -442,6 +521,7 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
       dispatch,
       check,
       writable,
+      restore,
       reset,
       storageBytes: storageSizeBytes,
       settings,
@@ -455,6 +535,7 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
       dispatch,
       check,
       writable,
+      restore,
       reset,
       settings,
       updateSettings,

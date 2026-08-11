@@ -20,7 +20,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useVyora } from "../VyoraProvider";
 import { SW_SCOPE, detectInstallState } from "@/lib/vyora/pwa";
-import { previewImport, type ImportPreview } from "@/lib/vyora/commands";
+import {
+  buildBackup,
+  parseBackup,
+  summarise,
+  type BackupEvents,
+  type BackupSummary,
+} from "@/lib/vyora/backup";
 import { runIntegrityChecks } from "@/lib/vyora/debug";
 import {
   APP_VERSION,
@@ -147,14 +153,27 @@ function DangerAction({
 }
 
 export function Settings() {
-  const { ready, ledger, events, dispatch, reset, storageBytes, settings, updateSettings } =
-    useVyora();
+  const {
+    ready,
+    ledger,
+    events,
+    dispatch,
+    restore,
+    reset,
+    storageBytes,
+    settings,
+    updateSettings,
+  } = useVyora();
   const fileInput = useRef<HTMLInputElement>(null);
   const [exportNote, setExportNote] = useState("");
   const [exportFailed, setExportFailed] = useState(false);
-  const [pending, setPending] = useState<{ payload: string; preview: ImportPreview } | null>(null);
+  const [pending, setPending] = useState<{
+    events: BackupEvents;
+    summary: BackupSummary;
+  } | null>(null);
   const [importNote, setImportNote] = useState("");
   const [importFailed, setImportFailed] = useState(false);
+  const [restoring, setRestoring] = useState(false);
 
   const [pwa, setPwa] = useState(() => ({ installed: false, needsManualInstall: false }));
   const [offlineReady, setOfflineReady] = useState(false);
@@ -183,17 +202,16 @@ export function Settings() {
 
   const set = (patch: Partial<MerchantSettings>) => updateSettings(patch);
 
-  /** Generate, hand to the browser, and only THEN record that a backup happened. */
-  const exportLedger = async () => {
-    setExportNote("");
-    setExportFailed(false);
-    const result = await dispatch({ type: "BackupLedger" });
-    if (!result.ok) {
-      setExportFailed(true);
-      setExportNote(result.error.message);
-      return;
-    }
-    const file = result.value as { fileName: string; contents: string };
+  /**
+   * Hand a file to the browser. Must be called inside the click that asked for
+   * it — a download started later can be blocked as an unrequested popup.
+   *
+   * **`true` means the download was started, not that the merchant has it.** A
+   * page cannot see where a file landed, whether the user cancelled the save
+   * dialog, or whether the disk was full. Every message built on this says
+   * "sent to your downloads", never "saved safely".
+   */
+  const download = (file: { fileName: string; contents: string }): boolean => {
     try {
       const blob = new Blob([file.contents], { type: "application/json" });
       const url = URL.createObjectURL(blob);
@@ -202,11 +220,44 @@ export function Settings() {
       anchor.download = file.fileName;
       anchor.click();
       URL.revokeObjectURL(url);
-      setExportNote(`Downloaded ${file.fileName}. Keep it somewhere safe.`);
+      return true;
     } catch {
+      return false;
+    }
+  };
+
+  /** Build, hand to the browser, and only THEN record that a backup happened. */
+  const exportLedger = async () => {
+    setExportNote("");
+    setExportFailed(false);
+
+    // Pure: reads the log and returns text. Nothing here touches storage, the
+    // clock or anything remote.
+    const file = buildBackup(
+      events,
+      { name: "vyora", version: APP_VERSION },
+      new Date().toISOString()
+    );
+
+    if (!download(file)) {
       setExportFailed(true);
       setExportNote("Could not save the file. Nothing was downloaded — try again.");
+      return;
     }
+
+    // Recorded after the file left the app, never before, so "backed up" is
+    // only ever claimed about a file that actually exists.
+    const noted = await dispatch({ type: "BackupLedger" });
+    if (!noted.ok) {
+      setExportFailed(true);
+      setExportNote(`Downloaded ${file.fileName}, but this device could not record it.`);
+      return;
+    }
+
+    const summary = summarise(events, { schemaVersion: 0, exportedAt: null, appVersion: null });
+    setExportNote(
+      `Downloaded ${file.fileName} — ${summary.parties} contacts, ${summary.entries} entries, ${summary.closedDays} closed days. Keep it somewhere safe.`
+    );
   };
 
   const chooseFile = async (file: File | undefined) => {
@@ -214,28 +265,62 @@ export function Settings() {
     setImportFailed(false);
     setPending(null);
     if (!file) return;
-    const payload = await file.text();
-    const preview = previewImport(payload);
-    if (!preview.ok) {
+
+    // Everything is read and checked before storage is allowed to change.
+    const parsed = parseBackup(await file.text());
+    if (!parsed.ok) {
       setImportFailed(true);
-      setImportNote(preview.error.message);
+      setImportNote(parsed.reason);
       return;
     }
-    setPending({ payload, preview: preview.value });
+    setPending({ events: parsed.events, summary: parsed.summary });
   };
 
-  const confirmImport = async () => {
-    if (!pending) return;
-    // Through the same locked write as any other command, so a restore cannot
-    // land between another tab's save and its verification.
-    const result = await dispatch({ type: "ImportLedger", payload: pending.payload });
-    setPending(null);
-    if (!result.ok) {
-      setImportFailed(true);
-      setImportNote(result.error.message);
-      return;
+  /**
+   * Replace this book — after taking a copy of the one being replaced.
+   *
+   * The pre-restore file is downloaded first, inside this click, and the
+   * replacement does not happen unless it succeeded. A merchant who restores
+   * the wrong file has one way back, and it is that file.
+   */
+  const confirmRestore = async () => {
+    if (!pending || restoring) return;
+    setRestoring(true);
+    try {
+      const safety = buildBackup(
+        events,
+        { name: "vyora", version: APP_VERSION },
+        new Date().toISOString()
+      );
+      const kept = download({
+        fileName: safety.fileName.replace("vyora-backup-", "vyora-before-restore-"),
+        contents: safety.contents,
+      });
+
+      if (!kept) {
+        setImportFailed(true);
+        setImportNote(
+          "Nothing was restored. This browser blocked the safety copy of your current book, and replacing it without one is not safe. Allow downloads for this site, then try again."
+        );
+        return;
+      }
+
+      // Through the same Web Locks boundary as any write, so a restore cannot
+      // land between another tab's save and its verification.
+      const result = await restore(pending.events);
+      if (!result.ok) {
+        setImportFailed(true);
+        setImportNote(result.error.message);
+        return;
+      }
+
+      setPending(null);
+      setImportNote(
+        `Restored ${pending.summary.parties} contacts and ${pending.summary.entries} entries. A copy of your previous book was sent to your downloads first — check it arrived before you close this page.`
+      );
+    } finally {
+      setRestoring(false);
     }
-    setImportNote("Restore completed. Your ledger now matches the file.");
   };
 
   const heroTone =
@@ -316,28 +401,71 @@ export function Settings() {
         {pending && (
           <div className="mt-3 rounded-xl border-2 border-amber-200 bg-amber-50 p-3">
             <p className="text-sm font-semibold text-amber-900">
-              This file will replace everything
+              This will replace your current book
             </p>
-            <ul className="mt-1 space-y-0.5 text-xs text-amber-800">
-              <li>{pending.preview.contacts} contacts</li>
-              <li>{pending.preview.transactions} credit entries</li>
-              <li>{pending.preview.payments} payments</li>
-            </ul>
+
+            <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-amber-900">
+              <dt className="text-amber-700">Contacts</dt>
+              <dd className="text-right font-semibold tabular-nums">{pending.summary.parties}</dd>
+              <dt className="text-amber-700">Entries</dt>
+              <dd className="text-right font-semibold tabular-nums">{pending.summary.entries}</dd>
+              <dt className="text-amber-700">Closed days</dt>
+              <dd className="text-right font-semibold tabular-nums">
+                {pending.summary.closedDays}
+              </dd>
+              <dt className="text-amber-700">History records</dt>
+              <dd className="text-right font-semibold tabular-nums">{pending.summary.events}</dd>
+              <dt className="text-amber-700">Covers</dt>
+              <dd className="text-right font-semibold">
+                {pending.summary.firstEntryDate
+                  ? `${formatDate(pending.summary.firstEntryDate)} — ${formatDate(
+                      pending.summary.lastEntryDate ?? pending.summary.firstEntryDate
+                    )}`
+                  : "no entries"}
+              </dd>
+              <dt className="text-amber-700">Saved on</dt>
+              <dd className="text-right font-semibold">
+                {pending.summary.exportedAt
+                  ? formatDate(pending.summary.exportedAt.slice(0, 10))
+                  : "not recorded"}
+              </dd>
+              <dt className="text-amber-700">File version</dt>
+              <dd className="text-right font-semibold tabular-nums">
+                {pending.summary.schemaVersion}
+                {pending.summary.appVersion ? ` · Vyora ${pending.summary.appVersion}` : ""}
+              </dd>
+            </dl>
+
+            {pending.summary.warnings.length > 0 && (
+              <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-amber-900">
+                {pending.summary.warnings.map((warning) => (
+                  <li key={warning}>{warning}</li>
+                ))}
+              </ul>
+            )}
+
             <p className="mt-2 text-xs text-amber-800">
               Your current book ({ledger.statistics.partyCount} contacts,{" "}
-              {ledger.statistics.entryCount} entries) will be replaced. Export it first if unsure.
+              {ledger.statistics.entryCount} entries) will be replaced, not merged. A copy of it is
+              sent to your downloads first, before anything changes — Vyora can start that download
+              but cannot confirm your device kept it, so check for the file.
             </p>
+
             <div className="mt-2 flex gap-2">
               <button
                 type="button"
-                onClick={confirmImport}
-                className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white"
+                onClick={confirmRestore}
+                disabled={restoring}
+                className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
               >
-                Restore this file
+                {restoring ? "Restoring…" : "Replace my book with this file"}
               </button>
               <button
                 type="button"
-                onClick={() => setPending(null)}
+                onClick={() => {
+                  setPending(null);
+                  setImportNote("Cancelled. Nothing was changed.");
+                }}
                 className="rounded-lg border-2 border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600"
               >
                 Cancel
