@@ -15,6 +15,7 @@ import { importModule } from "./importLedger";
 import { founderModule } from "./founder";
 import { recoveryModule } from "./recovery";
 import { settingsModule } from "./settings";
+import { shopModule } from "./shop";
 import { closingModule } from "./closing";
 
 export type { FeatureModule, ModuleRoute } from "./types";
@@ -68,6 +69,7 @@ export const MODULES: readonly FeatureModule[] = [
   contactsModule,
   importModule,
   backupModule,
+  shopModule,
   settingsModule,
   founderModule,
 ];

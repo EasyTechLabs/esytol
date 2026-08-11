@@ -45,6 +45,25 @@ development-only adapter that talks to a local API.
 | [`vyora`](https://github.com/EasyTechLabs/vyora)                       | Knowledge base and product planning.                                          |
 
 All Vyora remote-API flags are committed as `false` and are development-only.
+
+### Shop sign-in and setup
+
+`/vyora/shop` signs a merchant in by email code, creates or chooses a shop, and
+shows its QR and code. `/vyora/shop/verify` resolves somebody else's code
+before anything acts on it.
+
+**The session token is never in browser JavaScript.** It is set as an httpOnly
+cookie by a route handler under `/api/vyora-shops`, read only on the server, and
+attached there to requests the browser cannot make itself. `localStorage` was
+rejected: every dependency in the bundle can read it, forever. See ADR-0009 in
+`vyora-api/docs/adr/`.
+
+This flow is gated on `NODE_ENV !== "production"` **and** a loopback API URL, by
+`decideShopApi`. It deliberately does **not** use the party-read flag or the
+shared fixture identity — the credential here is a real person's own session, and
+requiring a fixture identity to sign in as yourself would be the wrong shape.
+A build that cannot reach a local API shows no email box rather than accepting an
+address and delivering nothing.
 Production refuses every `/api/vyora-dev/*` route regardless of flags.
 
 ## Tech Stack
