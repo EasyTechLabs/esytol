@@ -112,10 +112,28 @@ describe("what these routes can express", () => {
     expect(body).not.toContain("merchantId");
     expect(body).not.toContain("...incoming");
 
+    // Selecting a shop identifies it by its **public** code. This route
+    // forwarded a `merchantId` once and every selection came back 400 — the
+    // contract accepts a `merchantId` in no request anywhere, which is the
+    // API's first enforced rule, and a device session is what caught it.
     const active = read(API_DIR, "shops", "active", "route.ts");
-    // The one route that does take a merchantId — and the API re-checks the
-    // membership, which is why it is safe to.
-    expect(active).toContain("merchantId");
+    const activeBody = active.slice(active.indexOf("JSON.stringify({"));
+    expect(activeBody).toContain("shopId");
+    expect(activeBody).not.toContain("merchantId");
+  });
+
+  it("names a shop by its public code everywhere a client can reach", () => {
+    // The client half of the same rule. `shop-client.ts` is what actually
+    // builds the request, so asserting only on the route would leave the
+    // browser free to send the wrong field and get a 400 from our own proxy.
+    const client = read(process.cwd(), "lib", "vyora", "shop-client.ts");
+    const select = client.slice(client.indexOf("selectActiveShop:"), client.indexOf("lookupShop:"));
+    // Scoped to the request body. `merchantId` legitimately appears in this
+    // call's **response** type — the API answers with the internal id, which is
+    // exactly why the client never has to send one.
+    const body = select.slice(select.indexOf("body:"), select.indexOf("}\n    ),"));
+    expect(body).toContain("shopId");
+    expect(body).not.toContain("merchantId");
   });
 
   it("parses a shop code before forwarding it anywhere", () => {

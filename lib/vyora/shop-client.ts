@@ -113,10 +113,17 @@ export const shopClient = {
   createShop: (body: CreateShopBody) =>
     call<Shop>(`${ROOT}/shops`, { method: "POST", body: JSON.stringify(body) }),
 
-  selectActiveShop: (merchantId: string) =>
+  /**
+   * Takes the **public** shop code, never the internal merchant id.
+   *
+   * This sent a `merchantId` once and every selection came back 400. The
+   * contract accepts a `merchantId` in no request anywhere — that is the API's
+   * first enforced rule — and this endpoint resolves membership by `public_id`.
+   */
+  selectActiveShop: (shopId: string) =>
     call<{ merchantId: string; shopId: string | null; name: string; role: string }>(
       `${ROOT}/shops/active`,
-      { method: "POST", body: JSON.stringify({ merchantId }) }
+      { method: "POST", body: JSON.stringify({ shopId }) }
     ),
 
   lookupShop: (shopId: string) =>

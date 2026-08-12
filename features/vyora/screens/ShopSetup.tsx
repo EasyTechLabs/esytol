@@ -177,12 +177,24 @@ export function ShopSetup() {
   }, [stage, code, loadShops]);
 
   const onChoose = useCallback(async (shop: ShopMember) => {
+    // A shop that predates public identifiers cannot be selected: the endpoint
+    // resolves membership by `public_id`, and there is nothing to send.
+    if (!shop.shopId) {
+      setProblem(
+        `${shop.name} was created before shop codes existed, so Vyora cannot open it yet.`
+      );
+      return;
+    }
+
     setBusy(true);
     setProblem(null);
 
+    // The **public** shop code, never the internal merchant id — sending one
+    // failed every selection with a 400 until a device session caught it.
+    //
     // The server re-checks the membership. A stale list is the normal case,
     // not an exception — which is what makes it safe to render one.
-    const confirmed = await shopClient.selectActiveShop(shop.merchantId);
+    const confirmed = await shopClient.selectActiveShop(shop.shopId);
     setBusy(false);
 
     if (confirmed.kind !== "ok") {
@@ -214,7 +226,7 @@ export function ShopSetup() {
     // Creating a shop makes you its owner, but entering it still goes through
     // `selectActiveShop` — so there is exactly one path by which a client
     // starts working in a shop.
-    const chosen = await shopClient.selectActiveShop(created.value.merchantId);
+    const chosen = await shopClient.selectActiveShop(created.value.shopId ?? "");
     setBusy(false);
 
     if (chosen.kind !== "ok") {

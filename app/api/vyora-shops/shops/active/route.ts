@@ -12,8 +12,11 @@ import { forwardWithSession } from "../../forward";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request): Promise<NextResponse> {
-  const incoming = (await request.json().catch(() => ({}))) as { merchantId?: unknown };
-  const merchantId = typeof incoming.merchantId === "string" ? incoming.merchantId : "";
+  // The **public** shop code. The contract accepts a `merchantId` in no request
+  // anywhere, and rebuilding the body here is what makes it impossible for one
+  // to reach the API through this app even if a client sent it.
+  const incoming = (await request.json().catch(() => ({}))) as { shopId?: unknown };
+  const shopId = typeof incoming.shopId === "string" ? incoming.shopId : "";
 
-  return forwardWithSession("POST", "/api/v1/shops/active", JSON.stringify({ merchantId }));
+  return forwardWithSession("POST", "/api/v1/shops/active", JSON.stringify({ shopId }));
 }
