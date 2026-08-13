@@ -84,7 +84,7 @@ export async function forwardPublic(path: string, body: string): Promise<NextRes
  * — the client has one branch to write, not two that behave identically.
  */
 export async function forwardWithSession(
-  method: "GET" | "POST",
+  method: "GET" | "POST" | "PATCH",
   path: string,
   body?: string
 ): Promise<NextResponse> {
@@ -101,7 +101,13 @@ export async function forwardWithSession(
     // Server-side only. This header never exists in the browser.
     authorization: `Bearer ${token}`,
   };
-  if (body !== undefined) headers["content-type"] = "application/json";
+  if (body !== undefined) {
+    // Merge Patch has its own media type, and the contract declares the PATCH
+    // body under it. Sending plain JSON there is a 415 on a body the server
+    // would otherwise have accepted.
+    headers["content-type"] =
+      method === "PATCH" ? "application/merge-patch+json" : "application/json";
+  }
 
   try {
     const upstream = await fetch(`${check.apiUrl}${path}`, {

@@ -36,7 +36,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
 import { ShopQr } from "../ShopQr";
-import { shopClient, type Person, type ShopMember } from "@/lib/vyora/shop-client";
+import { shopClient, type Person, type ShopWithRole } from "@/lib/vyora/shop-client";
 import {
   EMPTY_DRAFT,
   checkDraft,
@@ -55,7 +55,7 @@ type Stage =
   | { readonly step: "code"; readonly email: string }
   | { readonly step: "shops" }
   | { readonly step: "create" }
-  | { readonly step: "done"; readonly shop: ShopMember };
+  | { readonly step: "done"; readonly shop: ShopWithRole };
 
 const UNAVAILABLE =
   "Vyora sign-in runs against a local development API, which this build cannot reach. Your ledger still works — it lives in this browser and needs no account.";
@@ -63,7 +63,7 @@ const UNAVAILABLE =
 export function ShopSetup() {
   const [stage, setStage] = useState<Stage>({ step: "loading" });
   const [person, setPerson] = useState<Person | null>(null);
-  const [shops, setShops] = useState<readonly ShopMember[]>([]);
+  const [shops, setShops] = useState<readonly ShopWithRole[]>([]);
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -176,7 +176,7 @@ export function ShopSetup() {
     await loadShops();
   }, [stage, code, loadShops]);
 
-  const onChoose = useCallback(async (shop: ShopMember) => {
+  const onChoose = useCallback(async (shop: ShopWithRole) => {
     // A shop that predates public identifiers cannot be selected: the endpoint
     // resolves membership by `public_id`, and there is nothing to send.
     if (!shop.shopId) {

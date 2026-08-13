@@ -33,7 +33,13 @@ export interface Shop {
   readonly createdAt: string;
 }
 
-export interface ShopMember extends Shop {
+/**
+ * A shop, plus what I may do in it.
+ *
+ * Was `ShopMember` until SHOP-MEMBERSHIP-001, which needed that name for *a
+ * person in a shop*. Of the two this was the inaccurate one: it is a shop.
+ */
+export interface ShopWithRole extends Shop {
   readonly role: "owner" | "staff";
 }
 
@@ -87,6 +93,48 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<Result<T>>
 
 const ROOT = "/api/vyora-shops";
 
+// ── People in a shop (SHOP-MEMBERSHIP-001) ───────────────────────────────────
+
+export type MembershipRole = "owner" | "staff" | "viewer";
+
+export interface ShopMember {
+  readonly personId: string;
+  readonly displayName: string | null;
+  /** `r••••h@example.com`. The API masks it; this name is the reminder why. */
+  readonly emailMasked: string | null;
+  readonly role: MembershipRole;
+  readonly status: "active" | "inactive";
+  readonly joinedAt: string;
+}
+
+/**
+ * Merchant-facing wording for each role, served by the API rather than written
+ * here, so the browser and the phone cannot describe the same role differently.
+ */
+export type RoleSummaries = Readonly<Record<MembershipRole, string>>;
+
+export interface ShopInvitation {
+  readonly invitationId: string;
+  readonly role: MembershipRole;
+  readonly status: "pending" | "accepted" | "declined" | "cancelled" | "expired";
+  readonly invitedEmailMasked: string | null;
+  readonly createdAt: string;
+  readonly expiresAt: string;
+}
+
+/**
+ * An invitation as its recipient sees it — the shop's name and public code, and
+ * nothing about its book. They are a stranger to that shop until they accept.
+ */
+export interface IncomingInvitation {
+  readonly invitationId: string;
+  readonly shopId: string | null;
+  readonly shopName: string;
+  readonly locality: string | null;
+  readonly role: MembershipRole;
+  readonly expiresAt: string;
+}
+
 export const shopClient = {
   requestCode: (email: string) =>
     call<{ status: string; message: string }>(`${ROOT}/auth/request-code`, {
@@ -108,7 +156,7 @@ export const shopClient = {
 
   signOut: () => call<{ status: string }>(`${ROOT}/auth/session`, { method: "DELETE" }),
 
-  listShops: () => call<{ items: ShopMember[] }>(`${ROOT}/shops`),
+  listShops: () => call<{ items: ShopWithRole[] }>(`${ROOT}/shops`),
 
   createShop: (body: CreateShopBody) =>
     call<Shop>(`${ROOT}/shops`, { method: "POST", body: JSON.stringify(body) }),
@@ -128,6 +176,46 @@ export const shopClient = {
 
   lookupShop: (shopId: string) =>
     call<ShopVerification>(`${ROOT}/shops/lookup/${encodeURIComponent(shopId)}`),
+
+  listShopMembers: () =>
+    call<{ items: ShopMember[]; roleSummaries: RoleSummaries }>(`${ROOT}/members`),
+
+  updateShopMembership: (
+    personId: string,
+    change: { role?: MembershipRole; status?: "active" | "inactive" }
+  ) =>
+    call<ShopMember>(`${ROOT}/members/${encodeURIComponent(personId)}`, {
+      method: "PATCH",
+      body: JSON.stringify(change),
+    }),
+
+  listShopInvitations: () => call<{ items: ShopInvitation[] }>(`${ROOT}/invitations`),
+
+  createShopInvitation: (body: { email?: string; personId?: string; role: MembershipRole }) =>
+    call<{ status: string; invitationId: string; message: string }>(`${ROOT}/invitations`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  cancelShopInvitation: (invitationId: string) =>
+    call<null>(`${ROOT}/invitations/${encodeURIComponent(invitationId)}/cancel`, {
+      method: "POST",
+    }),
+
+  /** Invitations addressed to me. Person-scoped — I am not in those shops yet. */
+  listMyInvitations: () =>
+    call<{ items: IncomingInvitation[]; roleSummaries: RoleSummaries }>(`${ROOT}/my-invitations`),
+
+  acceptInvitation: (invitationId: string) =>
+    call<{ merchantId: string; shopId: string | null; name: string; role: MembershipRole }>(
+      `${ROOT}/my-invitations/${encodeURIComponent(invitationId)}/accept`,
+      { method: "POST" }
+    ),
+
+  declineInvitation: (invitationId: string) =>
+    call<null>(`${ROOT}/my-invitations/${encodeURIComponent(invitationId)}/decline`, {
+      method: "POST",
+    }),
 
   suggestLocalities: (pincode: string) =>
     call<{ pincode: string; localities: string[]; source: string; known: boolean }>(

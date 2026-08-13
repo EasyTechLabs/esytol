@@ -26,8 +26,9 @@ export const shopModule: FeatureModule = {
   routes: [
     { path: "/vyora/shop", label: "Your shop", nav: false, icon: "🏪" },
     { path: "/vyora/shop/verify", label: "Check a shop code", nav: false, icon: "🔍" },
+    { path: "/vyora/shop/people", label: "People in this shop", nav: false, icon: "👥" },
   ],
   commands: [],
   selectors: [],
-  components: ["ShopSetup", "VerifyShop", "ShopQr"],
+  components: ["ShopSetup", "VerifyShop", "ShopQr", "People"],
 };
