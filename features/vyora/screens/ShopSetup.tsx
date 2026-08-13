@@ -36,7 +36,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
 import { ShopQr } from "../ShopQr";
-import { shopClient, type Person, type ShopWithRole } from "@/lib/vyora/shop-client";
+import { InvitationInbox } from "../InvitationInbox";
+import {
+  shopClient,
+  type IncomingInvitation,
+  type Person,
+  type RoleSummaries,
+  type ShopWithRole,
+} from "@/lib/vyora/shop-client";
 import {
   EMPTY_DRAFT,
   checkDraft,
@@ -64,6 +71,8 @@ export function ShopSetup() {
   const [stage, setStage] = useState<Stage>({ step: "loading" });
   const [person, setPerson] = useState<Person | null>(null);
   const [shops, setShops] = useState<readonly ShopWithRole[]>([]);
+  const [invitations, setInvitations] = useState<readonly IncomingInvitation[]>([]);
+  const [roleSummaries, setRoleSummaries] = useState<RoleSummaries | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -82,7 +91,24 @@ export function ShopSetup() {
       return;
     }
     setShops(result.value.items);
-    setStage(result.value.items.length === 0 ? { step: "create" } : { step: "shops" });
+
+    // Invitations are fetched here because this screen already answers "which
+    // shops can I work in", and an offer is a shop you could work in. A failure
+    // is silent: someone with no invitations and someone whose invitation list
+    // failed both see none, and an error over the shop list would suggest the
+    // shops are wrong.
+    const offers = await shopClient.listMyInvitations();
+    const waiting = offers.kind === "ok" ? offers.value.items : [];
+    if (offers.kind === "ok") {
+      setInvitations(waiting);
+      setRoleSummaries(offers.value.roleSummaries);
+    }
+
+    // Someone with no shops but a pending invitation must land on the inbox,
+    // not on "create your first shop" — they were invited precisely so they
+    // would not have to make one.
+    const noShops = result.value.items.length === 0;
+    setStage(noShops && waiting.length === 0 ? { step: "create" } : { step: "shops" });
   }, []);
 
   // One call decides everything about the opening state: signed in or not,
@@ -351,6 +377,32 @@ export function ShopSetup() {
             Use a different email
           </SecondaryButton>
         </Card>
+      ) : null}
+
+      {/*
+        Above the shop list, because an offer needs answering and a list of
+        shops you already hold does not. Rendered in the "shops" stage so it is
+        the first thing after signing in.
+      */}
+      {stage.step === "shops" ? (
+        <InvitationInbox
+          invitations={invitations}
+          roleSummaries={roleSummaries}
+          onChanged={() => void loadShops()}
+          onOpenShop={(merchantId) => {
+            // Routed through the same selection as tapping a shop in the list.
+            // A newly joined shop that took a shortcut would skip the server's
+            // membership re-check.
+            //
+            // `onChanged` has already refreshed the list, so the real record is
+            // here. If it somehow is not, the list is reloaded rather than a
+            // shop being invented from the pieces the accept response happened
+            // to carry — a fabricated role would be rendered as fact.
+            const known = shops.find((s2) => s2.merchantId === merchantId);
+            if (known) void onChoose(known);
+            else void loadShops();
+          }}
+        />
       ) : null}
 
       {stage.step === "shops" ? (

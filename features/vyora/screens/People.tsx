@@ -34,6 +34,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
+import { explainRefusal } from "@/lib/vyora/invitations";
 import {
   shopClient,
   type MembershipRole,
@@ -80,11 +81,22 @@ function readTarget(input: string): { email?: string; personId?: string } | null
   return null;
 }
 
+/** What somebody who cannot administer people is told, when the API said nothing. */
+const NOT_AN_OWNER =
+  "Only an owner can see and change who works in this shop. If something needs to change, ask an owner.";
+
+/** And what to say when the page could not find out who works here at all. */
+const LIST_UNAVAILABLE = "Vyora could not load who works in this shop just now.";
+
 type View =
   | { readonly kind: "loading" }
   | { readonly kind: "owner" }
   /** Staff, viewer, or not a member — one explanation, no controls. */
-  | { readonly kind: "restricted"; readonly role: MembershipRole | null };
+  | {
+      readonly kind: "restricted";
+      readonly role: MembershipRole | null;
+      readonly reason: string;
+    };
 
 export function People() {
   const [view, setView] = useState<View>({ kind: "loading" });
@@ -104,13 +116,23 @@ export function People() {
     if (people.kind !== "ok") {
       if (people.kind === "refused" && people.status === 403) {
         // Staff or viewer. Not an error — a different page.
-        const me = await shopClient.me();
-        setView({ kind: "restricted", role: null });
-        void me;
+        //
+        // The API's own sentence is used when it sent one, because it is
+        // written for a merchant and names the role's limit rather than the
+        // status code that carried it. `explainRefusal` is the guard: anything
+        // technical is replaced rather than shown.
+        setView({
+          kind: "restricted",
+          role: null,
+          reason: explainRefusal(people.message, NOT_AN_OWNER),
+        });
         return;
       }
+      // Not a refusal — the list could not be fetched at all. The banner says
+      // what went wrong; the card below it must not claim the person is not an
+      // owner, because nothing here establishes that either way.
       setProblem(people.kind === "unreachable" ? UNREACHABLE : people.message);
-      setView({ kind: "restricted", role: null });
+      setView({ kind: "restricted", role: null, reason: LIST_UNAVAILABLE });
       return;
     }
 
@@ -202,8 +224,7 @@ export function People() {
         {problem ? <Alert>{problem}</Alert> : null}
         <Card title="Who works here">
           <p className="text-sm text-gray-700" data-testid="people-restricted">
-            Only an owner can see and change who works in this shop. If something needs to change,
-            ask an owner.
+            {view.reason}
           </p>
         </Card>
       </div>
