@@ -97,6 +97,26 @@ const ROOT = "/api/vyora-shops";
 
 export type MembershipRole = "owner" | "staff" | "viewer";
 
+/**
+ * A phone signed in to this account.
+ *
+ * Mirrors the contract's `Device`, and the list is closed for the same reason
+ * it is closed there: no installation key, no hash of one, and nothing about
+ * the handset or the network — not an Android ID, an advertising ID, an IMEI, a
+ * MAC address, a SIM or phone number, an IP address or a user agent. The only
+ * free text is what the merchant typed.
+ */
+export interface Device {
+  readonly deviceId: string;
+  /** What the merchant called it. Their words, never the handset's. */
+  readonly label: string | null;
+  readonly registeredAt: string;
+  readonly lastSeenAt: string | null;
+  /** Never true from a browser: a device is a phone that registered a key. */
+  readonly current: boolean;
+  readonly status: "active" | "revoked";
+}
+
 export interface ShopMember {
   readonly personId: string;
   readonly displayName: string | null;
@@ -176,6 +196,28 @@ export const shopClient = {
 
   lookupShop: (shopId: string) =>
     call<ShopVerification>(`${ROOT}/shops/lookup/${encodeURIComponent(shopId)}`),
+
+  listDevices: () => call<{ items: Device[] }>(`${ROOT}/devices`),
+
+  renameDevice: (deviceId: string, label: string | null) =>
+    call<Device>(`${ROOT}/devices/${encodeURIComponent(deviceId)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ label }),
+    }),
+
+  /**
+   * Sign a phone out of this account.
+   *
+   * No confirmation flag is sent, and that is not an omission. The flag exists
+   * for the case where the caller *is* the device being revoked, and a browser
+   * never is — a device is a phone that registered an installation key, and
+   * this one has not.
+   */
+  revokeDevice: (deviceId: string) =>
+    call<null>(`${ROOT}/devices/${encodeURIComponent(deviceId)}/revoke`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    }),
 
   listShopMembers: () =>
     call<{ items: ShopMember[]; roleSummaries: RoleSummaries }>(`${ROOT}/members`),
