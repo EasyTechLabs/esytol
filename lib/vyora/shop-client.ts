@@ -202,6 +202,79 @@ export interface Proposal {
   readonly history: readonly ProposalVersion[];
 }
 
+export type QuoteStatus =
+  "draft" | "proposed" | "revised" | "agreed" | "credited" | "settled" | "cancelled" | "expired";
+
+export type SettlementMethod = "cash" | "upi" | "bank_transfer" | "other";
+
+export interface QuoteLine {
+  readonly lineId: string;
+  readonly title: string;
+  readonly quantity: number;
+  readonly unit: string | null;
+  /**
+   * Whole rupees for **this line**, entered by the shop. Not a unit price.
+   *
+   * Null until the shop has priced it — a customer's first list is titles and
+   * quantities and nothing else.
+   */
+  readonly amount: number | null;
+}
+
+export interface QuoteLineInput {
+  readonly lineId?: string;
+  readonly title: string;
+  readonly quantity: number;
+  readonly unit?: string | null;
+  readonly amount?: number | null;
+}
+
+export interface QuoteVersion {
+  readonly version: number;
+  readonly total: number;
+  readonly note: string | null;
+  readonly lines: readonly QuoteLine[];
+  readonly side: ProposalSide;
+  readonly at: string;
+}
+
+/**
+ * An item list, as either side reads it.
+ *
+ * **A quote is not a debt.** Nothing here is folded into any balance. The only
+ * two things that leave this object and reach a ledger are a credit proposal
+ * (`creditProposalId`, which produces one `CreditRecorded` when accepted) and a
+ * settlement receipt (`settledEventId`, which is audit-only and produces
+ * nothing at all). See ADR-0014.
+ */
+export interface Quote {
+  readonly quoteId: string;
+  readonly initiator: ProposalSide;
+  readonly status: QuoteStatus;
+  readonly version: number;
+  readonly total: number;
+  readonly lines: readonly QuoteLine[];
+  readonly note: string | null;
+  readonly partyId: string;
+  readonly partyName: string;
+  readonly shopId: string | null;
+  readonly shopName: string;
+  readonly expiresAt: string | null;
+  readonly awaitingSide: ProposalSide | null;
+  readonly creditProposalId: string | null;
+  /** An **audit** event id. It moves no balance and is not a payment. */
+  readonly settledEventId: string | null;
+  readonly settledMethod: SettlementMethod | null;
+  /**
+   * True only when both sides confirmed. False for a shop's own record against
+   * a customer who does not use Vyora — never to be shown as agreed.
+   */
+  readonly settledJointly: boolean | null;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+  readonly history: readonly QuoteVersion[];
+}
+
 export const shopClient = {
   requestCode: (email: string) =>
     call<{ status: string; message: string }>(`${ROOT}/auth/request-code`, {
@@ -333,9 +406,23 @@ export const shopClient = {
    * The server refuses a stale version rather than applying it, which is what
    * stops somebody agreeing to a figure the other side has already changed.
    */
-  answerProposal: (proposalId: string, action: "accept" | "reject" | "cancel", version: number) =>
+  answerProposal: (
+    proposalId: string,
+    action: "accept" | "reject" | "cancel",
+    version: number,
+    /**
+     * Required for `accept`, which appends a ledger event.
+     *
+     * Minted by the caller with the intent, so a retry carries the same one.
+     * This was missing when the route was written, and the API had been
+     * refusing every acceptance from the browser with `400 Idempotency-Key
+     * header is required` ever since.
+     */
+    idempotencyKey?: string
+  ) =>
     call<Proposal>(`${ROOT}/proposals/${encodeURIComponent(proposalId)}/${action}`, {
       method: "POST",
+      ...(idempotencyKey ? { headers: { "idempotency-key": idempotencyKey } } : {}),
       body: JSON.stringify({ version }),
     }),
 
@@ -345,6 +432,66 @@ export const shopClient = {
   ) =>
     call<Proposal>(`${ROOT}/proposals/${encodeURIComponent(proposalId)}/revise`, {
       method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  // ── Item lists ──────────────────────────────────────────────────────────────
+  //
+  // No shop parameter on the shop-side calls: the active shop is held on the
+  // server, so a browser cannot ask for another shop's lists.
+
+  listQuotes: () => call<{ items: Quote[] }>(`${ROOT}/quotes`),
+
+  listMyQuotes: () => call<{ items: Quote[] }>(`${ROOT}/my-quotes`),
+
+  createQuote: (body: { partyId: string; lines: QuoteLineInput[]; note?: string | null }) =>
+    call<Quote>(`${ROOT}/quotes`, { method: "POST", body: JSON.stringify(body) }),
+
+  /** A customer's list, by the shop's public code. No prices — those are the shop's. */
+  createQuoteForShop: (shopId: string, body: { lines: QuoteLineInput[]; note?: string | null }) =>
+    call<Quote>(`${ROOT}/shops/${encodeURIComponent(shopId)}/quotes`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  /**
+   * Send a new version. Pricing is a revision like any other.
+   *
+   * Note the absence of a total: the server sums the lines, and there is no
+   * field here through which a client could offer one.
+   */
+  reviseQuote: (
+    quoteId: string,
+    body: { version: number; lines: QuoteLineInput[]; note?: string | null }
+  ) =>
+    call<Quote>(`${ROOT}/quotes/${encodeURIComponent(quoteId)}/revise`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  /** Agree, ask for credit, or withdraw. None of these move a balance. */
+  answerQuote: (quoteId: string, action: "agree" | "credit" | "cancel", version: number) =>
+    call<Quote>(`${ROOT}/quotes/${encodeURIComponent(quoteId)}/${action}`, {
+      method: "POST",
+      body: JSON.stringify({ version }),
+    }),
+
+  /**
+   * Record that the bill was paid outside Vyora.
+   *
+   * The key is minted here, once, with the intent — not per request. A fresh
+   * key on a retry is how one receipt becomes two.
+   *
+   * **This changes no balance.** Vyora saw no money; two people said so.
+   */
+  settleQuote: (
+    quoteId: string,
+    body: { version: number; method: SettlementMethod; note?: string | null },
+    idempotencyKey: string
+  ) =>
+    call<Quote>(`${ROOT}/quotes/${encodeURIComponent(quoteId)}/settle`, {
+      method: "POST",
+      headers: { "idempotency-key": idempotencyKey },
       body: JSON.stringify(body),
     }),
 

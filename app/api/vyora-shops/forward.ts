@@ -86,7 +86,21 @@ export async function forwardPublic(path: string, body: string): Promise<NextRes
 export async function forwardWithSession(
   method: "GET" | "POST" | "PATCH",
   path: string,
-  body?: string
+  body?: string,
+  /**
+   * The caller's idempotency key, for the operations that require one.
+   *
+   * Passed through rather than minted here, and that distinction is the whole
+   * point: a key minted per request would be a *new* key on every retry, which
+   * is precisely how one acceptance becomes two ledger entries. The browser
+   * mints it once, with the intent, and sends the same one again if it never
+   * heard the answer.
+   *
+   * Found missing on the proposal accept route, which the API had been
+   * refusing with `400 Idempotency-Key header is required` since the day it
+   * was written.
+   */
+  idempotencyKey?: string | null
 ): Promise<NextResponse> {
   const check = gate();
   if (!check.ok) return denied(check.denial);
@@ -101,6 +115,8 @@ export async function forwardWithSession(
     // Server-side only. This header never exists in the browser.
     authorization: `Bearer ${token}`,
   };
+  if (idempotencyKey) headers["idempotency-key"] = idempotencyKey;
+
   if (body !== undefined) {
     // Merge Patch has its own media type, and the contract declares the PATCH
     // body under it. Sending plain JSON there is a 415 on a body the server

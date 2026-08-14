@@ -19,6 +19,7 @@ export async function POST(
   return forwardWithSession(
     "POST",
     `/api/v1/proposals/${encodeURIComponent(proposalId)}/accept`,
-    await request.text()
+    await request.text(),
+    request.headers.get("idempotency-key")
   );
 }

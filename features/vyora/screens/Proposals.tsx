@@ -114,7 +114,15 @@ export function Proposals() {
       setProblem(null);
       setNote(null);
 
-      const result = await shopClient.answerProposal(row.proposalId, action, row.version);
+      // The key is minted here, with the intent. A retry of the same
+      // acceptance carries the same one, so it produces one entry rather than
+      // two.
+      const result = await shopClient.answerProposal(
+        row.proposalId,
+        action,
+        row.version,
+        action === "accept" ? crypto.randomUUID() : undefined
+      );
       setBusy(false);
       setConfirming(null);
 

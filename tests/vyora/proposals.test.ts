@@ -319,11 +319,14 @@ describe("the browser never holds a credential, and never names a shop", () => {
     // Active-shop safety, stated as an absence. The shop is the one this person
     // selected, resolved on the server; there is no parameter here to tamper
     // with, so a browser cannot reach another shop's proposals by editing a URL.
+    //
+    // The slice ends at the item-list calls rather than at the end of the
+    // client, because one of those — a customer sending a list to a shop they
+    // scanned — names a shop by its **public** code, exactly as
+    // `requestFromShop` does. That is the customer side, where naming a shop is
+    // the whole point; the rule being enforced here is about the shop side.
     const client = read(process.cwd(), "lib", "vyora", "shop-client.ts");
-    const block = client.slice(
-      client.indexOf("listProposals:"),
-      client.indexOf("suggestLocalities:")
-    );
+    const block = client.slice(client.indexOf("listProposals:"), client.indexOf("listQuotes:"));
 
     expect(block).toContain("`${ROOT}/proposals`");
     expect(block).toContain("`${ROOT}/my-proposals`");

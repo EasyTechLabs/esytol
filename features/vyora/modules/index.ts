@@ -16,6 +16,7 @@ import { founderModule } from "./founder";
 import { recoveryModule } from "./recovery";
 import { settingsModule } from "./settings";
 import { proposalsModule } from "./proposals";
+import { quotesModule } from "./quotes";
 import { shopModule } from "./shop";
 import { closingModule } from "./closing";
 
@@ -72,6 +73,7 @@ export const MODULES: readonly FeatureModule[] = [
   backupModule,
   shopModule,
   proposalsModule,
+  quotesModule,
   settingsModule,
   founderModule,
 ];
