@@ -155,6 +155,53 @@ export interface IncomingInvitation {
   readonly expiresAt: string;
 }
 
+export type ProposalType = "credit" | "payment" | "advance_payment";
+export type ProposalSide = "shop" | "customer";
+export type ProposalStatus =
+  "draft" | "proposed" | "revised" | "accepted" | "recorded" | "rejected" | "cancelled" | "expired";
+
+export interface ProposalVersion {
+  readonly version: number;
+  readonly amount: number;
+  readonly dueDate: string | null;
+  readonly note: string | null;
+  readonly side: ProposalSide;
+  readonly at: string;
+}
+
+/**
+ * A proposal as both sides see it.
+ *
+ * Note what is absent: no person id, no device id, no merchant id. Two people
+ * who are not the same person read this object, and neither needs an
+ * identifier for the other.
+ *
+ * `amount` is **whole rupees**, exactly as the ledger stores it. Anything that
+ * multiplies by 100 to "be safe" introduces a hundredfold error into somebody's
+ * debt.
+ */
+export interface Proposal {
+  readonly proposalId: string;
+  readonly type: ProposalType;
+  readonly initiator: ProposalSide;
+  readonly status: ProposalStatus;
+  readonly version: number;
+  readonly amount: number;
+  readonly dueDate: string | null;
+  readonly note: string | null;
+  readonly partyId: string;
+  readonly partyName: string;
+  readonly shopId: string;
+  readonly shopName: string;
+  readonly expiresAt: string | null;
+  /** Set only once the ledger holds it. Until then nothing has happened. */
+  readonly finalEventId: string | null;
+  readonly awaitingSide: ProposalSide | null;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+  readonly history: readonly ProposalVersion[];
+}
+
 export const shopClient = {
   requestCode: (email: string) =>
     call<{ status: string; message: string }>(`${ROOT}/auth/request-code`, {
@@ -257,6 +304,48 @@ export const shopClient = {
   declineInvitation: (invitationId: string) =>
     call<null>(`${ROOT}/my-invitations/${encodeURIComponent(invitationId)}/decline`, {
       method: "POST",
+    }),
+
+  /**
+   * The active shop's proposals.
+   *
+   * No shop parameter, deliberately. The shop comes from the person's
+   * selection, held on the server, so a browser cannot ask for another shop's
+   * requests by changing what it sends.
+   */
+  listProposals: () => call<{ items: Proposal[] }>(`${ROOT}/proposals`),
+
+  /** Requests addressed to me personally, at anybody's shop. */
+  listMyProposals: () => call<{ items: Proposal[] }>(`${ROOT}/my-proposals`),
+
+  createProposal: (body: {
+    partyId: string;
+    type: ProposalType;
+    /** Whole rupees. Never paise — see the `Money` schema in the contract. */
+    amount: number;
+    dueDate?: string | null;
+    note?: string | null;
+  }) => call<Proposal>(`${ROOT}/proposals`, { method: "POST", body: JSON.stringify(body) }),
+
+  /**
+   * Answer one. `version` is what the caller was looking at when they decided.
+   *
+   * The server refuses a stale version rather than applying it, which is what
+   * stops somebody agreeing to a figure the other side has already changed.
+   */
+  answerProposal: (proposalId: string, action: "accept" | "reject" | "cancel", version: number) =>
+    call<Proposal>(`${ROOT}/proposals/${encodeURIComponent(proposalId)}/${action}`, {
+      method: "POST",
+      body: JSON.stringify({ version }),
+    }),
+
+  reviseProposal: (
+    proposalId: string,
+    body: { version: number; amount: number; dueDate?: string | null; note?: string | null }
+  ) =>
+    call<Proposal>(`${ROOT}/proposals/${encodeURIComponent(proposalId)}/revise`, {
+      method: "POST",
+      body: JSON.stringify(body),
     }),
 
   suggestLocalities: (pincode: string) =>
