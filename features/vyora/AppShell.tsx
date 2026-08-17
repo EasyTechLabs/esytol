@@ -13,6 +13,7 @@ import { cn } from "@/lib/cn";
 import { navRoutes } from "./modules";
 import { PwaSurfaces } from "./PwaSurfaces";
 import { ReadOnlyTabNotice } from "./ReadOnlyTabNotice";
+import { SyncBar } from "./SyncBar";
 
 /** Taps on the "Alpha" badge that open Founder Mode. */
 const FOUNDER_TAPS = 5;
@@ -84,6 +85,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {/* Above the screen, not inside it: a tab that cannot save should say so
             before the merchant starts typing, on every screen. */}
         <ReadOnlyTabNotice />
+        {/* One line, four possible things to say, and none of them is a cursor.
+            Hidden entirely until there is something true to report — a browser
+            that is not signed into a shop is not "not syncing", it is just an
+            app, and a permanent grey tick would only invite the question. */}
+        <SyncBar />
         {children}
       </main>
 

@@ -35,6 +35,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
+import { useVyora } from "../VyoraProvider";
 import { ShopQr } from "../ShopQr";
 import { InvitationInbox } from "../InvitationInbox";
 import {
@@ -68,6 +69,7 @@ const UNAVAILABLE =
   "Vyora sign-in runs against a local development API, which this build cannot reach. Your ledger still works — it lives in this browser and needs no account.";
 
 export function ShopSetup() {
+  const { enterShop, signOutLocally } = useVyora();
   const [stage, setStage] = useState<Stage>({ step: "loading" });
   const [person, setPerson] = useState<Person | null>(null);
   const [shops, setShops] = useState<readonly ShopWithRole[]>([]);
@@ -202,33 +204,41 @@ export function ShopSetup() {
     await loadShops();
   }, [stage, code, loadShops]);
 
-  const onChoose = useCallback(async (shop: ShopWithRole) => {
-    // A shop that predates public identifiers cannot be selected: the endpoint
-    // resolves membership by `public_id`, and there is nothing to send.
-    if (!shop.shopId) {
-      setProblem(
-        `${shop.name} was created before shop codes existed, so Vyora cannot open it yet.`
-      );
-      return;
-    }
+  const onChoose = useCallback(
+    async (shop: ShopWithRole) => {
+      // A shop that predates public identifiers cannot be selected: the endpoint
+      // resolves membership by `public_id`, and there is nothing to send.
+      if (!shop.shopId) {
+        setProblem(
+          `${shop.name} was created before shop codes existed, so Vyora cannot open it yet.`
+        );
+        return;
+      }
 
-    setBusy(true);
-    setProblem(null);
+      setBusy(true);
+      setProblem(null);
 
-    // The **public** shop code, never the internal merchant id — sending one
-    // failed every selection with a 400 until a device session caught it.
-    //
-    // The server re-checks the membership. A stale list is the normal case,
-    // not an exception — which is what makes it safe to render one.
-    const confirmed = await shopClient.selectActiveShop(shop.shopId);
-    setBusy(false);
+      // The **public** shop code, never the internal merchant id — sending one
+      // failed every selection with a 400 until a device session caught it.
+      //
+      // The server re-checks the membership. A stale list is the normal case,
+      // not an exception — which is what makes it safe to render one.
+      const confirmed = await shopClient.selectActiveShop(shop.shopId);
+      setBusy(false);
 
-    if (confirmed.kind !== "ok") {
-      setProblem(confirmed.message);
-      return;
-    }
-    setStage({ step: "done", shop });
-  }, []);
+      if (confirmed.kind !== "ok") {
+        setProblem(confirmed.message);
+        return;
+      }
+
+      // Only after the server has agreed. Pointing the local book at a shop this
+      // person turns out not to be a member of would erase the book they do have
+      // for a shop they cannot reach.
+      await enterShop(confirmed.value.merchantId);
+      setStage({ step: "done", shop });
+    },
+    [enterShop]
+  );
 
   const onCreate = useCallback(async () => {
     const checked = checkDraft(draft);
@@ -271,12 +281,16 @@ export function ShopSetup() {
   const onSignOut = useCallback(async () => {
     setBusy(true);
     await shopClient.signOut();
+    // Whether or not that reached the server. A browser left holding a shop's
+    // book after the person signed out is the failure worth preventing, and it
+    // is the one that happens on a bad connection.
+    await signOutLocally();
     setBusy(false);
     setPerson(null);
     setShops([]);
     setDraft(EMPTY_DRAFT);
     setStage({ step: "email" });
-  }, []);
+  }, [signOutLocally]);
 
   if (stage.step === "loading") {
     return <p className="p-4 text-sm text-gray-500">Loading…</p>;

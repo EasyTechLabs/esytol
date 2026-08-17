@@ -54,19 +54,22 @@ import {
 } from "@/lib/vyora/writer";
 import {
   LOG_KEY,
-  clearLog,
   loadClockFloor,
-  loadLog,
   loadPwaFlags,
   loadSettings,
-  readRawLog,
   saveClockFloor,
-  saveLog,
   savePwaFlags,
   saveSettings,
   storageSizeBytes,
 } from "@/lib/vyora/store";
 import { time } from "@/lib/vyora/debug";
+import type { LedgerRepository } from "@/lib/vyora/sync/repository";
+import { fallbackRepository, openRepository } from "@/lib/vyora/sync/repository";
+import { migrateFromLocalStorage } from "@/lib/vyora/sync/migration";
+import { readActiveShop } from "@/lib/vyora/active-shop";
+import { enterShop, signOutLocal } from "@/lib/vyora/sync/session";
+import type { SyncSnapshot, SyncState } from "@/lib/vyora/sync/engine";
+import { readSnapshot, sync as runSync } from "@/lib/vyora/sync/engine";
 
 interface VyoraState {
   events: readonly LedgerEvent[];
@@ -116,6 +119,32 @@ interface VyoraContextValue {
   /** Install-banner / tutorial state for THIS browser. Survives "clear all data". */
   pwaFlags: PwaFlags;
   setPwaFlags: (patch: Partial<PwaFlags>) => void;
+  /**
+   * What syncing is doing, in terms a merchant can read.
+   *
+   * `idle` on a browser that is not signed into a shop, or has no IndexedDB —
+   * both of which are working states, not failures. Nothing here exposes a
+   * cursor, an event id or an outbox.
+   */
+  sync: SyncSnapshot;
+  /** Sync now. Joins the cycle already running rather than starting a second. */
+  syncNow: () => Promise<void>;
+  /**
+   * Start working in a shop.
+   *
+   * Erases this browser's book first if it belonged to a *different* shop —
+   * there is one local book and it cannot hold two. Call after the server has
+   * confirmed the selection, never before.
+   */
+  enterShop: (merchantId: string) => Promise<void>;
+  /**
+   * Stop holding this shop's book on this browser.
+   *
+   * The local half of signing out, and it runs whether or not the server call
+   * succeeded: a browser that could not reach the server must still not be left
+   * holding somebody's ledger.
+   */
+  signOutLocally: () => Promise<void>;
 }
 
 const VyoraContext = createContext<VyoraContextValue | null>(null);
@@ -192,20 +221,84 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
    * incremental append path still applies; different means re-fold before doing
    * anything, because executing against a stale projection is how an entry gets
    * overwritten even while the lock is held.
+   *
+   * A fingerprint rather than the log itself since WEB-SYNC-003 — against
+   * IndexedDB, reading the whole book to decide whether to read the whole book
+   * would be the cost this milestone exists to remove.
    */
   const lastSeenRaw = useRef<string | null>(null);
 
+  /**
+   * Where the book is kept.
+   *
+   * Starts on the fallback store so a render before the mount effect has an honest
+   * answer rather than a null, and is replaced with the IndexedDB store once it
+   * opens. A browser with no IndexedDB keeps this one for good and simply does
+   * not sync — the app is unchanged for them.
+   */
+  const repository = useRef<LedgerRepository>(fallbackRepository);
+  const [syncSnapshot, setSyncSnapshot] = useState<SyncSnapshot>({
+    state: "idle",
+    pending: 0,
+    lastSyncAt: null,
+    message: null,
+  });
+
+  /**
+   * Open the book, once, before anything can be recorded.
+   *
+   * The order matters and is the whole of the migration's safety:
+   *
+   *   1. open the best store this browser has;
+   *   2. if that is IndexedDB, copy the existing log across — which
+   *      verifies count, id sequence and folded projection before marking
+   *      itself done, and on any failure clears its partial copy and leaves the
+   *      merchant on the store they already had;
+   *   3. only then read, fold, and let the app render.
+   *
+   * A failed migration is therefore not a failed startup. It is a browser that
+   * opens the book it already had, and does not sync. The original key is
+   * never deleted either way — see `migration.ts`.
+   *
+   * Runs once. Not on every render, and not per screen: the guard is the empty
+   * dependency list plus `ready`, and nothing else calls it.
+   */
   useEffect(() => {
-    const events = loadLog();
-    // Before anything can be recorded. The clock's "never the same instant
-    // twice" guarantee is per-page; the floor that carries it across a reload —
-    // or a device clock moved backwards — is on the device.
-    nowISO.seed(loadClockFloor(events));
-    lastSeenRaw.current = readRawLog();
-    setState({ events, ledger: ledgerFor(reduceEvents(events)) });
-    setSettings(loadSettings());
-    setPwaFlagsState(loadPwaFlags());
-    setReady(true);
+    let cancelled = false;
+
+    void (async () => {
+      const opened = await openRepository();
+      let chosen = opened.repository;
+
+      if (chosen.kind === "indexeddb" && chosen.db) {
+        const result = await migrateFromLocalStorage(chosen.db);
+        if (result.kind === "failed") {
+          // The copy could not be proven, so the copy is not used. The original
+          // is untouched and this browser keeps working, unsynced.
+          chosen = fallbackRepository;
+        }
+      }
+      if (cancelled) return;
+
+      repository.current = chosen;
+      const events = await chosen.load();
+      const revision = await chosen.revision();
+      if (cancelled) return;
+
+      // Before anything can be recorded. The clock's "never the same instant
+      // twice" guarantee is per-page; the floor that carries it across a reload —
+      // or a device clock moved backwards — is on the device.
+      nowISO.seed(loadClockFloor(events));
+      lastSeenRaw.current = revision;
+      setState({ events, ledger: ledgerFor(reduceEvents(events)) });
+      setSettings(loadSettings());
+      setPwaFlagsState(loadPwaFlags());
+      setReady(true);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   /**
@@ -221,9 +314,12 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
     const onStorage = (event: StorageEvent) => {
       if (event.key !== null && event.key !== LOG_KEY) return;
       if (inFlight.current > 0) return;
-      const events = loadLog();
-      lastSeenRaw.current = readRawLog();
-      setState({ events, ledger: ledgerFor(reduceEvents(events)) });
+      void (async () => {
+        const repo = repository.current;
+        const events = await repo.load();
+        lastSeenRaw.current = await repo.revision();
+        setState({ events, ledger: ledgerFor(reduceEvents(events)) });
+      })();
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
@@ -267,6 +363,125 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener("pagehide", release);
       release();
     };
+  }, []);
+
+  /**
+   * Run a sync cycle, or join the one already running.
+   *
+   * **Never called from inside `withLedgerLock`.** The engine takes that same
+   * lock — deliberately, because applying a pulled page *is* a ledger write —
+   * and `navigator.locks` is not reentrant, so a sync started from within a
+   * dispatch would wait for a lock its own caller is holding and never return.
+   * Every call site here is after the locked section has resolved.
+   *
+   * Two gates, and both are ordinary states rather than errors:
+   *
+   *  - no IndexedDB, so no sync-capable store and nothing to sync from;
+   *  - no shop selected, so nothing to sync *to* — a browser that has not signed
+   *    in has a perfectly good local book and no server to reconcile it with.
+   */
+  const syncNow = useCallback(async () => {
+    const repo = repository.current;
+    const db = repo.db;
+    if (!db) return;
+
+    const shopId = readActiveShop();
+    if (!shopId) return;
+
+    setSyncSnapshot((previous) => ({ ...previous, state: "pushing", message: null }));
+
+    const outcome = await runSync({ db, shopId });
+
+    // A build with no local API path answers 404 from the proxy — the gate in
+    // `shop-session.ts`, not a failure of the merchant's. Reported as idle
+    // rather than as "needs attention", which would ask them to fix something
+    // that is working as designed.
+    const state: SyncState =
+      outcome.state === "error" && outcome.message === null ? "idle" : outcome.state;
+
+    // The fold order changed if anything moved: a pushed event takes the
+    // server's clock and leaves the pending tail, and a pulled one joins the
+    // shared history. Re-read rather than guess.
+    if (outcome.pushed > 0 || outcome.pulled > 0) {
+      // Skipped while a write is in flight, exactly as the cross-tab listener
+      // is: that dispatch is inside the lock and about to re-read anyway, and
+      // replacing its state underneath it would discard the entry being
+      // recorded.
+      if (inFlight.current === 0) {
+        const events = await repo.load();
+        lastSeenRaw.current = await repo.revision();
+        setState({ events, ledger: ledgerFor(reduceEvents(events)) });
+      }
+    }
+
+    setSyncSnapshot({
+      ...(await readSnapshot(db, state)),
+      message: outcome.message,
+    });
+  }, []);
+
+  /**
+   * Sync when there is a reason to.
+   *
+   * Startup, and coming back online. Not a timer: a poll would spend a
+   * merchant's data allowance asking a question nothing suggests has a new
+   * answer, and every local write triggers its own sync below.
+   */
+  useEffect(() => {
+    if (!ready) return;
+    void syncNow();
+
+    const onOnline = () => void syncNow();
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+  }, [ready, syncNow]);
+
+  /**
+   * Point this browser at a shop, erasing another shop's book if it holds one.
+   *
+   * Under the ledger lock, because it can erase — a switch landing between
+   * another tab's write and its verification is the race the lock exists for.
+   * The sync that follows is outside it, as every other trigger is.
+   */
+  const enterShopLocally = useCallback(
+    async (merchantId: string) => {
+      const repo = repository.current;
+      inFlight.current += 1;
+      try {
+        await withLedgerLock(async () => {
+          const outcome = await enterShop(repo.db, merchantId);
+          if (outcome.kind === "switched") {
+            // A different shop's book has just been erased. Nothing in memory
+            // may survive it.
+            lastSeenRaw.current = await repo.revision();
+            setState(initialState());
+            setSyncSnapshot({ state: "idle", pending: 0, lastSyncAt: null, message: null });
+          }
+        });
+      } finally {
+        inFlight.current -= 1;
+      }
+      void syncNow();
+    },
+    [syncNow]
+  );
+
+  const signOutLocally = useCallback(async () => {
+    const repo = repository.current;
+    inFlight.current += 1;
+    try {
+      await withLedgerLock(async () => {
+        await signOutLocal(repo.db);
+        // A browser on the fallback store has no IndexedDB to clear, so its book
+        // is cleared through the repository that owns it.
+        if (!repo.db) await repo.clear();
+        lastSeenRaw.current = await repo.revision();
+        setState(initialState());
+        setSyncSnapshot({ state: "idle", pending: 0, lastSyncAt: null, message: null });
+      });
+    } finally {
+      inFlight.current -= 1;
+    }
   }, []);
 
   const updateSettings = useCallback((patch: Partial<MerchantSettings>) => {
@@ -313,15 +528,18 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
         return { ok: false, error: READ_ONLY_TAB };
       }
 
+      const repo = repository.current;
       inFlight.current += 1;
+      let recorded = false;
       try {
-        return await withLedgerLock(async () => {
-          // Another tab may have appended since this one loaded.
-          const raw = readRawLog();
+        const outcome = await withLedgerLock<CommandResult>(async () => {
+          // Another tab may have appended since this one loaded — or a sync may
+          // have applied a page.
+          const raw = await repo.revision();
           const changed = raw !== lastSeenRaw.current;
           const base = changed
-            ? (() => {
-                const events = loadLog();
+            ? await (async () => {
+                const events = await repo.load();
                 return { events, ledger: ledgerFor(reduceEvents(events)) };
               })()
             : { events: state.events, ledger: state.ledger };
@@ -358,7 +576,17 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
           // it is in memory. A quota-exhausted write returns `false`, and a
           // merchant who reads a success toast for an entry that vanishes on
           // the next open has been lied to. Never confirm what was not stored.
-          if (!saveLog(events)) {
+          //
+          // Against IndexedDB this writes only `result.events` — one record per
+          // entry, whatever the book already holds. Against the fallback store it
+          // rewrites the whole log, as it always did.
+          let written: boolean;
+          try {
+            written = await repo.append(result.events, events);
+          } catch {
+            written = false;
+          }
+          if (!written) {
             setFeedback({
               message: "NOT SAVED — this device is out of space. Export a backup, then retry.",
               tone: "warning",
@@ -366,14 +594,11 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
             return { ok: false, error: STORAGE_FULL };
           }
 
-          // Read back inside the lock. `saveLog` reporting success is not proof
-          // the bytes are there, and this is the last moment another tab cannot
+          // Read back inside the lock. A store reporting success is not proof
+          // the record is there, and this is the last moment another tab cannot
           // have intervened.
-          const storedRaw = readRawLog();
-          const stored = loadLog();
-          const persisted =
-            stored.length === events.length &&
-            stored[stored.length - 1]?.id === events[events.length - 1]?.id;
+          const persisted = await repo.verify(events);
+          const storedRaw = await repo.revision();
 
           if (!persisted) {
             setFeedback({
@@ -407,13 +632,23 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
               return next;
             });
           }
+          recorded = true;
           return result;
         });
+
+        // Outside the lock, and it has to be: the sync engine takes the same
+        // mutex, so starting a cycle from inside this section would wait on a
+        // lock this call is holding. The merchant's entry is already durable
+        // either way — syncing is what happens to work already recorded, never
+        // a condition of recording it.
+        if (recorded) void syncNow();
+
+        return outcome;
       } finally {
         inFlight.current -= 1;
       }
     },
-    [state]
+    [state, syncNow]
   );
 
   const check = useCallback((command: Command) => validateCommand(context, command), [context]);
@@ -434,62 +669,82 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
    * Callers must validate the file **before** calling this. By the time it runs,
    * the decision has been made.
    */
-  const restore = useCallback(async (events: readonly LedgerEvent[]): Promise<CommandResult> => {
-    if (!hasWebLocks() && !claimWriting(tabId.current)) {
-      setFeedback({ message: READ_ONLY_TAB.message, tone: "warning" });
-      return { ok: false, error: READ_ONLY_TAB };
-    }
+  const restore = useCallback(
+    async (events: readonly LedgerEvent[]): Promise<CommandResult> => {
+      if (!hasWebLocks() && !claimWriting(tabId.current)) {
+        setFeedback({ message: READ_ONLY_TAB.message, tone: "warning" });
+        return { ok: false, error: READ_ONLY_TAB };
+      }
 
-    inFlight.current += 1;
-    try {
-      return await withLedgerLock(async () => {
-        const next = [...events];
-        if (!saveLog(next)) {
-          setFeedback({
-            message: "NOT RESTORED — this device is out of space. Your book is unchanged.",
-            tone: "warning",
-          });
-          return { ok: false, error: STORAGE_FULL };
-        }
+      const repo = repository.current;
+      inFlight.current += 1;
+      let replaced = false;
+      try {
+        const outcome = await withLedgerLock<CommandResult>(async () => {
+          const next = [...events];
+          let written: boolean;
+          try {
+            written = await repo.replace(next);
+          } catch {
+            written = false;
+          }
+          if (!written) {
+            setFeedback({
+              message: "NOT RESTORED — this device is out of space. Your book is unchanged.",
+              tone: "warning",
+            });
+            return { ok: false, error: STORAGE_FULL };
+          }
 
-        // Read back before believing it, as every write does.
-        const storedRaw = readRawLog();
-        const stored = loadLog();
-        if (stored.length !== next.length) {
-          setFeedback({
-            message: "NOT RESTORED — this device did not keep the file. Your book is unchanged.",
-            tone: "warning",
-          });
-          return { ok: false, error: STORAGE_FULL };
-        }
+          // Read back before believing it, as every write does.
+          const stored = await repo.load();
+          const storedRaw = await repo.revision();
+          if (stored.length !== next.length) {
+            setFeedback({
+              message: "NOT RESTORED — this device did not keep the file. Your book is unchanged.",
+              tone: "warning",
+            });
+            return { ok: false, error: STORAGE_FULL };
+          }
 
-        // The merchant's next action happens AFTER the restore, so it has to
-        // sort after everything the restore brought in.
-        //
-        // A floor set merely to "now" does not achieve that. Restore a book
-        // from a device whose clock ran ahead and the next entry lands in the
-        // *middle* of it — today's credit inserted into last year's history,
-        // silently reordering every running balance after it. A ledger whose
-        // balance sequence a restore can rewrite is not a ledger.
-        //
-        // So the floor clears the whole restored book by a millisecond. The
-        // cost is real and deliberate: after restoring a fast-clock backup,
-        // new entries carry timestamps that look like the future. That is the
-        // lesser harm, and it is written down rather than hidden — see
-        // `vyora/architecture/backup-envelope.md`.
-        const floor = Math.max(Date.now(), latestInstantMs(stored)) + 1;
-        nowISO.seed(floor);
-        saveClockFloor(floor);
+          // The merchant's next action happens AFTER the restore, so it has to
+          // sort after everything the restore brought in.
+          //
+          // A floor set merely to "now" does not achieve that. Restore a book
+          // from a device whose clock ran ahead and the next entry lands in the
+          // *middle* of it — today's credit inserted into last year's history,
+          // silently reordering every running balance after it. A ledger whose
+          // balance sequence a restore can rewrite is not a ledger.
+          //
+          // So the floor clears the whole restored book by a millisecond. The
+          // cost is real and deliberate: after restoring a fast-clock backup,
+          // new entries carry timestamps that look like the future. That is the
+          // lesser harm, and it is written down rather than hidden — see
+          // `vyora/architecture/backup-envelope.md`.
+          const floor = Math.max(Date.now(), latestInstantMs(stored)) + 1;
+          nowISO.seed(floor);
+          saveClockFloor(floor);
 
-        lastSeenRaw.current = storedRaw;
-        setState({ events: stored, ledger: cacheLedger(ledgerFor(reduceEvents(stored))) });
-        setFeedback({ message: "Restored. This browser now holds that book.", tone: "success" });
-        return { ok: true, value: { events: stored.length }, events: [] };
-      });
-    } finally {
-      inFlight.current -= 1;
-    }
-  }, []);
+          lastSeenRaw.current = storedRaw;
+          setState({ events: stored, ledger: cacheLedger(ledgerFor(reduceEvents(stored))) });
+          setFeedback({ message: "Restored. This browser now holds that book.", tone: "success" });
+          replaced = true;
+          return { ok: true, value: { events: stored.length }, events: [] };
+        });
+
+        // A restored book is this browser's unsent work — `replace` cleared the
+        // cursor with it, so the next cycle pushes what the file brought and
+        // re-reads the shop's history from the beginning. Outside the lock, for
+        // the same reason a dispatch's sync is.
+        if (replaced) void syncNow();
+
+        return outcome;
+      } finally {
+        inFlight.current -= 1;
+      }
+    },
+    [syncNow]
+  );
 
   /**
    * Erase everything on this device.
@@ -500,12 +755,14 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
    * that leaves a merchant unsure what happened.
    */
   const reset = useCallback(async () => {
+    const repo = repository.current;
     inFlight.current += 1;
     try {
       await withLedgerLock(async () => {
-        clearLog();
-        lastSeenRaw.current = readRawLog();
+        await repo.clear();
+        lastSeenRaw.current = await repo.revision();
         setState(initialState());
+        setSyncSnapshot({ state: "idle", pending: 0, lastSyncAt: null, message: null });
       });
     } finally {
       inFlight.current -= 1;
@@ -528,6 +785,10 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
       updateSettings,
       pwaFlags,
       setPwaFlags,
+      sync: syncSnapshot,
+      syncNow,
+      enterShop: enterShopLocally,
+      signOutLocally,
     }),
     [
       ready,
@@ -541,6 +802,10 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
       updateSettings,
       pwaFlags,
       setPwaFlags,
+      syncSnapshot,
+      syncNow,
+      enterShopLocally,
+      signOutLocally,
     ]
   );
 
