@@ -8,7 +8,10 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./tests/setup.ts"],
-    exclude: [...configDefaults.exclude],
+    // Playwright drives a real browser and owns `tests/e2e`. Vitest's default
+    // include would otherwise collect those files and run them under jsdom,
+    // which is the one thing they exist to avoid being.
+    exclude: [...configDefaults.exclude, "tests/e2e/**"],
     testTimeout: 60_000,
     coverage: {
       provider: "v8",

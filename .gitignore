@@ -27,3 +27,8 @@ credentials.json
 Thumbs.db
 *.log
 .vercel
+
+# Playwright browser state and the suite's shop, written per run.
+tests/e2e/.auth/
+test-results/
+playwright-report/
