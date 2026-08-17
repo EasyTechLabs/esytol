@@ -161,7 +161,8 @@ function ContactRow({
   onPin: () => void;
   onLongPress: () => void;
 }) {
-  const press = useLongPress(onLongPress);
+  const { didFire, ...handlers } = useLongPress(onLongPress);
+  const press = { didFire };
   return (
     <div className="flex items-stretch hover:bg-gray-50">
       {/* Pin toggle sits outside the link so tapping it never navigates. */}
@@ -176,7 +177,10 @@ function ContactRow({
       </button>
       <Link
         href={`/vyora/parties/${party.id}`}
-        {...press}
+        // `didFire` is a function this row calls, not an attribute — spreading
+        // the whole hook put it on the anchor and React warned about it on
+        // every row. Separated rather than suppressed.
+        {...handlers}
         onClick={(event) => {
           // A long press already opened the sheet — do not also navigate.
           if (press.didFire()) event.preventDefault();

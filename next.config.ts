@@ -27,9 +27,32 @@ import type { NextConfig } from "next";
  *
  * No other external hosts are permitted, so security is not otherwise weakened.
  */
+/**
+ * `next dev` compiles modules with `eval`, for hot reload and for source maps
+ * that point at your own file rather than at a bundle. A CSP without
+ * `'unsafe-eval'` therefore stops the client bundle from evaluating **at all**
+ * in development: React never hydrates, and every Vyora screen sits on
+ * "Loading…" in a real browser while the console shows one `EvalError`.
+ *
+ * That went unnoticed because every web test until WEB-SYNC-004 ran in jsdom,
+ * which does not enforce a Content Security Policy — so the app was untestable
+ * and unusable in a real browser locally, and nothing said so.
+ *
+ * A production build emits no `eval`, so this is added **only** when not
+ * building for production. The shipped policy is byte-for-byte what it was.
+ */
+const isProduction = process.env.NODE_ENV === "production";
+const scriptSrc = [
+  "script-src 'self' 'unsafe-inline'",
+  isProduction ? null : "'unsafe-eval'",
+  "https://www.googletagmanager.com https://www.clarity.ms https://c.clarity.ms https://scripts.clarity.ms",
+]
+  .filter(Boolean)
+  .join(" ");
+
 const contentSecurityPolicy = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.clarity.ms https://c.clarity.ms https://scripts.clarity.ms",
+  scriptSrc,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://www.google-analytics.com https://c.clarity.ms",
   "font-src 'self' data:",
