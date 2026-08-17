@@ -263,6 +263,13 @@ export function ShopSetup() {
     // `selectActiveShop` — so there is exactly one path by which a client
     // starts working in a shop.
     const chosen = await shopClient.selectActiveShop(created.value.shopId ?? "");
+
+    // And the local half of it, which is what lets this browser sync. Missing
+    // here until WEB-SYNC-004: the choose-an-existing-shop path recorded the
+    // shop and this one did not, so a merchant creating their *first* shop —
+    // the commonest way anyone starts — got a working local ledger that never
+    // synced, silently.
+    if (chosen.kind === "ok") await enterShop(chosen.value.merchantId);
     setBusy(false);
 
     if (chosen.kind !== "ok") {
@@ -276,7 +283,7 @@ export function ShopSetup() {
     }
 
     setStage({ step: "done", shop: { ...created.value, role: "owner" } });
-  }, [draft, loadShops]);
+  }, [draft, loadShops, enterShop]);
 
   const onSignOut = useCallback(async () => {
     setBusy(true);
