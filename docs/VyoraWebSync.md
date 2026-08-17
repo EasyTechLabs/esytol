@@ -183,10 +183,14 @@ a local recovery action, not a way to publish a book.
 
 - **A stuck sync.** Everything is retryable and nothing is lost by waiting; the
   cursor only ever moves forward with data actually applied.
-- **Signing out, or changing shop.** `clearAll` empties both stores, cursor
-  included. A cursor is a position in _one_ shop's log — keeping it would have
-  the next person's first pull start where the last one got to, and skip
-  everything before it permanently.
+- **Signing out, or changing shop.** `signOutLocal` / `enterShop` empty both
+  stores, cursor included. A cursor is a position in _one_ shop's log — keeping
+  it would have the next person's first pull start where the last one got to,
+  and skip everything before it permanently. They also delete the
+  `localStorage` log, which is not an afterthought: clearing IndexedDB takes the
+  migration marker with it, so an original left behind would be migrated back in
+  on the next launch and the previous shop's entries would reappear inside the
+  new one.
 - **Starting the browser's copy again.** Clear the site's data. The shop's log
   is on the server and on the phones; the next sync reads it back from the
   beginning. Nothing the merchant recorded elsewhere is at risk.
@@ -194,7 +198,62 @@ a local recovery action, not a way to publish a book.
   partial copy, and leaves the merchant on `localStorage` — working, with the
   reason in the return value.
 
-## 11. Mobile and web differ in exactly two ways
+## 11. How this is wired into the running app (WEB-SYNC-003)
+
+WEB-SYNC-002 built everything above and connected none of it: every importer of
+`lib/vyora/sync/` was a test, and the application went on writing the whole log
+to one `localStorage` key per append. This section is the join.
+
+**One seam, and screens are not on either side of it.**
+
+```
+screens ─► VyoraProvider ─► LedgerRepository ─► IndexedDB store ─► sync engine ─► API
+```
+
+`lib/vyora/sync/repository.ts` is the seam. It offers `revision`, `load`,
+`append`, `replace`, `clear` and `verify`, and has two implementations: the
+IndexedDB store, and the original key for browsers that have no IndexedDB at
+all. The provider holds one and never asks which. Screens still know nothing
+about storage, cursors, outboxes or the wire — the only thing they gained is
+`sync` (four merchant-facing states) and `syncNow`.
+
+**`append` takes both the new events and the whole log**, which is not
+redundancy. IndexedDB writes only the new records — one per entry, whatever the
+book already holds — and the fallback can only rewrite. That is the whole
+performance point of the move: `saveLog` re-serialised E events per append,
+O(E²) over a session, the shape ENG-010 removed from the fold. A test asserts
+the log key is never written on the IndexedDB path.
+
+**The migration runs once, at startup, before the app renders.** Open the store,
+copy, verify count / id sequence / folded projection, mark, then read and fold.
+A failure is not a failed startup: the partial copy is cleared, the marker is
+left unset, and the merchant opens the book they already had, unsynced.
+
+**Sync is never started from inside the ledger lock.** The engine takes that same
+mutex — applying a pulled page is a ledger write — and `navigator.locks` is not
+reentrant, so a cycle begun inside a dispatch would wait on a lock its own caller
+holds. Every trigger (startup, `online`, a local write, the merchant pressing
+Sync now) fires after the locked section has resolved.
+
+**Which shop.** `lib/vyora/active-shop.ts` remembers the merchant id chosen in
+`ShopSetup`, in `localStorage`. It is not a credential and grants nothing: every
+request is authenticated by the httpOnly cookie, and the API resolves the shop
+from the membership row, so a tampered value achieves a `404` and nothing else.
+Sync does not start until a shop is selected, which is why a browser that has
+never signed in shows no status at all rather than a permanent grey tick.
+
+**Backup and restore are unchanged, and did not need a format change.** Export
+reads the same `events` the provider holds, which is now folded from IndexedDB
+rather than from a string — so the v3 envelope captures the whole log exactly as
+before. Restore still replaces rather than merges, and now clears the cursor with
+the book: the restored log is a different history, and a cursor from the old one
+would start the next pull partway through a log this browser no longer holds.
+
+**Known limitation.** Founder Mode's `storageBytes` still measures the
+`localStorage` keys, so on a migrated browser it under-reports. It is a
+diagnostic on a hidden screen and no merchant-facing number depends on it.
+
+## 12. Mobile and web differ in exactly two ways
 
 |                          | Mobile                     | Web                            |
 | ------------------------ | -------------------------- | ------------------------------ |
