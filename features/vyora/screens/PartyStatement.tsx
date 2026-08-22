@@ -7,6 +7,7 @@
  * placeholder for Alpha — no PDF engine yet).
  */
 
+import { useState } from "react";
 import { useVyora } from "../VyoraProvider";
 import { todayISO } from "@/lib/vyora/selectors";
 import { isOverdue, remainingLabel } from "@/lib/vyora/duedates";
@@ -26,6 +27,27 @@ import { DevLedgerSummary } from "../DevLedgerSummary";
 
 export function PartyStatement({ partyId }: { partyId: string }) {
   const { ready, ledger, dispatch } = useVyora();
+
+  /**
+   * The entry this screen has just removed, so it can be put back.
+   *
+   * `RestoreEntry` has existed in the command engine since deletion did, and
+   * until now nothing dispatched it — a merchant who deleted the wrong ₹900 had
+   * no way to say so. The log always kept the original event; what was missing
+   * was a way to ask for it.
+   *
+   * Held here rather than derived, because a deleted entry is **not in the
+   * projection to be found**: the fold filters it out of `transactions` and
+   * `payments` entirely, and `RestoreEntry` validates against the *event log*
+   * instead. So the id has to be remembered at the moment it is removed.
+   *
+   * That makes this deliberately a correction, not an archive: it survives as
+   * long as the merchant stays on the statement. A durable "recently deleted"
+   * view is a screen, and this mission does not add screens — see the mission
+   * report. Nothing is lost either way; the event is in the log and a later
+   * surface can restore from it.
+   */
+  const [undeletable, setUndeletable] = useState<{ id: string; label: string } | null>(null);
 
   // Header identity comes from the party source; the statement rows and the
   // outstanding come from the ledger source. Both default to local and both
@@ -174,8 +196,10 @@ export function PartyStatement({ partyId }: { partyId: string }) {
                   type="button"
                   aria-label="Delete entry"
                   onClick={() => {
-                    if (confirm(`Delete this entry (${r.label})?`))
+                    if (confirm(`Delete this entry (${r.label})?`)) {
                       dispatch({ type: "DeleteEntry", entryId: r.id });
+                      setUndeletable({ id: r.id, label: r.label });
+                    }
                   }}
                   className="rounded p-1 text-gray-300 hover:bg-red-50 hover:text-red-500 print:hidden"
                 >
@@ -186,6 +210,36 @@ export function PartyStatement({ partyId }: { partyId: string }) {
           </div>
         </div>
       )}
+
+      {/*
+        Putting back an entry that was just removed.
+
+        The wording says what actually happens: the original entry returns, at
+        its original amount, under its own id. It is not a new transaction and
+        must not be described as one — `RestoreEntry` re-emits the recording
+        event this book already holds, so the balance goes back to what it was
+        rather than to something that merely looks the same (ADR-0017).
+      */}
+      {undeletable ? (
+        <div
+          data-testid="restore-entry"
+          className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm print:hidden"
+        >
+          <span className="text-gray-600">
+            Deleted {undeletable.label}. It is out of the balance until you put it back.
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              dispatch({ type: "RestoreEntry", entryId: undeletable.id });
+              setUndeletable(null);
+            }}
+            className="shrink-0 rounded border border-gray-300 bg-white px-2 py-1 font-semibold text-gray-700 hover:bg-gray-100"
+          >
+            Restore
+          </button>
+        </div>
+      ) : null}
 
       <p className="px-1 text-xs text-gray-400">
         Positive = they owe you · Negative = you owe them · Balance is the running outstanding after
