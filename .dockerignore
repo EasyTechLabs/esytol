@@ -1,0 +1,59 @@
+# What must never enter an Esytol image.
+#
+# The Dockerfile's runtime stage copies three explicit paths out of the builder,
+# so this file mainly protects the *build context* — everything sent to the
+# daemon, and everything the builder stage can see. A credential in a build
+# layer is recoverable even after a later layer removes it.
+
+# ── Credentials and local state ──────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.jks
+*.keystore
+pat.txt
+PAT.txt
+secrets/
+.npmrc
+.vercel
+
+# ── Source control and CI ────────────────────────────────────────────────────
+.git
+.gitignore
+.github
+.husky
+
+# ── Build output and dependencies ────────────────────────────────────────────
+# `node_modules` is reinstalled from the lockfile inside the image; copying the
+# host's would import a tree built for another platform.
+node_modules
+.next
+out
+coverage
+test-results
+playwright-report
+
+# ── Tests and tooling the runtime never uses ─────────────────────────────────
+tests
+playwright.config.ts
+vitest.config.ts
+.lintstagedrc.json
+eslint.config.mjs
+.prettierrc
+.prettierignore
+
+# ── Documentation ────────────────────────────────────────────────────────────
+docs
+*.md
+!README.md
+
+# ── Editor and OS noise ──────────────────────────────────────────────────────
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+*.log
+.forge

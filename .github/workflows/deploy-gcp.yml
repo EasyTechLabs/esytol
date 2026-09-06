@@ -1,0 +1,189 @@
+# Esytol → the shared GCP platform.
+#
+# Replaces the Vercel deployment path. `deploy-production.yml` is deliberately
+# left in place and untouched until the cutover hold period ends: until DNS
+# moves, Vercel is still production, and deleting its workflow first would
+# remove the rollback that makes the cutover safe.
+#
+# ## What holds this together
+#
+# **No commit deploys itself.** No `push` trigger. A human publishes a release
+# or dispatches manually, and the `production` Environment holds the deploy job
+# until a reviewer approves it.
+#
+# **No long-lived credential exists.** Workload Identity Federation exchanges
+# GitHub's per-run OIDC token for a short-lived GCP token. There is no service
+# account JSON key and no SSH private key in this repository's secrets. SSH
+# reaches the VM through IAP, so port 22 is not open to the internet.
+#
+# **Images are immutable.** Tagged by commit SHA, never `latest`, so "which
+# build is running" has an answer and rollback is re-running this workflow with
+# an older SHA.
+#
+# **Esytol deploys alone.** `docker compose up -d esytol` restarts one
+# container. A website release must never interrupt a merchant mid-sync, and
+# PostgreSQL is never restarted for an application deploy.
+name: Deploy to GCP
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Commit SHA to deploy (full 40 characters)"
+        required: true
+        type: string
+      confirm:
+        description: 'Type "deploy to production" to proceed'
+        required: true
+        type: string
+
+concurrency:
+  # Never two deploys at once, and never cancel one in flight.
+  group: esytol-gcp-deploy
+  cancel-in-progress: false
+
+env:
+  REGION: asia-south1
+  REPOSITORY: platform
+  IMAGE: esytol
+  # The canonical site. NEXT_PUBLIC_* values are inlined at BUILD time, so this
+  # is a build argument — changing it requires a new image, not a restart.
+  SITE_URL: https://esytol.com
+
+jobs:
+  verify:
+    name: Verify the commit being deployed
+    runs-on: ubuntu-latest
+    steps:
+      - name: Refuse an unconfirmed run
+        if: inputs.confirm != 'deploy to production'
+        run: |
+          echo "::error::Confirmation phrase not given. Nothing was deployed."
+          exit 1
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - run: npm ci
+      - name: Type check
+        run: npm run type-check
+      - name: Lint
+        run: npm run lint
+      - name: Test
+        run: npm run test:run
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SITE_URL: ${{ env.SITE_URL }}
+
+  build:
+    name: Build and push the image
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Required for the OIDC token WIF exchanges. Without it the token is
+      # never minted and authentication fails closed.
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          # Pool and provider are pinned to EasyTechLabs/esytol by an attribute
+          # condition on the GCP side. A provider that trusts the GitHub issuer
+          # without one can be impersonated from ANY repository on GitHub.
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_DEPLOYER_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:${{ inputs.ref }}
+          build-args: |
+            NEXT_PUBLIC_SITE_URL=${{ env.SITE_URL }}
+            NEXT_PUBLIC_SITE_NAME=Esytol
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    # The approval gate. Configure required reviewers on this Environment —
+    # without them this job runs unattended, which is what the workflow exists
+    # to prevent.
+    environment:
+      name: production
+      url: https://esytol.com
+
+    steps:
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_DEPLOYER_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy over IAP
+        run: |
+          set -euo pipefail
+          IMAGE_REF="${REGION}-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/${REPOSITORY}/${IMAGE}:${{ inputs.ref }}"
+
+          # No public SSH: the tunnel is authorised by IAM, not by a firewall
+          # rule scoped to an address.
+          gcloud compute ssh "${{ secrets.GCP_VM_NAME }}" \
+            --zone "${{ secrets.GCP_VM_ZONE }}" \
+            --tunnel-through-iap \
+            --command "set -euo pipefail
+              cd /opt/vyora
+              export ESYTOL_IMAGE='${IMAGE_REF}'
+              docker pull \"\$ESYTOL_IMAGE\"
+              # One service. Vyora and PostgreSQL are not touched.
+              docker compose -f docker-compose.production.yml up -d --no-deps esytol
+              for i in \$(seq 1 30); do
+                if docker compose -f docker-compose.production.yml exec -T esytol \
+                     node -e \"fetch('http://127.0.0.1:3000/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"; then
+                  echo \"healthy after \${i} attempt(s)\"; exit 0
+                fi
+                sleep 2
+              done
+              echo 'esytol did not become healthy'; exit 1"
+
+      - name: Verify from the internet
+        run: |
+          set -euo pipefail
+          # Through DNS and TLS — the path a visitor actually takes.
+          status=$(curl -fsS -o /tmp/health.json -w '%{http_code}' https://esytol.com/api/v1/health)
+          echo "HTTP ${status}"; cat /tmp/health.json
+          test "${status}" = "200"
+
+      - name: Confirm www redirects to the canonical host
+        run: |
+          set -euo pipefail
+          # A second origin serving the same pages would split every SEO signal.
+          location=$(curl -sS -o /dev/null -w '%{redirect_url}' https://www.esytol.com/)
+          echo "www → ${location}"
+          case "${location}" in https://esytol.com/*) ;; *) exit 1 ;; esac

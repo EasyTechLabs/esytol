@@ -78,6 +78,19 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  /**
+   * Emit a self-contained server for the container image (ESYTOL-GCP-ALPHA-002).
+   *
+   * Next traces the modules each route actually imports and copies just those
+   * into `.next/standalone`, so the runtime image carries a few hundred
+   * megabytes instead of the whole dependency tree. On a single shared VM that
+   * is the difference between a deploy that pulls in seconds and one that
+   * competes with PostgreSQL for page cache while it unpacks.
+   *
+   * It changes nothing about how the application behaves — same server, same
+   * routes, same middleware. Only what gets packaged.
+   */
+  output: "standalone",
   images: {
     formats: ["image/avif", "image/webp"],
   },
