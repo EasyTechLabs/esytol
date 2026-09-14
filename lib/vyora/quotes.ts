@@ -75,7 +75,7 @@ export function describeState(quote: Quote, side: ProposalSide, now: number): st
 
   switch (quote.status) {
     case "draft":
-      return "Yours to keep — this customer does not use Vyora";
+      return "Yours to keep — this customer does not use Udharpe";
     case "proposed":
     case "revised":
       if (!isPriced(quote.lines)) {
@@ -293,15 +293,15 @@ export const CREDIT_EXPLANATION =
  * which is the correct outcome. A merchant shown a green tick and the word
  * "Paid" will not.
  */
-export const SETTLED_DISCLAIMER = "Payment confirmed by both sides — not verified by Vyora.";
+export const SETTLED_DISCLAIMER = "Payment confirmed by both sides — not verified by Udharpe.";
 
 /** What settling claims, said before it is done. */
 export const SETTLE_EXPLANATION =
-  "This records that the bill was paid outside Vyora. It does not change what they owe you, and Vyora does not check that the money arrived.";
+  "This records that the bill was paid outside Udharpe. It does not change what they owe you, and Udharpe does not check that the money arrived.";
 
 /** A list for somebody with no account. */
 export const NOT_LINKED_EXPLANATION =
-  "This customer does not use Vyora, so nobody can agree to this list. Keep it to read back at the counter, and record the entry yourself if they take it on credit.";
+  "This customer does not use Udharpe, so nobody can agree to this list. Keep it to read back at the counter, and record the entry yourself if they take it on credit.";
 
 export const UNREACHABLE =
-  "Vyora needs a connection to show item lists. Your own book still works — this list does not.";
+  "Udharpe needs a connection to show item lists. Your own book still works — this list does not.";

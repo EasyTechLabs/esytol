@@ -82,7 +82,7 @@ async function callApi<T>(
     const message =
       (cause as Error)?.name === "AbortError"
         ? "The connection timed out."
-        : "Could not reach Vyora.";
+        : "Could not reach Udharpe.";
     return { kind: "retry", message };
   } finally {
     clearTimeout(timeout);
@@ -95,7 +95,7 @@ async function callApi<T>(
       // A 200 this client cannot read is not a success it can act on, and it
       // is not the merchant's problem to solve — retry rather than discard
       // their queued work over a malformed body.
-      return { kind: "retry", message: "Vyora sent a reply this browser could not read." };
+      return { kind: "retry", message: "Udharpe sent a reply this browser could not read." };
     }
   }
 

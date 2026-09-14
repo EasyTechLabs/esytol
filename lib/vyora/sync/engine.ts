@@ -251,7 +251,7 @@ async function runCycle(options: EngineOptions): Promise<SyncOutcome> {
     pages: pullResult.pages,
     message:
       pushResult.rejected > 0
-        ? "Some entries could not be sent. Update Vyora and try again."
+        ? "Some entries could not be sent. Update Udharpe and try again."
         : null,
   };
 }

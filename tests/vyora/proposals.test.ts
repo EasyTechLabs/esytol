@@ -282,11 +282,11 @@ describe("what somebody is told before agreeing", () => {
   });
 
   it("replaces a technical refusal and keeps a merchant-facing one", () => {
-    expect(explainRefusal("409 Conflict")).toBe("Vyora could not do that just now.");
+    expect(explainRefusal("409 Conflict")).toBe("Udharpe could not do that just now.");
     expect(explainRefusal("The amount changed while you were looking.")).toBe(
       "The amount changed while you were looking."
     );
-    expect(explainRefusal("   ")).toBe("Vyora could not do that just now.");
+    expect(explainRefusal("   ")).toBe("Udharpe could not do that just now.");
   });
 
   it("says what kind of money this is in words", () => {

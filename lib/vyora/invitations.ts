@@ -110,7 +110,7 @@ export function canAccept(invitation: PresentedInvitation): boolean {
 export const EXPIRED_EXPLANATION = "This invitation has expired. Ask the shop to send a new one.";
 
 export const UNREACHABLE =
-  "Vyora needs a connection to show invitations. Your own book still works — this list does not.";
+  "Udharpe needs a connection to show invitations. Your own book still works — this list does not.";
 
 /**
  * What to say when the server refuses.

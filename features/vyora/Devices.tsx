@@ -31,7 +31,7 @@ import { shopClient, type Device } from "@/lib/vyora/shop-client";
 const MAX_LABEL = 60;
 
 const UNREACHABLE =
-  "Vyora needs a connection to show your phones. Your book still works — this list does not.";
+  "Udharpe needs a connection to show your phones. Your book still works — this list does not.";
 
 /**
  * The load-bearing sentence. A merchant who believes this wipes the phone will
@@ -43,9 +43,9 @@ const REVOKE_EXPLANATION =
 
 function explainRefusal(message: string): string {
   const said = message.trim();
-  if (!said) return "Vyora could not do that just now.";
+  if (!said) return "Udharpe could not do that just now.";
   if (/\b(400|401|403|404|forbidden|unauthori[sz]ed)\b/i.test(said)) {
-    return "Vyora could not do that just now.";
+    return "Udharpe could not do that just now.";
   }
   return said;
 }

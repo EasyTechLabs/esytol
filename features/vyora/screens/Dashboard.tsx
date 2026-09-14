@@ -24,7 +24,7 @@ export function Dashboard() {
   const hasDueDates = due.todayCount + due.weekCount + due.overdueCount > 0;
 
   const onReset = () => {
-    if (confirm("Erase all Vyora data on this device? This cannot be undone.")) reset();
+    if (confirm("Erase all Udharpe data on this device? This cannot be undone.")) reset();
   };
 
   return (

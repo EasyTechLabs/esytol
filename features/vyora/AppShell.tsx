@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Vyora Alpha — the app shell. A slim top bar and a fixed bottom action bar so
+ * Udharpe Alpha — the app shell. A slim top bar and a fixed bottom action bar so
  * recording a credit or payment is always one tap away, from any screen.
  * Phone-first; big targets; nothing to explain.
  */
@@ -10,6 +10,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
+import { UdharpeMark } from "@/features/udharpe/UdharpeMark";
 import { navRoutes } from "./modules";
 import { PwaSurfaces } from "./PwaSurfaces";
 import { ReadOnlyTabNotice } from "./ReadOnlyTabNotice";
@@ -53,14 +54,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </button>
         ) : (
           <div className="flex items-center gap-2">
-            <Link href="/vyora" className="text-lg font-bold text-brand-700">
-              Vyora
+            <Link
+              href="/vyora"
+              className="flex items-center gap-2 text-lg font-bold tracking-[0.06em] text-udharpe-ink"
+            >
+              <UdharpeMark size={22} />
+              UDHARPE
             </Link>
             <button
               type="button"
               onClick={tapBadge}
-              aria-label="Vyora Alpha"
-              className="rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-semibold uppercase text-brand-700"
+              aria-label="Udharpe Alpha"
+              className="rounded-full bg-udharpe-soft px-2 py-0.5 text-[10px] font-semibold uppercase text-udharpe-primary"
             >
               Alpha
             </button>
@@ -73,7 +78,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         role="note"
         className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-amber-800 print:hidden"
       >
-        <p className="text-xs font-semibold">Vyora Alpha · Early Access Preview</p>
+        <p className="text-xs font-semibold">Udharpe Alpha · Early Access Preview</p>
         <p className="text-[11px] leading-snug text-amber-700">
           Data is stored only in this browser. Do not rely on it for business-critical records.
         </p>

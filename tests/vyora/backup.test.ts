@@ -223,7 +223,7 @@ describe("a file that cannot be trusted is refused", () => {
     const future = { ...(JSON.parse(valid) as object), schemaVersion: BACKUP_SCHEMA_VERSION + 1 };
     const parsed = parseBackup(JSON.stringify(future));
     expect(parsed.ok).toBe(false);
-    if (!parsed.ok) expect(parsed.reason).toMatch(/newer Vyora/i);
+    if (!parsed.ok) expect(parsed.reason).toMatch(/newer Udharpe/i);
   });
 
   it("refuses an event type it does not understand", () => {
@@ -260,7 +260,7 @@ describe("a file that cannot be trusted is refused", () => {
     if (!parsed.ok) expect(parsed.reason).toMatch(/repeats an id/i);
   });
 
-  it("refuses an empty file and a non-Vyora file", () => {
+  it("refuses an empty file and a non-Udharpe file", () => {
     expect(parseBackup("")).toMatchObject({ ok: false });
     expect(parseBackup(JSON.stringify({ hello: "world" }))).toMatchObject({ ok: false });
   });

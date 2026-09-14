@@ -138,11 +138,11 @@ export function explainParseFailure(reason: ParseFailure, expected: IdKind = "sh
     case "empty":
       return `Enter the ${thing} code to continue.`;
     case "unknown-prefix":
-      return `That is not a Vyora ${thing} code. A ${thing} code starts with ${ID_KINDS[expected]}.`;
+      return `That is not a Udharpe ${thing} code. A ${thing} code starts with ${ID_KINDS[expected]}.`;
     case "wrong-length":
       return `A ${thing} code has six characters after ${ID_KINDS[expected]}, like ${ID_KINDS[expected]}-7K2M-4Q.`;
     case "invalid-character":
-      return "That code contains a character Vyora codes never use. Check it and try again.";
+      return "That code contains a character Udharpe codes never use. Check it and try again.";
     case "checksum":
       // Deliberately not "invalid": the code is well-formed, so the likeliest
       // cause is one mistyped character rather than the wrong code entirely.

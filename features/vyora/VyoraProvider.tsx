@@ -167,7 +167,7 @@ const STORAGE_FULL: CommandError = {
 const READ_ONLY_TAB: CommandError = {
   code: "READ_ONLY_TAB",
   message:
-    "This tab is read-only because Vyora is already open in another tab. Use that tab, or close it and reload this one.",
+    "This tab is read-only because Udharpe is already open in another tab. Use that tab, or close it and reload this one.",
 };
 
 function initialState(): VyoraState {

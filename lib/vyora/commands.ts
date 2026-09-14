@@ -304,7 +304,7 @@ function serializeLedger(data: VyoraData): LedgerFile {
 
 const INVALID_FILE: CommandError = {
   code: "FILE_INVALID",
-  message: "That file is not a Vyora backup.",
+  message: "That file is not a Udharpe backup.",
   field: "payload",
 };
 

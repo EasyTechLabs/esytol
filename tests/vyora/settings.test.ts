@@ -134,11 +134,11 @@ describe("import preview", () => {
     expect(preview.value.payments).toBe(data.payments.length);
   });
 
-  it("refuses a file that is not a Vyora backup, with nothing replaced", () => {
+  it("refuses a file that is not a Udharpe backup, with nothing replaced", () => {
     for (const bad of ["", "   ", "{not json", '{"data":{}}', "[]"]) {
       const preview = previewImport(bad);
       expect(preview.ok).toBe(false);
-      if (!preview.ok) expect(preview.error.message).toBe("That file is not a Vyora backup.");
+      if (!preview.ok) expect(preview.error.message).toBe("That file is not a Udharpe backup.");
     }
   });
 

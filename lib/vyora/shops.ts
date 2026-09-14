@@ -173,7 +173,7 @@ export const NOT_FOUND_MESSAGE =
   "No shop answers to that code. Check it against the card, or ask the shop to read it out.";
 
 export const UNREACHABLE_MESSAGE =
-  "Vyora could not check that code right now. Nothing has been sent, and you can try again in a moment.";
+  "Udharpe could not check that code right now. Nothing has been sent, and you can try again in a moment.";
 
 export const MISMATCH_MESSAGE =
   "That answer describes a different shop than the code you entered. Nothing has been done. Enter the code again.";

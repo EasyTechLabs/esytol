@@ -93,7 +93,7 @@ export function decideShopApi(env: ShopApiEnv): PartyApiDecision {
     return {
       enabled: false,
       reason:
-        "This is a production build. Vyora sign-in and shop setup are local-development only.",
+        "This is a production build. Udharpe sign-in and shop setup are local-development only.",
     };
   }
 
@@ -101,7 +101,7 @@ export function decideShopApi(env: ShopApiEnv): PartyApiDecision {
   if (!isLoopbackUrl(apiUrl)) {
     return {
       enabled: false,
-      reason: "The API URL is not loopback. Vyora sign-in is localhost-only.",
+      reason: "The API URL is not loopback. Udharpe sign-in is localhost-only.",
     };
   }
 

@@ -143,10 +143,13 @@ const manifest = JSON.parse(
 describe("the manifest is installable and correctly scoped", () => {
   it("declares everything a browser needs to offer an install", () => {
     expect(manifest.name).toBeTruthy();
-    expect(manifest.short_name).toBe("Vyora");
+    expect(manifest.short_name).toBe("Udharpe");
     expect(manifest.display).toBe("standalone");
     expect(manifest.orientation).toBe("portrait");
-    expect(manifest.theme_color).toBe("#2563eb");
+    // The brand colour, which is what tints the status bar on an installed
+    // PWA. It was the stock blue this app shipped with before it had an
+    // identity of its own.
+    expect(manifest.theme_color).toBe("#0E6F5C");
     expect(manifest.background_color).toBeTruthy();
   });
 

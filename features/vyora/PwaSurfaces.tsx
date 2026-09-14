@@ -195,7 +195,7 @@ export function PwaSurfaces() {
               }
               className="flex-1 rounded-xl bg-brand-600 py-2 text-sm font-semibold text-white"
             >
-              {page === TUTORIAL_PAGES.length - 1 ? "Start using Vyora" : "Next"}
+              {page === TUTORIAL_PAGES.length - 1 ? "Start using Udharpe" : "Next"}
             </button>
           </div>
         </div>

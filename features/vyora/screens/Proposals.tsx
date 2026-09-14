@@ -52,7 +52,7 @@ import {
 import { shopClient, type Proposal } from "@/lib/vyora/shop-client";
 
 const UNREACHABLE =
-  "Vyora needs a connection to show requests. Your book still works — this list does not.";
+  "Udharpe needs a connection to show requests. Your book still works — this list does not.";
 
 const money = (rupees: number) => `₹${rupees.toLocaleString("en-IN")}`;
 

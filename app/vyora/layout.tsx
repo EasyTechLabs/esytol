@@ -10,13 +10,13 @@ import { AppShell } from "@/features/vyora/AppShell";
  * untouched.
  */
 export const metadata: Metadata = {
-  title: "Vyora Alpha",
+  title: "Udharpe Alpha",
   robots: { index: false, follow: false },
   manifest: "/vyora/manifest.webmanifest",
-  applicationName: "Vyora",
+  applicationName: "Udharpe",
   appleWebApp: {
     capable: true,
-    title: "Vyora",
+    title: "Udharpe",
     statusBarStyle: "default",
   },
   icons: {

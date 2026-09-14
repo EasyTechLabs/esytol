@@ -315,7 +315,7 @@ function validateEvents(events: unknown): { events: LedgerEvent[] } | { reason: 
     }
     if (typeof event.type !== "string" || !EVENT_TYPES.has(event.type)) {
       return {
-        reason: `Entry ${i + 1} is a "${String(event.type)}", which this version of Vyora does not understand. Update Vyora, then restore again.`,
+        reason: `Entry ${i + 1} is a "${String(event.type)}", which this version of Udharpe does not understand. Update Udharpe, then restore again.`,
       };
     }
   }
@@ -338,10 +338,10 @@ export function parseBackup(payload: string): ParsedBackup {
   try {
     parsed = JSON.parse(payload) as Record<string, unknown>;
   } catch {
-    return { ok: false, reason: "That file is not readable JSON, so it is not a Vyora backup." };
+    return { ok: false, reason: "That file is not readable JSON, so it is not a Udharpe backup." };
   }
   if (!parsed || typeof parsed !== "object") {
-    return { ok: false, reason: "That file is not a Vyora backup." };
+    return { ok: false, reason: "That file is not a Udharpe backup." };
   }
 
   // ── Schema 3: the event log ────────────────────────────────────────────────
@@ -353,7 +353,7 @@ export function parseBackup(payload: string): ParsedBackup {
     if (version > BACKUP_SCHEMA_VERSION) {
       return {
         ok: false,
-        reason: `This backup was written by a newer Vyora (version ${version}). Update Vyora, then restore it — restoring it here could drop part of your book.`,
+        reason: `This backup was written by a newer Udharpe (version ${version}). Update Udharpe, then restore it — restoring it here could drop part of your book.`,
       };
     }
     if (version < BACKUP_SCHEMA_VERSION) {
@@ -411,7 +411,7 @@ export function parseBackup(payload: string): ParsedBackup {
   const body = (parsed.data ?? parsed) as Partial<VyoraData>;
   if (parsed.app === "vyora" || Array.isArray(body?.parties)) {
     if (!Array.isArray(body?.parties)) {
-      return { ok: false, reason: "That file is not a Vyora backup." };
+      return { ok: false, reason: "That file is not a Udharpe backup." };
     }
 
     const snapshot: VyoraData = {
@@ -440,5 +440,5 @@ export function parseBackup(payload: string): ParsedBackup {
     };
   }
 
-  return { ok: false, reason: "That file is not a Vyora backup." };
+  return { ok: false, reason: "That file is not a Udharpe backup." };
 }

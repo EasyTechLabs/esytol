@@ -46,7 +46,7 @@ import { explainRefusal } from "@/lib/vyora/proposals";
 import { shopClient, type QuoteLineInput, type SettlementMethod } from "@/lib/vyora/shop-client";
 
 const UNREACHABLE =
-  "Vyora needs a connection to show item lists. Your book still works — this list does not.";
+  "Udharpe needs a connection to show item lists. Your book still works — this list does not.";
 
 const METHODS: readonly SettlementMethod[] = ["cash", "upi", "bank_transfer", "other"];
 
@@ -250,7 +250,7 @@ export function Quotes() {
             <p className="text-sm text-gray-600">
               {row.settledJointly
                 ? SETTLED_DISCLAIMER
-                : "Your own record. This customer does not use Vyora, so nobody else confirmed it."}
+                : "Your own record. This customer does not use Udharpe, so nobody else confirmed it."}
             </p>
             <p className="text-xs text-gray-500">This does not change what they owe you.</p>
           </div>

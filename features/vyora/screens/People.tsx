@@ -52,7 +52,7 @@ const ROLE_LABEL: Readonly<Record<MembershipRole, string>> = {
 };
 
 const UNREACHABLE =
-  "Vyora needs a connection to show who works here. Your book still works — this list does not.";
+  "Udharpe needs a connection to show who works here. Your book still works — this list does not.";
 
 const LAST_OWNER =
   "This shop must always have at least one owner. Make someone else an owner first, then you can change this one.";
@@ -86,7 +86,7 @@ const NOT_AN_OWNER =
   "Only an owner can see and change who works in this shop. If something needs to change, ask an owner.";
 
 /** And what to say when the page could not find out who works here at all. */
-const LIST_UNAVAILABLE = "Vyora could not load who works in this shop just now.";
+const LIST_UNAVAILABLE = "Udharpe could not load who works in this shop just now.";
 
 type View =
   | { readonly kind: "loading" }

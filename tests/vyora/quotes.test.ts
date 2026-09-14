@@ -122,10 +122,10 @@ describe("a list is not a debt", () => {
   });
 });
 
-describe("paid outside Vyora is not a payment", () => {
-  it("says both sides confirmed, and that Vyora did not", () => {
+describe("paid outside Udharpe is not a payment", () => {
+  it("says both sides confirmed, and that Udharpe did not", () => {
     expect(SETTLED_DISCLAIMER).toMatch(/confirmed by both sides/i);
-    expect(SETTLED_DISCLAIMER).toMatch(/not verified by vyora/i);
+    expect(SETTLED_DISCLAIMER).toMatch(/not verified by udharpe/i);
   });
 
   it("warns before it happens that no balance will move", () => {
@@ -242,11 +242,11 @@ describe("expiry, recomputed while the page sits open", () => {
   });
 });
 
-describe("a customer with no Vyora account", () => {
+describe("a customer with no Udharpe account", () => {
   it("is the shop's own list and says so, without claiming anybody is waiting", () => {
     const draft = present(quote({ status: "draft", awaitingSide: null }), "shop", NOW);
     expect(isShopsOwn(draft)).toBe(true);
-    expect(draft.state).toMatch(/does not use Vyora/i);
+    expect(draft.state).toMatch(/does not use Udharpe/i);
     expect(draft.state).not.toMatch(/waiting/i);
   });
 });

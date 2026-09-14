@@ -432,7 +432,7 @@ export function Settings() {
               <dt className="text-amber-700">File version</dt>
               <dd className="text-right font-semibold tabular-nums">
                 {pending.summary.schemaVersion}
-                {pending.summary.appVersion ? ` · Vyora ${pending.summary.appVersion}` : ""}
+                {pending.summary.appVersion ? ` · Udharpe ${pending.summary.appVersion}` : ""}
               </dd>
             </dl>
 
@@ -548,7 +548,7 @@ export function Settings() {
           />
           <DangerAction
             title="Clear demo data"
-            description="Vyora has no separate demo data, so there is nothing here to clear."
+            description="Udharpe has no separate demo data, so there is nothing here to clear."
             confirmLabel="Clear demo data"
             onConfirm={() => undefined}
             disabled

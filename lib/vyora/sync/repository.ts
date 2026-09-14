@@ -238,7 +238,7 @@ export async function openRepository(): Promise<OpenedRepository> {
   } catch (cause) {
     return {
       repository: fallbackRepository,
-      fallbackReason: `Could not open the Vyora database: ${(cause as Error).message}`,
+      fallbackReason: `Could not open the Udharpe database: ${(cause as Error).message}`,
     };
   }
 }

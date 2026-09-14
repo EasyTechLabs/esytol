@@ -45,7 +45,7 @@ export function describeSync(tone: SyncTone, pending: number): string {
         ? "Saved on this device. 1 entry will send when you are back online."
         : `Saved on this device. ${pending} entries will send when you are back online.`;
     case "needs-attention":
-      return "Some entries could not be sent. Update Vyora and try again.";
+      return "Some entries could not be sent. Update Udharpe and try again.";
     case "signed-out":
       return "Sign in to keep your devices up to date.";
     default:

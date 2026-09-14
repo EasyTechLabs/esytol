@@ -137,7 +137,7 @@ export function openDatabase(): Promise<IDBDatabase> {
       }
     };
     req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error ?? new Error("Could not open the Vyora database"));
+    req.onerror = () => reject(req.error ?? new Error("Could not open the Udharpe database"));
   });
 }
 

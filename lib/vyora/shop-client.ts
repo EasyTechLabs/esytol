@@ -20,7 +20,7 @@ export type Result<T> =
   | { readonly kind: "refused"; readonly status: number; readonly message: string };
 
 const UNREACHABLE =
-  "Vyora could not reach the server. Nothing has been sent. Check your connection and try again.";
+  "Udharpe could not reach the server. Nothing has been sent. Check your connection and try again.";
 
 export interface Shop {
   readonly merchantId: string;
@@ -81,7 +81,7 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<Result<T>>
   // no network, from the merchant's point of view.
   if (response.status >= 500) return { kind: "unreachable", message: UNREACHABLE };
 
-  let message = "Vyora could not do that.";
+  let message = "Udharpe could not do that.";
   try {
     const parsed = JSON.parse(text) as { error?: { message?: string } };
     if (parsed.error?.message) message = parsed.error.message;

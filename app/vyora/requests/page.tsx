@@ -1,7 +1,7 @@
 import { Proposals } from "@/features/vyora/screens/Proposals";
 
 export const metadata = {
-  title: "Requests · Vyora",
+  title: "Requests · Udharpe",
 };
 
 export default function VyoraRequestsPage() {

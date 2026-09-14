@@ -119,7 +119,7 @@ export const TUTORIAL_PAGES: readonly TutorialPage[] = [
   {
     icon: "👤",
     title: "Add a customer",
-    body: "Just type their name while recording — Vyora creates them for you. No forms, no setup.",
+    body: "Just type their name while recording — Udharpe creates them for you. No forms, no setup.",
   },
   {
     icon: "📒",
@@ -129,6 +129,6 @@ export const TUTORIAL_PAGES: readonly TutorialPage[] = [
   {
     icon: "📢",
     title: "Recover money",
-    body: "Vyora ranks who to chase first and writes the message. You send it yourself.",
+    body: "Udharpe ranks who to chase first and writes the message. You send it yourself.",
   },
 ];

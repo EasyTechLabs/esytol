@@ -1,7 +1,7 @@
 import { Settings } from "@/features/vyora/screens/Settings";
 
 export const metadata = {
-  title: "Settings · Vyora",
+  title: "Settings · Udharpe",
 };
 
 export default function VyoraSettingsPage() {

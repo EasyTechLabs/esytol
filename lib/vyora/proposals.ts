@@ -215,9 +215,9 @@ export function describeHistory(proposal: Proposal, side: ProposalSide): readonl
  */
 export function explainRefusal(message: string): string {
   const said = message.trim();
-  if (!said) return "Vyora could not do that just now.";
+  if (!said) return "Udharpe could not do that just now.";
   if (/\b(400|401|403|404|409|412|500|conflict|forbidden|unauthori[sz]ed)\b/i.test(said)) {
-    return "Vyora could not do that just now.";
+    return "Udharpe could not do that just now.";
   }
   return said;
 }
@@ -232,4 +232,4 @@ export const ACCEPT_EXPLANATION =
 
 /** And why a shop cannot propose to somebody who does not use Vyora. */
 export const NOT_LINKED_EXPLANATION =
-  "This customer does not use Vyora, so there is nobody to agree. Record the entry yourself — it goes in your book exactly as it always has, marked as your own record rather than an agreed one.";
+  "This customer does not use Udharpe, so there is nobody to agree. Record the entry yourself — it goes in your book exactly as it always has, marked as your own record rather than an agreed one.";

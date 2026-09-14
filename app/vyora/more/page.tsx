@@ -1,7 +1,7 @@
 import { More } from "@/features/vyora/screens/More";
 
 export const metadata = {
-  title: "More · Vyora",
+  title: "More · Udharpe",
 };
 
 export default function VyoraMorePage() {

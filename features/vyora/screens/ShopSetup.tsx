@@ -66,7 +66,7 @@ type Stage =
   | { readonly step: "done"; readonly shop: ShopWithRole };
 
 const UNAVAILABLE =
-  "Vyora sign-in runs against a local development API, which this build cannot reach. Your ledger still works — it lives in this browser and needs no account.";
+  "Udharpe sign-in runs against a local development API, which this build cannot reach. Your ledger still works — it lives in this browser and needs no account.";
 
 export function ShopSetup() {
   const { enterShop, signOutLocally } = useVyora();
@@ -210,7 +210,7 @@ export function ShopSetup() {
       // resolves membership by `public_id`, and there is nothing to send.
       if (!shop.shopId) {
         setProblem(
-          `${shop.name} was created before shop codes existed, so Vyora cannot open it yet.`
+          `${shop.name} was created before shop codes existed, so Udharpe cannot open it yet.`
         );
         return;
       }
@@ -276,7 +276,7 @@ export function ShopSetup() {
       // The shop exists. Saying otherwise sends the merchant to create a second
       // one with the same name.
       setProblem(
-        `${created.value.name} was created, and its code is ${created.value.shopId}. Vyora could not open it just now — choose it from your shops in a moment.`
+        `${created.value.name} was created, and its code is ${created.value.shopId}. Udharpe could not open it just now — choose it from your shops in a moment.`
       );
       await loadShops();
       return;
@@ -326,7 +326,7 @@ export function ShopSetup() {
       ) : null}
 
       {stage.step === "email" ? (
-        <Card title="Sign in to Vyora">
+        <Card title="Sign in to Udharpe">
           <p className="text-sm text-gray-600">
             Enter your email and we will send a six-digit code to it. There is no password to
             remember.
