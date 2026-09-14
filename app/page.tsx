@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { buildMetadata } from "@/seo/metadata";
 import { getLiveToolCount, getPopularTools } from "@/registry";
 import { HeroSection } from "@/features/home/HeroSection";
+import { UdharpeProductCard } from "@/features/udharpe/ProductCard";
 import { DomainSections } from "@/features/home/DomainSections";
 import { FeaturedTools } from "@/features/home/FeaturedTools";
 import { PopularTools } from "@/features/home/PopularTools";
@@ -28,7 +29,14 @@ export default function HomePage() {
       <HeroSection toolCount={toolCount} quickLinks={quickLinks} />
 
       <div className="container-page">
+        {/* Above the categories on purpose. Everything below is a calculator
+            that runs in the browser; Udharpe is the product, and burying it
+            under the tool list would file it as another calculator. */}
         <section className="section-gap">
+          <UdharpeProductCard />
+        </section>
+
+        <section className="section-gap border-t border-gray-200">
           <h2 className="mb-2 text-2xl font-bold text-gray-900">Browse by category</h2>
           <p className="mb-8 text-sm text-gray-500">
             Finance is our deepest category. More are on the way — each one arrives here

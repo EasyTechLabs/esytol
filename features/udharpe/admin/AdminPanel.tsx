@@ -90,7 +90,7 @@ function SignIn({ onSignedIn }: { onSignedIn: (email: string | null) => void }) 
     setBusy(true);
     setProblem(null);
     try {
-      await call("/api/v1/auth/email/request-code", {
+      await call("/auth/request-code", {
         method: "POST",
         body: JSON.stringify({ email: email.trim() }),
       });
@@ -108,7 +108,7 @@ function SignIn({ onSignedIn }: { onSignedIn: (email: string | null) => void }) 
     try {
       // The token is set as an httpOnly cookie by the forwarder and never
       // reaches this component.
-      const result = await call<{ email: string | null }>("/api/v1/auth/email/verify-code", {
+      const result = await call<{ email: string | null }>("/auth/verify-code", {
         method: "POST",
         body: JSON.stringify({ email: email.trim(), code: code.trim() }),
       });
@@ -197,7 +197,7 @@ function Applications() {
   const load = useCallback(async (s: ApplicationStatus) => {
     setProblem(null);
     try {
-      const body = await call<{ items: Application[] }>(`/api/v1/admin/applications?status=${s}`);
+      const body = await call<{ items: Application[] }>(`/applications?status=${s}`);
       setItems(body.items);
     } catch (e) {
       setProblem((e as Error).message);
@@ -218,7 +218,7 @@ function Applications() {
     }
     setBusy(true);
     try {
-      await call(`/api/v1/admin/applications/${id}/${action}`, {
+      await call(`/applications/${id}/${action}`, {
         method: "POST",
         body: JSON.stringify(reason ? { reason } : {}),
       });
@@ -338,7 +338,7 @@ function Disputes() {
 
   const load = useCallback(async () => {
     try {
-      const body = await call<{ items: Dispute[] }>("/api/v1/admin/disputes");
+      const body = await call<{ items: Dispute[] }>("/disputes");
       setItems(body.items);
     } catch (e) {
       setProblem((e as Error).message);
@@ -355,7 +355,7 @@ function Disputes() {
     const reason = window.prompt("How was this decided? Both sides are shown this.");
     if (reason === null || reason.trim() === "") return;
     try {
-      await call(`/api/v1/admin/disputes/${id}/decide`, {
+      await call(`/disputes/${id}/decide`, {
         method: "POST",
         body: JSON.stringify({ reason }),
       });
@@ -398,7 +398,7 @@ function Audit() {
   useEffect(() => {
     void (async () => {
       try {
-        const body = await call<{ items: AuditEvent[] }>("/api/v1/admin/audit?limit=100");
+        const body = await call<{ items: AuditEvent[] }>("/audit?limit=100");
         setItems(body.items);
       } catch (e) {
         setProblem((e as Error).message);
@@ -462,7 +462,7 @@ export function AdminPanel() {
         <button
           className="text-sm text-neutral-600 underline"
           onClick={() => {
-            void call("/api/v1/auth/logout", { method: "POST" }).finally(() => setSignedIn(false));
+            void call("/auth/logout", { method: "POST" }).finally(() => setSignedIn(false));
           }}
         >
           Sign out
