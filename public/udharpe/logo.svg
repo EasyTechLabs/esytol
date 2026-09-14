@@ -1,0 +1,24 @@
+<!--
+  UDHARPE — the horizontal lockup: mark left, wordmark right.
+
+  The wordmark is set in the product's own face (Plus Jakarta Sans) at 700 with
+  the letter-spacing the design system gives display type. It is drawn as text
+  rather than outlined so it stays selectable, searchable and legible to a
+  screen reader; `font-family` falls back through the system stack for anywhere
+  the webfont has not loaded.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 40" width="200" height="40" fill="none" role="img" aria-label="Udharpe">
+  <title>Udharpe</title>
+  <g transform="translate(2, 2)">
+    <rect x="17" y="5" width="2" height="26" rx="1" fill="#1A1A17" />
+    <path d="M7 8C7 6.89543 7.89543 6 9 6H15V30H9C7.89543 30 7 29.1046 7 28V8Z" fill="#0E6F5C" />
+    <path d="M21 6H27C28.1046 6 29 6.89543 29 8V28C29 29.1046 28.1046 30 27 30H21V6Z" fill="#0E6F5C" />
+    <line x1="10" y1="12" x2="13" y2="12" stroke="#FBFAF7" stroke-width="1.5" stroke-linecap="round" />
+    <line x1="10" y1="17" x2="13" y2="17" stroke="#FBFAF7" stroke-width="1.5" stroke-linecap="round" />
+    <line x1="23" y1="12" x2="26" y2="12" stroke="#FBFAF7" stroke-width="1.5" stroke-linecap="round" />
+    <line x1="23" y1="17" x2="26" y2="17" stroke="#FBFAF7" stroke-width="1.5" stroke-linecap="round" />
+    <circle cx="18" cy="23" r="2.2" fill="#FBFAF7" />
+    <circle cx="18" cy="23" r="1.2" fill="#1A1A17" />
+  </g>
+  <text x="46" y="27" font-family="'Plus Jakarta Sans', 'Segoe UI', system-ui, -apple-system, sans-serif" font-size="22" font-weight="700" letter-spacing="1.5" fill="#1A1A17">UDHARPE</text>
+</svg>

@@ -1,11 +1,21 @@
 import Link from "next/link";
+import { UdharpeMark } from "./UdharpeMark";
+import { UDHARPE_HOME } from "./links";
 
 /**
- * The Udharpe card, at the top of the product section.
+ * The UDHARPE card, at the top of the product section.
  *
  * Everything else on Esytol is a calculator that runs in the browser and keeps
  * nothing. Udharpe is a product with accounts, so the card has to say what it
  * is in one line without sounding like the finance apps it is not.
+ *
+ * ## It is drawn in Udharpe's own language, not Esytol's
+ *
+ * Esytol's `brand` scale is blue and its cards are grey-on-white. This one is
+ * warm paper, deep green and brass, because a visitor scrolling the home page
+ * should be able to tell that Udharpe is a *product* and not another entry in
+ * the tool list. Using the same greys would have made it a renamed Vyora card,
+ * which is precisely what it must not look like.
  *
  * ## The wording is a product constraint, not copywriting
  *
@@ -19,49 +29,71 @@ export function UdharpeProductCard() {
   return (
     <section
       aria-labelledby="udharpe-heading"
-      className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8"
+      data-testid="udharpe-product-card"
+      className="overflow-hidden rounded-xl border border-udharpe-rule bg-udharpe-paper shadow-sm"
     >
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">
-            Esytol product
-          </p>
-          <h2 id="udharpe-heading" className="mt-1 text-2xl font-bold text-gray-900">
-            Udharpe
-          </h2>
-          <p className="mt-2 max-w-xl text-gray-600">
-            A trusted digital ledger for customers and merchants. Both sides agree an entry before
-            it is recorded, so the book says the same thing on both phones.
-          </p>
-          <p className="mt-2 max-w-xl text-sm text-gray-500">
-            Udharpe records what was agreed. It does not move money — that happens between you, in
-            cash or however you already pay.
-          </p>
+      {/* A brass hairline along the top edge. The one flourish on the card, and
+          it earns its place: brass is the product's "somebody is waiting on
+          somebody" colour, and this is the only surface on Esytol that carries
+          it. */}
+      <div className="h-1 bg-udharpe-brass" />
+
+      <div className="p-6 sm:p-8">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-3">
+              <UdharpeMark size={40} onGreen />
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-udharpe-primary">
+                  Esytol product
+                </p>
+                <h2
+                  id="udharpe-heading"
+                  className="mt-0.5 text-2xl font-bold tracking-[0.06em] text-udharpe-ink"
+                >
+                  UDHARPE
+                </h2>
+              </div>
+            </div>
+
+            <p className="mt-4 max-w-xl text-udharpe-body">
+              A trusted digital ledger for customers and shops. Both sides agree an entry before it
+              is recorded, so the book says the same thing on both phones.
+            </p>
+            <p className="mt-2 max-w-xl text-sm text-udharpe-dim">
+              Udharpe records what was agreed. It does not move money — that happens between you, in
+              cash or however you already pay.
+            </p>
+          </div>
+
+          <span className="rounded-lg bg-udharpe-brassSoft px-3 py-1 text-xs font-medium text-udharpe-brass">
+            Alpha
+          </span>
         </div>
 
-        <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800">
-          Alpha
-        </span>
-      </div>
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          <Link
+            href={UDHARPE_HOME}
+            data-testid="udharpe-explore"
+            className="rounded-lg bg-udharpe-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-udharpe-pressed"
+          >
+            Explore UDHARPE
+          </Link>
 
-      <div className="mt-6 flex flex-wrap items-center gap-3">
-        <Link
-          href="/udharpe"
-          className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
-        >
-          Explore Udharpe
-        </Link>
+          <Link
+            href={`${UDHARPE_HOME}#android`}
+            data-testid="udharpe-android"
+            className="rounded-lg border border-udharpe-primary px-4 py-2 text-sm font-medium text-udharpe-primary transition-colors hover:bg-udharpe-soft"
+          >
+            Android — Download App
+          </Link>
 
-        <Link
-          href="/udharpe#android"
-          className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50"
-        >
-          Download for Android
-        </Link>
-
-        {/* Not a link, because there is nothing to link to. A disabled-looking
-            button that navigates nowhere is worse than plain text. */}
-        <span className="rounded-lg px-4 py-2 text-sm text-gray-500">iOS — coming soon</span>
+          {/* Not a link, because there is nothing to link to. A disabled-looking
+              button that navigates nowhere is worse than plain text. */}
+          <span data-testid="udharpe-ios" className="px-4 py-2 text-sm text-udharpe-dim">
+            iOS — Coming Soon
+          </span>
+        </div>
       </div>
     </section>
   );
