@@ -358,7 +358,11 @@ export function Proposals() {
                 className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-700 hover:border-gray-400 disabled:opacity-55"
                 data-testid={`proposal-revise-${row.proposalId}`}
               >
-                {canAnswer(row) ? "Send a different figure" : "Change the figure"}
+                {row.disputed
+                  ? "Send a revised figure"
+                  : canAnswer(row)
+                    ? "Send a different figure"
+                    : "Change the figure"}
               </button>
             ) : null}
 

@@ -43,6 +43,8 @@ export interface PresentedProposal {
   /** True once the ledger holds it. Only then has anything happened. */
   readonly recorded: boolean;
   readonly finished: boolean;
+  /** Somebody disputed the figure. The way forward is a revised one, from either side. */
+  readonly disputed: boolean;
   /** One line a merchant can act on. */
   readonly state: string;
   readonly revisions: number;
@@ -84,6 +86,10 @@ export function describeState(proposal: Proposal, side: ProposalSide, now: numbe
       // The gap between agreeing and the entry existing. Real, and worth being
       // honest about: it is where a retry lives.
       return "Agreed — adding it to the book";
+    case "disputed":
+      // The same sentence the phone shows. Neither side is waited on; a new
+      // figure is the way forward, and either may send it.
+      return "Disputed — either of you can send a revised figure";
     default:
       return "Waiting";
   }
@@ -130,6 +136,7 @@ export function present(
     // arrived.
     recorded: status === "recorded",
     finished,
+    disputed: status === "disputed",
     state: describeState(proposal, side, now),
     revisions: Math.max(0, proposal.history.length - 1),
   };
@@ -146,14 +153,24 @@ export function canAnswer(proposal: PresentedProposal): boolean {
  * Either side may revise a live proposal — a counter-offer is a revision, not a
  * rejection. Including the side that made it: changing your own offer before
  * anybody answers is the ordinary thing to want.
+ *
+ * And a disputed one: revising is how the two sides end a dispute themselves.
+ * The server refuses it only while an administrator holds the dispute.
  */
 export function canRevise(proposal: PresentedProposal): boolean {
-  return !proposal.finished && LIVE.includes(proposal.status);
+  return !proposal.finished && (LIVE.includes(proposal.status) || proposal.status === "disputed");
 }
 
-/** Only the side that asked may withdraw, and only while it is unanswered. */
+/**
+ * Only the side that asked may withdraw, and only while it is unanswered.
+ *
+ * Its own live check rather than `canRevise`, which now also allows a disputed
+ * figure — and the server does not let a disputed request be withdrawn.
+ */
 export function canWithdraw(proposal: PresentedProposal): boolean {
-  return canRevise(proposal) && proposal.initiator === proposal.side;
+  return (
+    !proposal.finished && LIVE.includes(proposal.status) && proposal.initiator === proposal.side
+  );
 }
 
 export interface SidedProposal {

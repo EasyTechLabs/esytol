@@ -158,7 +158,18 @@ export interface IncomingInvitation {
 export type ProposalType = "credit" | "payment" | "advance_payment";
 export type ProposalSide = "shop" | "customer";
 export type ProposalStatus =
-  "draft" | "proposed" | "revised" | "accepted" | "recorded" | "rejected" | "cancelled" | "expired";
+  | "draft"
+  | "proposed"
+  | "revised"
+  | "accepted"
+  | "recorded"
+  | "rejected"
+  | "cancelled"
+  // A party disputed the figure. Neither side can agree to it or decline it as
+  // it stands; either can revise it, which ends the dispute. In the API since
+  // 014 and in its contract since vyora-api f202210.
+  | "disputed"
+  | "expired";
 
 export interface ProposalVersion {
   readonly version: number;

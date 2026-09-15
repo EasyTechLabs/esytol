@@ -236,6 +236,39 @@ describe("who may do what", () => {
   });
 });
 
+describe("a disputed figure", () => {
+  // The API's rule since vyora-api f202210, and the phone's since 701530b: a
+  // disputed request cannot be agreed, declined or withdrawn as it stands, and
+  // either side may revise it, which ends the dispute.
+  const disputed = (side: "shop" | "customer") =>
+    present(proposal({ status: "disputed", awaitingSide: null }), side, NOW);
+
+  it("says it is disputed — the same sentence the phone shows — and waits on nobody", () => {
+    for (const side of ["shop", "customer"] as const) {
+      const row = disputed(side);
+      expect(row.disputed).toBe(true);
+      expect(row.state).toBe("Disputed — either of you can send a revised figure");
+    }
+  });
+
+  it("can be revised from either side, and not answered or withdrawn", () => {
+    for (const side of ["shop", "customer"] as const) {
+      const row = disputed(side);
+      expect(canRevise(row)).toBe(true);
+      expect(canAnswer(row)).toBe(false);
+      expect(canWithdraw(row)).toBe(false);
+      expect(row.finished).toBe(false);
+      expect(row.recorded).toBe(false);
+    }
+  });
+
+  it("does not widen withdrawal for an ordinary live request", () => {
+    // canWithdraw used to lean on canRevise, which now also admits `disputed`.
+    expect(canWithdraw(present(proposal({ initiator: "shop" }), "shop", NOW))).toBe(true);
+    expect(present(proposal(), "shop", NOW).disputed).toBe(false);
+  });
+});
+
 describe("a revision is a new version, never an edit", () => {
   it("counts the changes so somebody sees this has moved", () => {
     const haggled = present(
