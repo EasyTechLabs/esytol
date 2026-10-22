@@ -1,0 +1,35 @@
+# Line endings: LF in the repository and in every checkout, on every OS.
+#
+# This programme was developed on Windows with core.autocrlf=true, and a copy of
+# the tree moved to macOS showed every text file as modified — CRLF on disk, LF
+# in git. Pinning eol here makes the checkout the same everywhere, whatever the
+# machine's own git settings are.
+* text=auto eol=lf
+
+# Shell scripts must stay LF or they fail with "bad interpreter: /bin/bash^M".
+*.sh    text eol=lf
+gradlew text eol=lf
+
+# Windows batch files are the one place CRLF is correct.
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+
+# Binary: never translated, never diffed as text.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.webp  binary
+*.ico   binary
+*.pdf   binary
+*.ttf   binary
+*.otf   binary
+*.woff  binary
+*.woff2 binary
+*.jar   binary
+*.keystore binary
+*.jks   binary
+*.db    binary
+*.sqlite binary
+*.zip   binary
+*.apk   binary
