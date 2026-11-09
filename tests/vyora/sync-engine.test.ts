@@ -9,7 +9,13 @@
 
 import { describe, expect, it, beforeEach } from "vitest";
 import { FakeServer, freshDatabase } from "./sync-harness";
-import { sync, projectionFrom, resetInFlight, MAX_PAGES_PER_SYNC } from "@/lib/vyora/sync/engine";
+import {
+  sync,
+  projectionFrom,
+  resetInFlight,
+  MAX_PAGES_PER_SYNC,
+  AGREED_REFUSAL_MESSAGE,
+} from "@/lib/vyora/sync/engine";
 import { appendLocal, countEvents, countPending, readLog, readMeta } from "@/lib/vyora/sync/store";
 import { toClientEvent } from "@/lib/vyora/sync/protocol";
 import {
@@ -199,6 +205,49 @@ describe("two clients on one shop", () => {
 
     expect(server.log.map((e) => e.type)).toContain("EntryDeleted");
     expect(await netFor(party.party.id)).toBe(0);
+  });
+});
+
+describe("an entry both sides agreed", () => {
+  // vyora-api c7c63c4: the server refuses to delete or change an entry both
+  // sides agreed, rejecting that one event as AGREED_RECORD_IMMUTABLE. Before
+  // this, the browser kept the deletion pending, re-sent it on every sync, and
+  // went on showing the agreed entry as gone.
+  it("comes back when the server refuses this browser's deletion", async () => {
+    const party = createContactCreated({ name: "Meena" });
+    const credit = createCreditRecorded({ partyId: party.party.id, amount: 1000, kind: "given" });
+    await appendLocal(db, party);
+    await appendLocal(db, credit);
+    await sync(engine());
+    expect(await netFor(party.party.id)).toBe(1000);
+
+    server.options.refuse = (event) =>
+      event.type === "EntryDeleted"
+        ? { reason: "AGREED_RECORD_IMMUTABLE", message: "Both sides agreed this entry." }
+        : null;
+    await appendLocal(db, createEntryDeleted(credit.transaction.id));
+    expect(await netFor(party.party.id)).toBe(0);
+
+    const outcome = await sync(engine());
+
+    expect(outcome.refused).toBe(1);
+    expect(outcome.rejected).toBe(0);
+    expect(outcome.state).toBe("synced");
+    expect(outcome.message).toBe(AGREED_REFUSAL_MESSAGE);
+    expect(await netFor(party.party.id)).toBe(1000);
+    expect(await countPending(db)).toBe(0);
+  });
+
+  it("still keeps any other rejection pending, as before", async () => {
+    const party = createContactCreated({ name: "Ravi" });
+    server.options.refuse = () => ({ reason: "PAYLOAD_INVALID", message: "Bad." });
+    await appendLocal(db, party);
+
+    const outcome = await sync(engine());
+
+    expect(outcome.rejected).toBe(1);
+    expect(outcome.refused ?? 0).toBe(0);
+    expect(await countPending(db)).toBe(1);
   });
 });
 

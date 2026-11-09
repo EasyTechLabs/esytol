@@ -402,7 +402,8 @@ export function VyoraProvider({ children }: { children: React.ReactNode }) {
     // The fold order changed if anything moved: a pushed event takes the
     // server's clock and leaves the pending tail, and a pulled one joins the
     // shared history. Re-read rather than guess.
-    if (outcome.pushed > 0 || outcome.pulled > 0) {
+    // A dropped refusal changes the fold too: the agreed entry is back.
+    if (outcome.pushed > 0 || outcome.pulled > 0 || (outcome.refused ?? 0) > 0) {
       // Skipped while a write is in flight, exactly as the cross-tab listener
       // is: that dispatch is inside the lock and about to re-read anyway, and
       // replacing its state underneath it would discard the entry being

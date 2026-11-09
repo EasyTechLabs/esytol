@@ -184,6 +184,36 @@ export async function readPending(db: IDBDatabase, limit = 500): Promise<StoredE
   return rows.slice(0, limit);
 }
 
+/**
+ * Drop pending events the server has refused for good, so the fold stops
+ * applying them.
+ *
+ * Only for a refusal that is a decision about the event itself — today, a
+ * delete or edit of an entry both sides agreed (`AGREED_RECORD_IMMUTABLE`).
+ * Left pending, such an event would be re-sent and refused forever while this
+ * browser kept showing the entry as gone. Never touches a confirmed event.
+ */
+export async function discardPending(
+  db: IDBDatabase,
+  eventIds: readonly string[]
+): Promise<number> {
+  if (eventIds.length === 0) return 0;
+  const tx = db.transaction(EVENTS_STORE, "readwrite");
+  const store = tx.objectStore(EVENTS_STORE);
+  const byId = store.index("by_id");
+  let dropped = 0;
+  for (const id of eventIds) {
+    const key = await request<IDBValidKey | undefined>(byId.getKey(id));
+    if (key === undefined) continue;
+    const row = await request<StoredEvent | undefined>(store.get(key));
+    if (row?.state !== "pending") continue;
+    store.delete(key);
+    dropped += 1;
+  }
+  await finished(tx);
+  return dropped;
+}
+
 export async function countEvents(db: IDBDatabase): Promise<number> {
   const tx = db.transaction(EVENTS_STORE, "readonly");
   return request<number>(tx.objectStore(EVENTS_STORE).count());

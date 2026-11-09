@@ -44,6 +44,7 @@ import { fromRemoteEvent, toBatch, SCHEMA_VERSION } from "./protocol";
 import {
   applyPage,
   countPending,
+  discardPending,
   markConfirmed,
   readLog,
   readMeta,
@@ -75,10 +76,16 @@ export interface SyncOutcome {
   readonly state: SyncState;
   readonly pushed: number;
   readonly rejected: number;
+  /** Pending events the server refused for good and this browser dropped. */
+  readonly refused?: number;
   readonly pulled: number;
   readonly pages: number;
   readonly message: string | null;
 }
+
+/** Why an entry this browser removed is back. */
+export const AGREED_REFUSAL_MESSAGE =
+  "Both sides agreed that entry, so it was kept. To correct it, record a new entry and agree it with them.";
 
 /** Pages taken in one sync before yielding, so a month away cannot hang a screen. */
 export const MAX_PAGES_PER_SYNC = 10;
@@ -129,6 +136,7 @@ async function push(options: EngineOptions): Promise<{
   outcome: ApiOutcome<unknown> | null;
   pushed: number;
   rejected: number;
+  refused?: number;
 }> {
   const pending = await readPending(options.db, MAX_EVENTS_PER_PUSH);
   if (pending.length === 0) return { outcome: null, pushed: 0, rejected: 0 };
@@ -158,11 +166,25 @@ async function push(options: EngineOptions): Promise<{
   const acknowledged = [...outcome.value.accepted, ...outcome.value.duplicate];
   await markConfirmed(options.db, acknowledged);
 
-  // A rejected event is left pending on purpose. It is one specific event the
-  // server will not take — a build older than the contract, most likely — and
-  // dropping it would delete something the merchant recorded. It stays, it is
-  // counted, and it is visible.
-  return { outcome, pushed: acknowledged.length, rejected: outcome.value.rejected.length };
+  // One refusal is a decision about the event, not about this build: deleting
+  // or changing an entry both sides agreed. Kept pending, it would be refused
+  // on every sync while the fold went on showing the entry as gone — so it is
+  // dropped, and the agreed entry is back on the next read.
+  const refusedIds = outcome.value.rejected
+    .filter((r) => r.reason === "AGREED_RECORD_IMMUTABLE")
+    .map((r) => r.eventId);
+  const refused = await discardPending(options.db, refusedIds);
+
+  // Any other rejected event is left pending on purpose. It is one specific
+  // event the server will not take — a build older than the contract, most
+  // likely — and dropping it would delete something the merchant recorded. It
+  // stays, it is counted, and it is visible.
+  return {
+    outcome,
+    pushed: acknowledged.length,
+    rejected: outcome.value.rejected.length - refusedIds.length,
+    refused,
+  };
 }
 
 /** Take what this browser is owed, one page at a time. */
@@ -247,12 +269,15 @@ async function runCycle(options: EngineOptions): Promise<SyncOutcome> {
     state: pushResult.rejected > 0 ? "error" : "synced",
     pushed: pushResult.pushed,
     rejected: pushResult.rejected,
+    refused: pushResult.refused ?? 0,
     pulled: pullResult.pulled,
     pages: pullResult.pages,
     message:
       pushResult.rejected > 0
         ? "Some entries could not be sent. Update Udharpe and try again."
-        : null,
+        : (pushResult.refused ?? 0) > 0
+          ? AGREED_REFUSAL_MESSAGE
+          : null,
   };
 }
 

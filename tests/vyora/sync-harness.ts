@@ -52,6 +52,8 @@ export interface FakeServerOptions {
   unauthorized?: boolean;
   /** Answer 500 on the next N requests, then behave. */
   failNext?: number;
+  /** Refuse an event the way the API does, e.g. deleting an agreed entry. */
+  refuse?: (event: ServerEvent) => { reason: string; message: string } | null;
   /** Events per pull page, so pagination is exercised at a testable size. */
   pageSize?: number;
 }
@@ -125,6 +127,7 @@ export class FakeServer {
 
     const accepted: { eventId: string; recordedAt: string }[] = [];
     const duplicate: { eventId: string; recordedAt: string }[] = [];
+    const rejected: { eventId: string; reason: string; message: string }[] = [];
 
     for (const event of body.events ?? []) {
       const existing = this.log.find((e) => e.eventId === event.eventId);
@@ -132,6 +135,11 @@ export class FakeServer {
         // A duplicate keeps its ORIGINAL recordedAt. An event's place in
         // history must never move, or a cursor could step over it.
         duplicate.push({ eventId: existing.eventId, recordedAt: existing.recordedAt });
+        continue;
+      }
+      const refusal = this.options.refuse?.(event);
+      if (refusal) {
+        rejected.push({ eventId: event.eventId, ...refusal });
         continue;
       }
       const stored: ServerEvent = { ...event, recordedAt: this.stamp() };
@@ -142,7 +150,7 @@ export class FakeServer {
     return json(200, {
       accepted,
       duplicate,
-      rejected: [],
+      rejected,
       cursor: "",
       serverTime: new Date().toISOString(),
     });
