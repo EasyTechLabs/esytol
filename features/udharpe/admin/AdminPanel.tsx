@@ -447,11 +447,225 @@ function Audit() {
   );
 }
 
+// ── Directory ────────────────────────────────────────────────────────────────
+//
+// Shops, people and relationships, read-only. Every listing is recorded on the
+// server's audit trail with what was searched for.
+
+type DirectoryView = "shops" | "people" | "relationships";
+
+interface DirectoryShop {
+  merchantId: string;
+  shopId: string | null;
+  name: string;
+  locality: string | null;
+  createdAt: string;
+  owner: { personId: string; displayName: string | null; email: string | null } | null;
+  applicationStatus: string | null;
+  members: number;
+  activeRelationships: number;
+}
+
+interface DirectoryPerson {
+  personId: string;
+  displayName: string | null;
+  email: string | null;
+  publicId: string | null;
+  createdAt: string;
+  isAdmin: boolean;
+  shops: { shopId: string | null; name: string; role: string; status: string }[];
+}
+
+interface DirectoryRelationship {
+  relationshipId: string;
+  status: string;
+  requestedBy: string;
+  requestedAt: string;
+  decidedAt: string | null;
+  shop: { shopId: string | null; name: string };
+  customer: { personId: string; publicId: string | null; displayName: string | null };
+}
+
+function Directory() {
+  const [view, setView] = useState<DirectoryView>("shops");
+  const [q, setQ] = useState("");
+  const [shops, setShops] = useState<DirectoryShop[]>([]);
+  const [people, setPeople] = useState<DirectoryPerson[]>([]);
+  const [relationships, setRelationships] = useState<DirectoryRelationship[]>([]);
+  const [problem, setProblem] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    setBusy(true);
+    setProblem(null);
+    try {
+      const query = `?limit=100${q.trim() ? `&q=${encodeURIComponent(q.trim())}` : ""}`;
+      if (view === "shops")
+        setShops((await call<{ items: DirectoryShop[] }>(`/shops${query}`)).items);
+      if (view === "people")
+        setPeople((await call<{ items: DirectoryPerson[] }>(`/people${query}`)).items);
+      if (view === "relationships") {
+        setRelationships(
+          (await call<{ items: DirectoryRelationship[] }>(`/relationships${query}`)).items
+        );
+      }
+    } catch (e) {
+      setProblem((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }, [view, q]);
+
+  useEffect(() => {
+    void load();
+    // Reload on a change of view; a search runs on submit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view]);
+
+  const cell = "py-2 pr-4";
+  return (
+    <section>
+      <form
+        className="mb-4 flex flex-wrap items-center gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void load();
+        }}
+      >
+        {(["shops", "people", "relationships"] as const).map((v) => (
+          <button
+            key={v}
+            type="button"
+            onClick={() => setView(v)}
+            className={`rounded px-3 py-1 text-sm ${
+              v === view ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-700"
+            }`}
+          >
+            {v}
+          </button>
+        ))}
+        <input
+          aria-label="Search"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Name, email or code"
+          className="min-w-[12rem] flex-1 rounded border border-neutral-300 px-2 py-1 text-sm"
+        />
+        <button
+          type="submit"
+          disabled={busy}
+          className="rounded bg-neutral-900 px-3 py-1 text-sm text-white"
+        >
+          {busy ? "Searching…" : "Search"}
+        </button>
+      </form>
+      {problem ? <p className="text-sm text-red-700">{problem}</p> : null}
+      <p className="mb-2 text-xs text-neutral-500">
+        Every search here is recorded on the audit trail.
+      </p>
+      <div className="overflow-x-auto">
+        <table className="min-w-full text-sm">
+          {view === "shops" ? (
+            <>
+              <thead className="text-left text-xs uppercase tracking-wide text-neutral-500">
+                <tr>
+                  <th className={cell}>Shop</th>
+                  <th className={cell}>Code</th>
+                  <th className={cell}>Owner</th>
+                  <th className={cell}>Application</th>
+                  <th className={cell}>Customers</th>
+                </tr>
+              </thead>
+              <tbody>
+                {shops.map((s) => (
+                  <tr key={s.merchantId} className="border-t border-neutral-100">
+                    <td className={cell}>
+                      {s.name}
+                      {s.locality ? (
+                        <span className="block text-xs text-neutral-500">{s.locality}</span>
+                      ) : null}
+                    </td>
+                    <td className={`${cell} font-mono text-xs`}>{s.shopId ?? "—"}</td>
+                    <td className={cell}>
+                      {s.owner ? (s.owner.displayName ?? s.owner.email ?? "—") : "—"}
+                    </td>
+                    <td className={cell}>{s.applicationStatus ?? "none"}</td>
+                    <td className={cell}>{s.activeRelationships}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </>
+          ) : null}
+          {view === "people" ? (
+            <>
+              <thead className="text-left text-xs uppercase tracking-wide text-neutral-500">
+                <tr>
+                  <th className={cell}>Person</th>
+                  <th className={cell}>Email</th>
+                  <th className={cell}>Code</th>
+                  <th className={cell}>Shops</th>
+                </tr>
+              </thead>
+              <tbody>
+                {people.map((p) => (
+                  <tr key={p.personId} className="border-t border-neutral-100">
+                    <td className={cell}>
+                      {p.displayName ?? "—"}
+                      {p.isAdmin ? (
+                        <span className="ml-2 rounded bg-neutral-100 px-1 text-xs">admin</span>
+                      ) : null}
+                    </td>
+                    <td className={cell}>{p.email ?? "—"}</td>
+                    <td className={`${cell} font-mono text-xs`}>{p.publicId ?? "—"}</td>
+                    <td className={cell}>
+                      {p.shops.length === 0
+                        ? "—"
+                        : p.shops.map((s) => `${s.name} (${s.role})`).join(", ")}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </>
+          ) : null}
+          {view === "relationships" ? (
+            <>
+              <thead className="text-left text-xs uppercase tracking-wide text-neutral-500">
+                <tr>
+                  <th className={cell}>Shop</th>
+                  <th className={cell}>Customer</th>
+                  <th className={cell}>State</th>
+                  <th className={cell}>Asked by</th>
+                  <th className={cell}>Since</th>
+                </tr>
+              </thead>
+              <tbody>
+                {relationships.map((r) => (
+                  <tr key={r.relationshipId} className="border-t border-neutral-100">
+                    <td className={cell}>{r.shop.name}</td>
+                    <td className={cell}>{r.customer.displayName ?? r.customer.publicId ?? "—"}</td>
+                    <td className={cell}>{r.status}</td>
+                    <td className={cell}>{r.requestedBy}</td>
+                    <td className={`${cell} whitespace-nowrap text-neutral-600`}>
+                      {new Date(r.requestedAt).toLocaleDateString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </>
+          ) : null}
+        </table>
+      </div>
+    </section>
+  );
+}
+
 // ── The panel ────────────────────────────────────────────────────────────────
 
 export function AdminPanel() {
   const [signedIn, setSignedIn] = useState<string | null | false>(false);
-  const [tab, setTab] = useState<"applications" | "disputes" | "audit">("applications");
+  const [tab, setTab] = useState<"applications" | "disputes" | "directory" | "audit">(
+    "applications"
+  );
 
   if (signedIn === false) return <SignIn onSignedIn={(email) => setSignedIn(email)} />;
 
@@ -470,7 +684,7 @@ export function AdminPanel() {
       </header>
 
       <nav className="mt-6 flex gap-2">
-        {(["applications", "disputes", "audit"] as const).map((t) => (
+        {(["applications", "disputes", "directory", "audit"] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -486,6 +700,7 @@ export function AdminPanel() {
       <div className="mt-8">
         {tab === "applications" ? <Applications /> : null}
         {tab === "disputes" ? <Disputes /> : null}
+        {tab === "directory" ? <Directory /> : null}
         {tab === "audit" ? <Audit /> : null}
       </div>
     </main>
