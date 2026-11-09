@@ -23,6 +23,12 @@ describe("the admin directory's upstream path", () => {
     expect(directoryPath("shops", at("?status=active"))).not.toContain("status=");
   });
 
+  it("passes a known role, and only for people", () => {
+    expect(directoryPath("people", at("?role=shopkeeper"))).toContain("role=shopkeeper");
+    expect(directoryPath("people", at("?role=landlord"))).not.toContain("role=");
+    expect(directoryPath("shops", at("?role=customer"))).not.toContain("role=");
+  });
+
   it("drops every other parameter", () => {
     const path = directoryPath("people", at("?q=a&merchantId=x&admin=true"));
     expect(path).toBe("/api/v1/admin/people?q=a&limit=50");

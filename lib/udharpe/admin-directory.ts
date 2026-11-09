@@ -30,6 +30,9 @@ export function directoryPath(view: DirectoryView, requestUrl: string): string {
   const raw = Number(incoming.get("limit") ?? 50);
   out.set("limit", String(Number.isFinite(raw) ? Math.min(Math.max(Math.trunc(raw), 1), 200) : 50));
 
+  const role = incoming.get("role");
+  if (view === "people" && (role === "shopkeeper" || role === "customer")) out.set("role", role);
+
   const status = incoming.get("status");
   if (
     view === "relationships" &&

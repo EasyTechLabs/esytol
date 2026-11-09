@@ -489,6 +489,7 @@ interface DirectoryRelationship {
 function Directory() {
   const [view, setView] = useState<DirectoryView>("shops");
   const [q, setQ] = useState("");
+  const [role, setRole] = useState<"" | "shopkeeper" | "customer">("");
   const [shops, setShops] = useState<DirectoryShop[]>([]);
   const [people, setPeople] = useState<DirectoryPerson[]>([]);
   const [relationships, setRelationships] = useState<DirectoryRelationship[]>([]);
@@ -502,8 +503,10 @@ function Directory() {
       const query = `?limit=100${q.trim() ? `&q=${encodeURIComponent(q.trim())}` : ""}`;
       if (view === "shops")
         setShops((await call<{ items: DirectoryShop[] }>(`/shops${query}`)).items);
-      if (view === "people")
-        setPeople((await call<{ items: DirectoryPerson[] }>(`/people${query}`)).items);
+      if (view === "people") {
+        const roleQuery = role ? `&role=${role}` : "";
+        setPeople((await call<{ items: DirectoryPerson[] }>(`/people${query}${roleQuery}`)).items);
+      }
       if (view === "relationships") {
         setRelationships(
           (await call<{ items: DirectoryRelationship[] }>(`/relationships${query}`)).items
@@ -514,7 +517,7 @@ function Directory() {
     } finally {
       setBusy(false);
     }
-  }, [view, q]);
+  }, [view, q, role]);
 
   useEffect(() => {
     void load();
@@ -544,6 +547,18 @@ function Directory() {
             {v}
           </button>
         ))}
+        {view === "people" ? (
+          <select
+            aria-label="Role"
+            value={role}
+            onChange={(e) => setRole(e.target.value as "" | "shopkeeper" | "customer")}
+            className="rounded border border-neutral-300 px-2 py-1 text-sm"
+          >
+            <option value="">Everyone</option>
+            <option value="shopkeeper">Shopkeepers</option>
+            <option value="customer">Customers</option>
+          </select>
+        ) : null}
         <input
           aria-label="Search"
           value={q}
