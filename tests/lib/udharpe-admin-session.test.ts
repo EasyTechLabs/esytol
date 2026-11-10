@@ -9,6 +9,7 @@
 
 import { describe, expect, it } from "vitest";
 import { decideAdminApi, mayForward } from "@/lib/udharpe/admin-session";
+import { directoryPath } from "@/lib/udharpe/admin-directory";
 
 describe("which API the admin panel may reach", () => {
   const on = { enabled: "true" };
@@ -62,6 +63,35 @@ describe("what the forwarder will pass through", () => {
     expect(mayForward("POST", `/api/v1/admin/disputes/${id}/decide`)).toBe(true);
     expect(mayForward("GET", "/api/v1/admin/audit?limit=100")).toBe(true);
     expect(mayForward("GET", `/api/v1/admin/captures/${id}`)).toBe(true);
+  });
+
+  it("passes the paths its own routes build — the queue and the directory", () => {
+    // Both were refused until the pilot end-to-end run: the applications route
+    // always adds a status, and the directory routes were never listed, so the
+    // panel's queue and directory answered 404 in every browser.
+    expect(mayForward("GET", "/api/v1/admin/applications?status=under_review")).toBe(true);
+    for (const view of ["shops", "people", "relationships"] as const) {
+      const path = directoryPath(
+        view,
+        "http://x/a?q=Sharma%20Kirana&limit=50&role=customer&status=active"
+      );
+      expect(mayForward("GET", path), path).toBe(true);
+    }
+    expect(mayForward("GET", "/api/v1/admin/people?q=a%2Bb&limit=50")).toBe(true);
+  });
+
+  it("refuses a query that is not plain key=value pairs, or the directory written to", () => {
+    for (const path of [
+      "/api/v1/admin/applications?status=pending&x=1",
+      "/api/v1/admin/applications?status=../../me",
+      "/api/v1/admin/people?q=a/../../parties",
+      "/api/v1/admin/people?q=a#frag",
+      "/api/v1/admin/shops/123",
+      "/api/v1/admin/shopsx?q=a",
+    ]) {
+      expect(mayForward("GET", path), path).toBe(false);
+    }
+    expect(mayForward("POST", "/api/v1/admin/shops?q=a")).toBe(false);
   });
 
   it("allows only the sign-in operations outside the admin namespace", () => {

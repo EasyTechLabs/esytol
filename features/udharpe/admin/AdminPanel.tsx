@@ -21,7 +21,7 @@
  * figure an administrator typed is not a figure two people agreed on.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type ApplicationStatus =
   | "pending"
@@ -193,14 +193,21 @@ function Applications() {
   const [items, setItems] = useState<Application[]>([]);
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Only the latest load may fill the list. A reload after a decision, still
+  // in flight when the administrator switched tabs, used to land last and
+  // show one tab's applications under another's heading.
+  const latest = useRef(0);
+  const current = useRef(status);
+  current.current = status;
 
   const load = useCallback(async (s: ApplicationStatus) => {
+    const ticket = ++latest.current;
     setProblem(null);
     try {
       const body = await call<{ items: Application[] }>(`/applications?status=${s}`);
-      setItems(body.items);
+      if (ticket === latest.current) setItems(body.items);
     } catch (e) {
-      setProblem((e as Error).message);
+      if (ticket === latest.current) setProblem((e as Error).message);
     }
   }, []);
 
@@ -222,7 +229,7 @@ function Applications() {
         method: "POST",
         body: JSON.stringify(reason ? { reason } : {}),
       });
-      await load(status);
+      await load(current.current);
     } catch (e) {
       setProblem((e as Error).message);
     } finally {
@@ -495,27 +502,37 @@ function Directory() {
   const [relationships, setRelationships] = useState<DirectoryRelationship[]>([]);
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Only the latest search may fill the table, as in the applications queue:
+  // a load started by switching view, still in flight when a search was
+  // submitted, used to land last and show the wrong results.
+  const latest = useRef(0);
 
   const load = useCallback(async () => {
+    const ticket = ++latest.current;
+    const fresh = () => ticket === latest.current;
     setBusy(true);
     setProblem(null);
     try {
       const query = `?limit=100${q.trim() ? `&q=${encodeURIComponent(q.trim())}` : ""}`;
-      if (view === "shops")
-        setShops((await call<{ items: DirectoryShop[] }>(`/shops${query}`)).items);
+      if (view === "shops") {
+        const items = (await call<{ items: DirectoryShop[] }>(`/shops${query}`)).items;
+        if (fresh()) setShops(items);
+      }
       if (view === "people") {
         const roleQuery = role ? `&role=${role}` : "";
-        setPeople((await call<{ items: DirectoryPerson[] }>(`/people${query}${roleQuery}`)).items);
+        const items = (await call<{ items: DirectoryPerson[] }>(`/people${query}${roleQuery}`))
+          .items;
+        if (fresh()) setPeople(items);
       }
       if (view === "relationships") {
-        setRelationships(
-          (await call<{ items: DirectoryRelationship[] }>(`/relationships${query}`)).items
-        );
+        const items = (await call<{ items: DirectoryRelationship[] }>(`/relationships${query}`))
+          .items;
+        if (fresh()) setRelationships(items);
       }
     } catch (e) {
-      setProblem((e as Error).message);
+      if (fresh()) setProblem((e as Error).message);
     } finally {
-      setBusy(false);
+      if (fresh()) setBusy(false);
     }
   }, [view, q, role]);
 
@@ -566,11 +583,10 @@ function Directory() {
           placeholder="Name, email or code"
           className="min-w-[12rem] flex-1 rounded border border-neutral-300 px-2 py-1 text-sm"
         />
-        <button
-          type="submit"
-          disabled={busy}
-          className="rounded bg-neutral-900 px-3 py-1 text-sm text-white"
-        >
+        {/* Never disabled: Enter submits only through an enabled button, so a
+            search typed while the view was still loading used to vanish.
+            Overlapping loads are settled by `latest` instead. */}
+        <button type="submit" className="rounded bg-neutral-900 px-3 py-1 text-sm text-white">
           {busy ? "Searching…" : "Search"}
         </button>
       </form>
@@ -677,11 +693,28 @@ function Directory() {
 // ── The panel ────────────────────────────────────────────────────────────────
 
 export function AdminPanel() {
-  const [signedIn, setSignedIn] = useState<string | null | false>(false);
+  const [signedIn, setSignedIn] = useState<string | null | false | "checking">("checking");
   const [tab, setTab] = useState<"applications" | "disputes" | "directory" | "audit">(
     "applications"
   );
 
+  // A session cookie from an earlier sign-in is resumed rather than ignored.
+  // Without this every reload asked for a new email code, and an
+  // administrator refreshing the queue soon hit the sign-in rate limit.
+  // Found by the pilot end-to-end run, 10 November. The cookie is httpOnly,
+  // so the only way to know is to ask: an allowlisted read either answers or
+  // does not.
+  useEffect(() => {
+    let live = true;
+    call("/applications?status=pending")
+      .then(() => live && setSignedIn(null))
+      .catch(() => live && setSignedIn(false));
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  if (signedIn === "checking") return null;
   if (signedIn === false) return <SignIn onSignedIn={(email) => setSignedIn(email)} />;
 
   return (

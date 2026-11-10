@@ -116,8 +116,19 @@ export function adminCookieOptions(isSecureTransport: boolean) {
  * prefix next — including, one day, something that should never have been
  * reachable from a browser at all.
  */
+// A query string of plain `key=value` pairs, as `URLSearchParams` writes one.
+// The routes build these from checked values; this only keeps anything else —
+// a `#`, a `/`, a `..` — from riding along.
+const QUERY = String.raw`\?[a-z]+=[A-Za-z0-9%+._*-]*(?:&[a-z]+=[A-Za-z0-9%+._*-]*)*`;
+
 export const ADMIN_FORWARDABLE = [
-  { method: "GET", pattern: /^\/api\/v1\/admin\/applications$/ },
+  // With its status: the route always sends one. Without the query here the
+  // queue never loaded — found by the pilot end-to-end run, 10 November.
+  { method: "GET", pattern: /^\/api\/v1\/admin\/applications(\?status=[a-z_]+)?$/ },
+  {
+    method: "GET",
+    pattern: new RegExp(String.raw`^\/api\/v1\/admin\/(shops|people|relationships)(${QUERY})?$`),
+  },
   {
     method: "POST",
     pattern:
