@@ -176,7 +176,11 @@ function toTransactionItem(
     createdAt: transaction.createdAt,
     amount: transaction.amount,
     signedAmount: transactionEffect(transaction),
-    label: transaction.kind === "given" ? "Credit given" : "Credit taken",
+    label: transaction.adjustsEntryId
+      ? "Adjustment — owes more"
+      : transaction.kind === "given"
+        ? "Credit given"
+        : "Credit taken",
     note: transaction.description,
     type: "transaction",
   };
@@ -191,7 +195,11 @@ function toPaymentItem(payment: Payment, partyById: ReadonlyMap<string, Party>):
     createdAt: payment.createdAt,
     amount: payment.amount,
     signedAmount: paymentEffect(payment),
-    label: payment.kind === "received" ? "Payment received" : "Payment made",
+    label: payment.adjustsEntryId
+      ? "Adjustment — owes less"
+      : payment.kind === "received"
+        ? "Payment received"
+        : "Payment made",
     note: payment.note,
     type: "payment",
   };
@@ -263,8 +271,11 @@ function scanLedger(data: VyoraData, partyById: ReadonlyMap<string, Party>): Led
     pushInto(paymentsByParty, payment.partyId, payment);
     addInto(netRawByParty, payment.partyId, paymentEffect(payment));
     paymentItems.push(toPaymentItem(payment, partyById));
-    const bucket = payment.kind === "received" ? collectionsByDate : paymentsMadeByDate;
-    addInto(bucket, payment.date, payment.amount);
+    // A correction moves the net above; it is not money collected.
+    if (!payment.adjustsEntryId) {
+      const bucket = payment.kind === "received" ? collectionsByDate : paymentsMadeByDate;
+      addInto(bucket, payment.date, payment.amount);
+    }
   }
 
   return {
@@ -575,7 +586,7 @@ function withAppendedStatistics(
   const payable = previous.payable + Math.max(-nextNet, 0) - Math.max(-previousNet, 0);
   let collectionsByDate = previous.collectionsByDate;
   let paymentsMadeByDate = previous.paymentsMadeByDate;
-  if (payment) {
+  if (payment && !payment.adjustsEntryId) {
     const received = payment.kind === "received";
     const source = received ? previous.collectionsByDate : previous.paymentsMadeByDate;
     const updated = new Map(source);

@@ -40,6 +40,8 @@ export interface Transaction {
   /** Optional due date, YYYY-MM-DD. */
   dueDate?: string;
   createdAt: string;
+  /** Set on a correction to an agreed credit: the credit it adjusts (vyora-api migration 023). */
+  adjustsEntryId?: string;
 }
 
 /** A payment (settling a credit, in either direction). */
@@ -51,6 +53,8 @@ export interface Payment {
   note?: string;
   date: string;
   createdAt: string;
+  /** Set on a correction that lowers an agreed credit; not money received. */
+  adjustsEntryId?: string;
 }
 
 /** The entire Vyora Alpha dataset — lives in one localStorage key on the device. */

@@ -85,6 +85,8 @@ function aggregateOf(event: LedgerEvent): string | null {
       return event.transactionId;
     case "EntryDeleted":
       return event.entryId;
+    case "EntryAdjusted":
+      return event.adjustment.partyId;
     default:
       return null;
   }

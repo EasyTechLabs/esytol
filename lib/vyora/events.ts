@@ -92,6 +92,26 @@ export interface DueDateChangedEvent extends EventBase {
   readonly dueDate?: string;
 }
 
+/**
+ * A correction to an agreed credit, minted by the server when the other side
+ * accepted it (vyora-api 8e001f8). Pulled, never authored here. It lands as an
+ * entry of its own beside the credit it corrects — the original is untouched.
+ * `kind`: `given` means the customer owes more, `received` that they owe less.
+ */
+export interface EntryAdjustedEvent extends EventBase {
+  readonly type: "EntryAdjusted";
+  readonly adjustment: {
+    readonly id: string;
+    readonly partyId: string;
+    readonly adjustsEntryId: string;
+    readonly kind: "given" | "received";
+    readonly amount: number;
+    readonly reason: string;
+    readonly date: string;
+    readonly createdAt: string;
+  };
+}
+
 export interface EntryDeletedEvent extends EventBase {
   readonly type: "EntryDeleted";
   /** A transaction id or a payment id — entry ids are unique across both. */
@@ -151,6 +171,7 @@ export type LedgerEvent =
   | PaymentRecordedEvent
   | DueDateChangedEvent
   | EntryDeletedEvent
+  | EntryAdjustedEvent
   | ContactRemindedEvent
   | DayClosedEvent
   | BackupCreatedEvent
@@ -351,6 +372,39 @@ function applyInto(draft: Draft, event: LedgerEvent): void {
     case "PaymentRecorded":
       draft.payments.push(event.payment);
       return;
+
+    case "EntryAdjusted": {
+      const a = event.adjustment;
+      if (
+        draft.transactions.some((t) => t.id === a.id) ||
+        draft.payments.some((p) => p.id === a.id)
+      )
+        return;
+      if (a.kind === "given") {
+        draft.transactions.push({
+          id: a.id,
+          partyId: a.partyId,
+          amount: a.amount,
+          kind: "given",
+          description: a.reason,
+          date: a.date,
+          createdAt: a.createdAt,
+          adjustsEntryId: a.adjustsEntryId,
+        });
+      } else {
+        draft.payments.push({
+          id: a.id,
+          partyId: a.partyId,
+          amount: a.amount,
+          kind: "received",
+          note: a.reason,
+          date: a.date,
+          createdAt: a.createdAt,
+          adjustsEntryId: a.adjustsEntryId,
+        });
+      }
+      return;
+    }
 
     case "DueDateChanged": {
       for (let i = 0; i < draft.transactions.length; i++) {
