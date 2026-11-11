@@ -94,6 +94,23 @@ describe("what the forwarder will pass through", () => {
     expect(mayForward("POST", "/api/v1/admin/shops?q=a")).toBe(false);
   });
 
+  it("passes an application's two photographs for review, and nothing else under it", () => {
+    // P-10, pilot audit 12 November: the panel showed no photographs at all.
+    const id = "0189a1b2-c3d4-4e5f-8091-a2b3c4d5e6f7";
+    expect(mayForward("GET", `/api/v1/admin/applications/${id}/photos/owner`)).toBe(true);
+    expect(mayForward("GET", `/api/v1/admin/applications/${id}/photos/shop`)).toBe(true);
+    for (const path of [
+      `/api/v1/admin/applications/${id}/photos/face`,
+      `/api/v1/admin/applications/${id}/photos/owner?x=1`,
+      `/api/v1/admin/applications/${id}/photos/../approve`,
+      `/api/v1/admin/applications/${id}/photos`,
+      `/api/v1/admin/applications/1/photos/owner`,
+    ]) {
+      expect(mayForward("GET", path), path).toBe(false);
+    }
+    expect(mayForward("POST", `/api/v1/admin/applications/${id}/photos/owner`)).toBe(false);
+  });
+
   it("allows only the sign-in operations outside the admin namespace", () => {
     expect(mayForward("POST", "/api/v1/auth/email/request-code")).toBe(true);
     expect(mayForward("POST", "/api/v1/auth/email/verify-code")).toBe(true);

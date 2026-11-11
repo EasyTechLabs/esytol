@@ -12,6 +12,8 @@
 
 import { test, expect, type Page } from "@playwright/test";
 import { randomUUID } from "node:crypto";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { call, lit, openShop, registerDevice, signIn, sql, type Who } from "./harness";
 
 test.describe.configure({ mode: "serial" });
@@ -200,5 +202,103 @@ test("A6 a saved session is resumed on reload; a browser without one is asked to
   await fresh.goto("/udharpe/admin");
   await expect(fresh.getByRole("button", { name: "Send me a code" })).toBeVisible();
   await expect(fresh.getByRole("button", { name: "Sign out" })).toHaveCount(0);
+  await stranger.close();
+});
+
+/**
+ * A 48×32 gradient made by a script — a synthetic test image, never a camera
+ * capture. Used only to show the panel fetches and renders what the API
+ * returns; real-camera evidence is the physical checklist's.
+ */
+const SYNTHETIC_JPEG = Buffer.from(
+  "/9j/4AAQSkZJRgABAQAASABIAAD/4QBMRXhpZgAATU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAMKADAAQAAAABAAAAIAAAAAD/7QA4UGhvdG9zaG9wIDMuMAA4QklNBAQAAAAAAAA4QklNBCUAAAAAABDUHYzZjwCyBOmACZjs+EJ+/8AAEQgAIAAwAwEiAAIRAQMRAf/EAB8AAAEFAQEBAQEBAAAAAAAAAAABAgMEBQYHCAkKC//EALUQAAIBAwMCBAMFBQQEAAABfQECAwAEEQUSITFBBhNRYQcicRQygZGhCCNCscEVUtHwJDNicoIJChYXGBkaJSYnKCkqNDU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6g4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7S1tre4ubrCw8TFxsfIycrS09TV1tfY2drh4uPk5ebn6Onq8fLz9PX29/j5+v/EAB8BAAMBAQEBAQEBAQEAAAAAAAABAgMEBQYHCAkKC//EALURAAIBAgQEAwQHBQQEAAECdwABAgMRBAUhMQYSQVEHYXETIjKBCBRCkaGxwQkjM1LwFWJy0QoWJDThJfEXGBkaJicoKSo1Njc4OTpDREVGR0hJSlNUVVZXWFlaY2RlZmdoaWpzdHV2d3h5eoKDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uLj5OXm5+jp6vLz9PX29/j5+v/bAEMABAQEBAQEBgQEBgkGBgYJDAkJCQkMDwwMDAwMDxIPDw8PDw8SEhISEhISEhUVFRUVFRkZGRkZHBwcHBwcHBwcHP/bAEMBBAUFBwcHDAcHDB0UEBQdHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHf/dAAQAA//aAAwDAQACEQMRAD8A+SINK9q2INK9q7ODSv8AZrYg0r2r9MrZn5nz2W5xtqcXBpX+zWxBpX+zXaQaV7VrwaV7V4lbM/M/UMtzjbU4yDSv9mtiDSv9muzg0r/ZrYg0r/ZrxK2Z+Z+oZbnG2p//0Oeg0r/ZrYg0r/Zrs4NK/wBmtiDSv9muatmfmfznlucbanGQaV/s1sQaV7V2cGlf7NbEGlf7NeJWzPzP1DLc421OMg0r2rXg0r2rtINK/wBmtiDSvavErZn5n6hlucban//Z",
+  "base64"
+);
+
+test("A7 the reviewer sees both photographs only on asking, through the panel's own route", async ({
+  page,
+}) => {
+  // Where the local API keeps captures. Without it the bytes cannot be placed,
+  // and this test says so rather than passing on nothing.
+  const root = process.env.UDHARPE_E2E_CAPTURE_ROOT;
+  test.skip(!root, "UDHARPE_E2E_CAPTURE_ROOT is not set");
+
+  const shopName = `Photo Kirana ${run}`;
+  const who = await signIn("pilot-applicant-photos");
+  sql(`DELETE FROM shopkeeper_applications WHERE person_id = ${lit(who.personId)}`);
+  const ids: Record<"person" | "shop", string> = { person: randomUUID(), shop: randomUUID() };
+  for (const kind of ["person", "shop"] as const) {
+    const id = ids[kind];
+    const key = `${id.slice(0, 2)}/${id.slice(2, 4)}/${id}.jpg`;
+    mkdirSync(dirname(join(root!, key)), { recursive: true });
+    writeFileSync(join(root!, key), SYNTHETIC_JPEG, { mode: 0o600 });
+    sql(
+      `INSERT INTO liveness_captures (capture_id, person_id, kind, status, nonce, prompt, expires_at, storage_key)
+       VALUES (${lit(id)}, ${lit(who.personId)}, '${kind}'::capture_kind, 'passed'::capture_status,
+               ${lit(randomUUID().replace(/-/g, "") + randomUUID().replace(/-/g, ""))},
+               'Synthetic — not a camera capture', now() + interval '5 minutes', ${lit(key)})`
+    );
+  }
+  const res = await call(who, "POST", "/api/v1/applications", {
+    data: {
+      shopName,
+      shopLocality: "Bengaluru GPO",
+      ownerCaptureId: ids.person,
+      shopCaptureId: ids.shop,
+    },
+  });
+  expect(res.status, JSON.stringify(res.body)).toBe(201);
+  const applicationId = res.body.applicationId as string;
+
+  const fetched: string[] = [];
+  page.on("request", (r) => {
+    if (r.url().includes("/photos/")) fetched.push(new URL(r.url()).pathname);
+  });
+
+  await openTab(page, "applications");
+  await page.getByRole("button", { name: "pending", exact: true }).click();
+  const item = card(page, shopName);
+  await expect(item).toBeVisible();
+  // Nothing fetched, nothing shown, until the reviewer asks.
+  await expect(item.locator("img")).toHaveCount(0);
+  expect(fetched).toEqual([]);
+
+  await item.getByRole("button", { name: "Show photos" }).click();
+  for (const alt of ["Photo of the applicant", "Photo of the shop"]) {
+    const img = item.getByRole("img", { name: alt });
+    await expect(img).toBeVisible();
+    await expect
+      .poll(() => img.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth))
+      .toBe(48);
+    // Same-origin, through the panel's server route — never the API or storage.
+    expect(await img.getAttribute("src")).toMatch(
+      /^\/api\/udharpe-admin\/applications\/[0-9a-f-]{36}\/photos\/(owner|shop)$/
+    );
+  }
+  expect([...new Set(fetched)].sort()).toEqual([
+    `/api/udharpe-admin/applications/${applicationId}/photos/owner`,
+    `/api/udharpe-admin/applications/${applicationId}/photos/shop`,
+  ]);
+
+  // Every view is on the record, against the application.
+  expect(
+    Number(
+      sql(
+        `SELECT count(DISTINCT detail->>'which') FROM audit_events
+          WHERE action = 'shopkeeper_application.photo.viewed' AND object_id::text = ${lit(applicationId)} AND actor_is_admin`
+      )
+    )
+  ).toBe(2);
+
+  // And a browser without the admin session gets nothing.
+  const stranger = await page
+    .context()
+    .browser()!
+    .newContext({ storageState: { cookies: [], origins: [] } });
+  const anon = await stranger.request.get(
+    new URL(`/api/udharpe-admin/applications/${applicationId}/photos/owner`, page.url()).toString()
+  );
+  expect(anon.status()).toBeGreaterThanOrEqual(400);
+  expect(anon.headers()["content-type"] ?? "").not.toMatch(/image/);
   await stranger.close();
 });

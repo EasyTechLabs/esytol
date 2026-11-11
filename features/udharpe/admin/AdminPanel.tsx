@@ -38,6 +38,83 @@ interface Application {
   shopName: string;
   shopLocality: string | null;
   decisionReason: string | null;
+  /** Which submitted photographs are still kept (absent from an older API). */
+  photos?: { owner: boolean; shop: boolean };
+}
+
+/**
+ * The two photographs an application was submitted with, shown only when the
+ * reviewer asks (P-10, pilot audit, 12 November — until then the panel showed
+ * none, and applications were decided without seeing the face or the shop).
+ *
+ * Hidden by default: every view is audited, and a photograph nobody needs to
+ * look at should not be fetched. Loaded through this app's own server route on
+ * the httpOnly session, so the browser never holds a token or a storage URL.
+ */
+function ApplicationPhotos({
+  applicationId,
+  photos,
+}: {
+  applicationId: string;
+  photos: { owner: boolean; shop: boolean } | undefined;
+}) {
+  const [shown, setShown] = useState(false);
+  const available = photos ?? { owner: false, shop: false };
+  if (!available.owner && !available.shop) {
+    return (
+      <p className="mt-2 text-sm text-neutral-500">No photographs are kept for this application.</p>
+    );
+  }
+  if (!shown) {
+    return (
+      <div className="mt-3">
+        <button
+          type="button"
+          className="rounded border border-neutral-300 px-3 py-1 text-sm"
+          onClick={() => setShown(true)}
+        >
+          Show photos
+        </button>
+      </div>
+    );
+  }
+  const items = [
+    { which: "owner", label: "Photo of the applicant", kept: available.owner },
+    { which: "shop", label: "Photo of the shop", kept: available.shop },
+  ] as const;
+  return (
+    <div
+      className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2"
+      data-testid={`photos-${applicationId}`}
+    >
+      {items.map((p) => (
+        <figure key={p.which} className="rounded border border-neutral-200 p-2">
+          {p.kept ? (
+            // A plain <img>: the bytes must come from this route on the admin's
+            // session, never through an image optimiser or a cache.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={`/api/udharpe-admin/applications/${applicationId}/photos/${p.which}`}
+              alt={p.label}
+              referrerPolicy="no-referrer"
+              draggable={false}
+              className="h-64 w-full rounded bg-neutral-50 object-contain"
+            />
+          ) : (
+            <p className="text-sm text-neutral-500">Not kept.</p>
+          )}
+          <figcaption className="mt-1 text-xs text-neutral-600">{p.label}</figcaption>
+        </figure>
+      ))}
+      <button
+        type="button"
+        className="justify-self-start text-sm text-neutral-600 underline sm:col-span-2"
+        onClick={() => setShown(false)}
+      >
+        Hide photos
+      </button>
+    </div>
+  );
 }
 
 interface Dispute {
@@ -274,6 +351,7 @@ function Applications() {
                   {a.decisionReason}
                 </p>
               ) : null}
+              <ApplicationPhotos applicationId={a.applicationId} photos={a.photos} />
 
               <div className="mt-3 flex flex-wrap gap-2">
                 {a.status === "pending" ? (

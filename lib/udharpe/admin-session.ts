@@ -138,6 +138,11 @@ export const ADMIN_FORWARDABLE = [
   { method: "POST", pattern: /^\/api\/v1\/admin\/disputes\/[0-9a-f-]{36}\/decide$/ },
   { method: "GET", pattern: /^\/api\/v1\/admin\/audit(\?.*)?$/ },
   { method: "GET", pattern: /^\/api\/v1\/admin\/captures\/[0-9a-f-]{36}$/ },
+  // The two photographs an application names, for review (P-10).
+  {
+    method: "GET",
+    pattern: /^\/api\/v1\/admin\/applications\/[0-9a-f-]{36}\/photos\/(owner|shop)$/,
+  },
   // Sign-in, so the panel can obtain a session at all.
   { method: "POST", pattern: /^\/api\/v1\/auth\/email\/request-code$/ },
   { method: "POST", pattern: /^\/api\/v1\/auth\/email\/verify-code$/ },
