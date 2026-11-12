@@ -143,6 +143,12 @@ export const ADMIN_FORWARDABLE = [
     method: "GET",
     pattern: /^\/api\/v1\/admin\/applications\/[0-9a-f-]{36}\/photos\/(owner|shop)$/,
   },
+  // Deleting them by hand (founder, 12 November): reason required, refused
+  // under a retention hold, audited by the API.
+  {
+    method: "POST",
+    pattern: /^\/api\/v1\/admin\/applications\/[0-9a-f-]{36}\/photos\/delete$/,
+  },
   // Sign-in, so the panel can obtain a session at all.
   { method: "POST", pattern: /^\/api\/v1\/auth\/email\/request-code$/ },
   { method: "POST", pattern: /^\/api\/v1\/auth\/email\/verify-code$/ },

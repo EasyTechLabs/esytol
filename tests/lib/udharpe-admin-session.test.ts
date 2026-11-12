@@ -111,6 +111,23 @@ describe("what the forwarder will pass through", () => {
     expect(mayForward("POST", `/api/v1/admin/applications/${id}/photos/owner`)).toBe(false);
   });
 
+  it("passes deleting an application's photographs by hand, POST only, nothing else", () => {
+    // Founder, 12 November: photographs are deleted by hand; the API requires
+    // a reason, refuses under a retention hold and audits.
+    const id = "0189a1b2-c3d4-4e5f-8091-a2b3c4d5e6f7";
+    expect(mayForward("POST", `/api/v1/admin/applications/${id}/photos/delete`)).toBe(true);
+    expect(mayForward("GET", `/api/v1/admin/applications/${id}/photos/delete`)).toBe(false);
+    expect(mayForward("DELETE", `/api/v1/admin/applications/${id}/photos/owner`)).toBe(false);
+    for (const path of [
+      `/api/v1/admin/applications/${id}/photos/delete?all=1`,
+      `/api/v1/admin/applications/${id}/photos/delete/owner`,
+      `/api/v1/admin/applications/1/photos/delete`,
+      `/api/v1/admin/captures/${id}/delete`,
+    ]) {
+      expect(mayForward("POST", path), path).toBe(false);
+    }
+  });
+
   it("allows only the sign-in operations outside the admin namespace", () => {
     expect(mayForward("POST", "/api/v1/auth/email/request-code")).toBe(true);
     expect(mayForward("POST", "/api/v1/auth/email/verify-code")).toBe(true);

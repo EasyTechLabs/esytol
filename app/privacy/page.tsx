@@ -6,7 +6,7 @@ import { siteConfig } from "@/config/site";
 export const metadata: Metadata = buildMetadata({
   title: "Privacy Policy",
   description:
-    "How Esytol handles data: calculations run in your browser, we store no personal data, and this policy covers cookies, analytics, and future advertising.",
+    "How Esytol handles data: calculators run in your browser and store nothing, while accounts for Esytol's ledger services (Udharpe and Vyora) are stored as described in their own notice.",
   path: "/privacy",
 });
 
@@ -24,13 +24,14 @@ export default function PrivacyPage() {
     <div className="container-page section-gap">
       <div className="max-w-2xl">
         <h1 className="text-3xl font-bold text-gray-900">Privacy Policy</h1>
-        <p className="mt-4 text-sm text-gray-400">Last updated: July 2026</p>
+        <p className="mt-4 text-sm text-gray-400">Last updated: 12 November 2026</p>
 
         <p className="mt-6 text-gray-600">
           {siteConfig.name} (“we”, “us”) is built to respect your privacy. Every calculator runs
           entirely in your browser — the numbers you type are never sent to, seen by, or stored on
-          our servers. This policy explains what limited data may be processed when you visit the
-          site.
+          our servers. This policy explains what data may be processed when you visit the site.
+          Esytol also operates account-based ledger services, Udharpe and Vyora, which do store
+          personal information; they are described below and in their own notice.
         </p>
 
         <Section title="Calculator inputs">
@@ -38,6 +39,24 @@ export default function PrivacyPage() {
             All calculations happen locally on your device using JavaScript. Loan amounts, interest
             rates, contributions, and any other values you enter are processed in your browser and
             are never transmitted to us or any third party.
+          </p>
+        </Section>
+
+        <Section title="Accounts: Udharpe and Vyora">
+          <p>
+            If you sign in to Udharpe (on the phone app or at{" "}
+            <Link href="/vyora" className="text-brand-600 hover:underline">
+              esytol.com/vyora
+            </Link>
+            ), we store the information needed to run your account and shared ledger: for example
+            your email address, shop details, customers recorded by a shop, credit and repayment
+            records, and, for shopkeepers applying to open a shop, two photographs taken in the app.
+            What is collected, why, who can see it, how long it is kept and how to make a request
+            are set out in the{" "}
+            <Link href="/udharpe/privacy" className="text-brand-600 hover:underline">
+              Udharpe privacy notice
+            </Link>
+            , which applies to those services in addition to this policy.
           </p>
         </Section>
 
@@ -97,9 +116,10 @@ export default function PrivacyPage() {
 
         <Section title="Third-party services">
           <p>
-            The site is hosted on a cloud/CDN provider and its source is on GitHub. These providers
-            process standard technical request data (see “Log data”) purely to deliver and secure
-            the site. We do not sell or share personal data with any third party.
+            The site and the Udharpe service are hosted on Google Cloud in India, and the
+            site&apos;s source is on GitHub. These providers process data only to deliver and secure
+            the services. We do not sell personal data, and we share it only as the Udharpe privacy
+            notice describes.
           </p>
         </Section>
 
@@ -114,9 +134,13 @@ export default function PrivacyPage() {
 
         <Section title="Data retention">
           <p>
-            Because we store no personal data ourselves, there is nothing for us to retain or
-            delete. Aggregate analytics and hosting logs, where present, are retained only for as
-            long as the respective provider’s standard retention period.
+            Calculator use stores nothing about you. Aggregate analytics and hosting logs, where
+            present, are retained only for as long as the respective provider’s standard retention
+            period. Information held for Udharpe and Vyora accounts is kept as described in the{" "}
+            <Link href="/udharpe/privacy" className="text-brand-600 hover:underline">
+              Udharpe privacy notice
+            </Link>
+            .
           </p>
         </Section>
 
@@ -124,8 +148,10 @@ export default function PrivacyPage() {
           <p>
             Depending on your jurisdiction (for example, under the GDPR or India’s DPDP Act), you
             may have the right to access, correct, or erase personal data and to object to
-            processing. Since we do not hold personal data about you, most requests can be satisfied
-            by clearing your browser’s cookies. For anything else, contact us and we will help.
+            processing. If you only use the calculators, we hold no personal data about you and most
+            requests can be satisfied by clearing your browser’s cookies. If you have a Udharpe or
+            Vyora account, write to us at the address below from your account&apos;s email address
+            and we will respond as the Udharpe privacy notice describes.
           </p>
         </Section>
 

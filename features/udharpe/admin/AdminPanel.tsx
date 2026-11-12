@@ -54,9 +54,12 @@ interface Application {
 function ApplicationPhotos({
   applicationId,
   photos,
+  onDelete,
 }: {
   applicationId: string;
   photos: { owner: boolean; shop: boolean } | undefined;
+  /** Deletes both photographs, by hand, with a reason (the API audits it). */
+  onDelete: (applicationId: string) => void;
 }) {
   const [shown, setShown] = useState(false);
   const available = photos ?? { owner: false, shop: false };
@@ -112,6 +115,14 @@ function ApplicationPhotos({
         onClick={() => setShown(false)}
       >
         Hide photos
+      </button>
+      <button
+        type="button"
+        className="justify-self-start rounded border border-red-300 px-3 py-1 text-sm text-red-700 sm:col-span-2"
+        onClick={() => onDelete(applicationId)}
+        data-testid={`delete-photos-${applicationId}`}
+      >
+        Delete photos
       </button>
     </div>
   );
@@ -314,6 +325,28 @@ function Applications() {
     }
   };
 
+  // Photographs are deleted by hand only (founder, 12 November). The reason is
+  // required and goes on the audit trail; the API refuses under a retention
+  // hold and says so, which is shown as the problem.
+  const deletePhotos = async (id: string) => {
+    const reason = window.prompt(
+      "Delete both photographs of this application? This cannot be undone. Say why — it goes on the audit trail."
+    );
+    if (reason === null || reason.trim() === "") return;
+    setBusy(true);
+    try {
+      await call(`/applications/${id}/photos/delete`, {
+        method: "POST",
+        body: JSON.stringify({ reason }),
+      });
+      await load(current.current);
+    } catch (e) {
+      setProblem((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <section>
       <div className="flex flex-wrap gap-2">
@@ -351,7 +384,11 @@ function Applications() {
                   {a.decisionReason}
                 </p>
               ) : null}
-              <ApplicationPhotos applicationId={a.applicationId} photos={a.photos} />
+              <ApplicationPhotos
+                applicationId={a.applicationId}
+                photos={a.photos}
+                onDelete={(id) => void deletePhotos(id)}
+              />
 
               <div className="mt-3 flex flex-wrap gap-2">
                 {a.status === "pending" ? (
