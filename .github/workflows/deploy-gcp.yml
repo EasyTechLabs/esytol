@@ -42,7 +42,26 @@ concurrency:
   group: esytol-gcp-deploy
   cancel-in-progress: false
 
+# ## Where the GCP identifiers live
+#
+# In this file, not in repository secrets. The first dispatch failed at the
+# first authentication step ("must specify exactly one of
+# workload_identity_provider or credentials_json") because the repository had
+# no secrets set, so every `secrets.GCP_*` was empty. The API's deploy workflow
+# hit the same failure and settled the same way.
+#
+# None of these five values is a credential: a project id, a WIF provider path,
+# a service-account email, a VM name and a zone. What stops anyone else using
+# them lives in GCP and is unchanged:
+#   * the provider's attribute condition, assertion.repository_owner=='EasyTechLabs'
+#   * esytol-deployer's workloadIdentityUser binding, restricted to
+#     principalSet://.../attribute.repository/EasyTechLabs/esytol
 env:
+  GCP_PROJECT: esytol-platform
+  GCP_WIF_PROVIDER: projects/1055892026226/locations/global/workloadIdentityPools/github-pool/providers/github
+  GCP_DEPLOYER_SA: esytol-deployer@esytol-platform.iam.gserviceaccount.com
+  GCP_VM_NAME: esytol-platform-vm
+  GCP_VM_ZONE: asia-south1-a
   REGION: asia-south1
   REPOSITORY: platform
   IMAGE: esytol
@@ -103,8 +122,8 @@ jobs:
           # Pool and provider are pinned to EasyTechLabs/esytol by an attribute
           # condition on the GCP side. A provider that trusts the GitHub issuer
           # without one can be impersonated from ANY repository on GitHub.
-          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
-          service_account: ${{ secrets.GCP_DEPLOYER_SA }}
+          workload_identity_provider: ${{ env.GCP_WIF_PROVIDER }}
+          service_account: ${{ env.GCP_DEPLOYER_SA }}
 
       - uses: google-github-actions/setup-gcloud@v2
 
@@ -117,7 +136,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:${{ inputs.ref }}
+          tags: ${{ env.REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:${{ inputs.ref }}
           build-args: |
             NEXT_PUBLIC_SITE_URL=${{ env.SITE_URL }}
             NEXT_PUBLIC_SITE_NAME=Esytol
@@ -142,31 +161,58 @@ jobs:
       - id: auth
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
-          service_account: ${{ secrets.GCP_DEPLOYER_SA }}
+          workload_identity_provider: ${{ env.GCP_WIF_PROVIDER }}
+          service_account: ${{ env.GCP_DEPLOYER_SA }}
 
       - uses: google-github-actions/setup-gcloud@v2
 
       - name: Deploy over IAP
         run: |
           set -euo pipefail
-          IMAGE_REF="${REGION}-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/${REPOSITORY}/${IMAGE}:${{ inputs.ref }}"
+          IMAGE_REF="${REGION}-docker.pkg.dev/${{ env.GCP_PROJECT }}/${REPOSITORY}/${IMAGE}:${{ inputs.ref }}"
+
+          # OS Login can authorise a fresh certificate a few seconds before
+          # sshd accepts it. Retry only the read-only probe below, never the
+          # deploy itself.
+          ssh_retry() {
+            local what="$1"; shift
+            local attempt
+            for attempt in 1 2 3 4 5 6; do
+              if "$@"; then
+                return 0
+              fi
+              echo "::notice::${what} attempt ${attempt} failed (OS Login may still be propagating); retrying in 15s"
+              sleep 15
+            done
+            echo "::error::${what} failed after 6 attempts"
+            return 1
+          }
 
           # No public SSH: the tunnel is authorised by IAM, not by a firewall
-          # rule scoped to an address.
-          gcloud compute ssh "${{ secrets.GCP_VM_NAME }}" \
-            --zone "${{ secrets.GCP_VM_ZONE }}" \
-            --tunnel-through-iap \
-            --command "set -euo pipefail
+          # rule scoped to an address. The SSH certificate expires within the
+          # hour; no key outlives the run.
+          SSH=("${{ env.GCP_VM_NAME }}" --zone "${{ env.GCP_VM_ZONE }}"
+               --tunnel-through-iap --quiet --ssh-key-expire-after=1h)
+
+          ssh_retry "ssh probe" gcloud compute ssh "${SSH[@]}" --command "true"
+
+          # Docker through sudo. The deployer is granted OS Admin Login on this
+          # one VM and is deliberately NOT in the docker group: membership there
+          # is root that never expires and is not audited, while sudo is logged
+          # and tied to the run's short-lived certificate. Root's Docker already
+          # pulls from Artifact Registry with the VM's own identity, and the
+          # compose file's env_file (/etc/esytol/app.env) is root-only.
+          gcloud compute ssh "${SSH[@]}" --command "set -euo pipefail
               cd /opt/vyora
-              export ESYTOL_IMAGE='${IMAGE_REF}'
-              docker pull \"\$ESYTOL_IMAGE\"
+              sudo docker pull '${IMAGE_REF}'
               # One service. Vyora and PostgreSQL are not touched.
-              docker compose -f docker-compose.production.yml up -d --no-deps esytol
+              sudo ESYTOL_IMAGE='${IMAGE_REF}' docker compose -f docker-compose.production.yml up -d --no-deps esytol
               for i in \$(seq 1 30); do
-                if docker compose -f docker-compose.production.yml exec -T esytol \
+                if sudo docker compose -f docker-compose.production.yml exec -T esytol \
                      node -e \"fetch('http://127.0.0.1:3000/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"; then
-                  echo \"healthy after \${i} attempt(s)\"; exit 0
+                  echo \"healthy after \${i} attempt(s)\"
+                  echo \"running: \$(sudo docker inspect --format '{{.Config.Image}}' \$(sudo docker compose -f docker-compose.production.yml ps -q esytol))\"
+                  exit 0
                 fi
                 sleep 2
               done
